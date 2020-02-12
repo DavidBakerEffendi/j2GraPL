@@ -11,3 +11,6 @@ buildNumber.properties
 .mvn/wrapper/maven-wrapper.jar
 /j2GraPL.iml
 /.idea/
+.project
+.settings
+.classpath
