@@ -1,0 +1,13 @@
+os: linux
+
+services:
+  - docker
+
+language: java
+
+before_install:
+  - docker build -t j2grapl .
+
+script:
+  - docker run j2grapl /bin/sh -c "mvn compile"
+  - docker run j2grapl /bin/sh -c "mvn surefire:test"
