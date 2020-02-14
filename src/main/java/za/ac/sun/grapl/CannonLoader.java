@@ -1,15 +1,97 @@
 package za.ac.sun.grapl;
 
-import java.io.File;
+import org.apache.log4j.Logger;
+import org.objectweb.asm.ClassReader;
+import za.ac.sun.grapl.visitors.debug.DebugClassVisitor;
+
+import java.io.*;
+import java.util.LinkedList;
 import java.util.jar.JarFile;
+import java.util.stream.Stream;
 
 public class CannonLoader {
 
-    public void loadClassFile(File file) {
-        // TODO: Load class file into cannon
+    final static Logger logger = Logger.getLogger(CannonLoader.class);
+
+    private final LinkedList<File> loadedFiles;
+
+    public CannonLoader() {
+        this.loadedFiles = new LinkedList<>();
     }
 
+    /**
+     * Loads a single Java class file into the cannon.
+     *
+     * @param file the Java class file.
+     * @throws NullPointerException if the file is null
+     */
+    public void loadClassFile(File file) throws NullPointerException {
+        if (file == null) throw new NullPointerException("File may not be null!");
+        this.loadedFiles.add(file);
+    }
+
+    /**
+     * Loads a single Java JAR file into the cannon.
+     *
+     * @param jarFile the JAR file.
+     */
     public void loadJarFile(JarFile jarFile) {
         // TODO: Load class files into the cannon
+    }
+
+    /**
+     * Fires all loaded Java classes currently loaded.
+     */
+    public void fireAll() {
+        this.loadedFiles.stream().flatMap(f -> {
+            try {
+                this.fire(f);
+                return null;
+            } catch (IOException e) {
+                return Stream.of(e);
+            }
+        }).reduce((e1, e2) -> {
+            e1.addSuppressed(e2);
+            return e1;
+        }).ifPresent(logger::error);
+    }
+
+    /**
+     * Fires the first file in the list of loaded in the cannon.
+     */
+    public void fireOne() {
+        this.fireOne(0);
+    }
+
+    /**
+     * Fires the file at index i in the cannon.
+     *
+     * @param i the index of the file to fire.
+     */
+    public void fireOne(final int i) {
+        File f;
+        try {
+            f = this.loadedFiles.get(i);
+            this.fire(f);
+        } catch (IOException e) {
+            if (e instanceof FileNotFoundException) logger.error("File at " + i + " not found!", e);
+            else logger.error("I/O Exception while accessing '" + i + "'.", e);
+        } catch (IndexOutOfBoundsException e) {
+            logger.error("Index " + i + " is out of bounds!", e);
+        }
+    }
+
+    /**
+     * Attempts to fire a file from the cannon.
+     *
+     * @param f the file to fire.
+     * @throws IOException if the ClassReader or visitors encounter an IOException.
+     */
+    private void fire(final File f) throws IOException {
+        try (InputStream fis = new FileInputStream(f)) {
+            ClassReader cr = new ClassReader(fis);
+            DebugClassVisitor cfgVis = new DebugClassVisitor();
+            cr.accept(cfgVis, 0);
+        }
     }
 }
