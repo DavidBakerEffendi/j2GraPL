@@ -2,6 +2,7 @@ package za.ac.sun.grapl;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import za.ac.sun.grapl.hooks.TinkerGraphHook;
 
 import java.io.File;
 import java.net.URL;
@@ -14,13 +15,15 @@ public class CannonLoaderTest {
 
     private CannonLoader fileCannon;
     private File validFile;
+    private TinkerGraphHook hook;
 
     @BeforeEach
     public void setUpAll() {
         final URL resource = getClass().getClassLoader().getResource("intraprocedural/basic/Basic1.class");
         String resourceDir = Objects.requireNonNull(resource).getFile();
         this.validFile = new File(resourceDir);
-        fileCannon = new CannonLoader();
+        hook = new TinkerGraphHook.TinkerGraphHookBuilder("/tmp/intraprocedural_test.kryo").createNewGraph(true).build();
+        fileCannon = new CannonLoader(hook);
     }
 
     @Test

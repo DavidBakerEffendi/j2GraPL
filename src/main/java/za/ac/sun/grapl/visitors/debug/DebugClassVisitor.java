@@ -15,14 +15,15 @@
  */
 package za.ac.sun.grapl.visitors.debug;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 
 public class DebugClassVisitor extends ClassVisitor implements Opcodes {
 
-    final static Logger logger = Logger.getLogger(DebugClassVisitor.class);
+    final static Logger logger = LogManager.getLogger();
     String className;
 
     public DebugClassVisitor() {

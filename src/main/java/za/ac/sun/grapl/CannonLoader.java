@@ -15,8 +15,11 @@
  */
 package za.ac.sun.grapl;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.ClassReader;
+import za.ac.sun.grapl.hooks.IHook;
+import za.ac.sun.grapl.visitors.ast.ASTClassVisitor;
 import za.ac.sun.grapl.visitors.debug.DebugClassVisitor;
 
 import java.io.*;
@@ -26,12 +29,14 @@ import java.util.stream.Stream;
 
 public class CannonLoader {
 
-    final static Logger logger = Logger.getLogger(CannonLoader.class);
+    final static Logger logger = LogManager.getLogger();
 
     private final LinkedList<File> loadedFiles;
+    private final IHook hook;
 
-    public CannonLoader() {
+    public CannonLoader(IHook hook) {
         this.loadedFiles = new LinkedList<>();
+        this.hook = hook;
     }
 
     /**
@@ -105,8 +110,11 @@ public class CannonLoader {
     private void fire(final File f) throws IOException {
         try (InputStream fis = new FileInputStream(f)) {
             ClassReader cr = new ClassReader(fis);
+
             DebugClassVisitor cfgVis = new DebugClassVisitor();
+            ASTClassVisitor astVis = new ASTClassVisitor(hook);
             cr.accept(cfgVis, 0);
+            cr.accept(astVis,0);
         }
     }
 }

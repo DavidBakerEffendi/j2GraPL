@@ -15,7 +15,8 @@
  */
 package za.ac.sun.grapl.visitors.debug;
 
-import org.apache.log4j.Logger;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -23,7 +24,7 @@ import org.objectweb.asm.util.ASMifier;
 
 class DebugMethodVisitor extends MethodVisitor implements Opcodes {
 
-    final static Logger logger = Logger.getLogger(DebugClassVisitor.class);
+    final static Logger logger = LogManager.getLogger();
 
     public DebugMethodVisitor(final MethodVisitor mv) {
         super(ASM5, mv);
