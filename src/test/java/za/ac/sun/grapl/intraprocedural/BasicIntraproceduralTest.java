@@ -1,5 +1,7 @@
 package za.ac.sun.grapl.intraprocedural;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import za.ac.sun.grapl.CannonLoader;
@@ -13,6 +15,8 @@ import java.net.URL;
 import java.util.Objects;
 
 public class BasicIntraproceduralTest {
+
+    final static Logger logger = LogManager.getLogger();
 
     private static final String PATH = "intraprocedural/basic/";
     private CannonLoader fileCannon;
