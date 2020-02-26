@@ -105,7 +105,7 @@ class DebugMethodVisitor extends MethodVisitor implements Opcodes {
 
     @Override
     public void visitTypeInsn(int opcode, String type) {
-        logger.debug("\t " + ASMifier.OPCODES[opcode] + " " + type + " (visitTypeInsn)");
+        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + type + " (visitTypeInsn)");
         super.visitTypeInsn(opcode, type);
     }
 

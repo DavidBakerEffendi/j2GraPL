@@ -20,6 +20,10 @@ import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+import za.ac.sun.grapl.domain.enums.ModifierTypes;
+import za.ac.sun.grapl.util.ASMParserUtil;
+
+import java.util.EnumSet;
 
 public class DebugClassVisitor extends ClassVisitor implements Opcodes {
 
@@ -48,22 +52,10 @@ public class DebugClassVisitor extends ClassVisitor implements Opcodes {
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
         logger.debug("");
-        String acc = basicAccessDecoder(access);
-        logger.debug("\t" + acc + " " + name + descriptor + " {");
+        final EnumSet<ModifierTypes> modifierTypes = ASMParserUtil.determineModifiers(access, name);
+        logger.debug("\t" + modifierTypes.toString() + " " + name + descriptor + " {");
         MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
         return new DebugMethodVisitor(mv);
-    }
-
-    private String basicAccessDecoder(int access) {
-        if (access == ACC_PUBLIC) return "public";
-        else if (access == ACC_PRIVATE) return "private";
-        else if (access == ACC_PROTECTED) return "protected";
-        else if (access == ACC_STATIC + ACC_PUBLIC) return "public static";
-        else if (access == ACC_STATIC + ACC_PRIVATE) return "private static";
-        else if (access == ACC_STATIC + ACC_PROTECTED) return "protected static";
-        else logger.debug("Unknown access: " + access);
-
-        return "";
     }
 
 }
