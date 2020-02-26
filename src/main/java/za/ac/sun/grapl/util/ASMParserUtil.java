@@ -1,14 +1,17 @@
 package za.ac.sun.grapl.util;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.objectweb.asm.Opcodes;
 import za.ac.sun.grapl.domain.enums.EvaluationStrategies;
+import za.ac.sun.grapl.domain.enums.ModifierTypes;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
+import java.util.*;
 import java.util.stream.IntStream;
 
-public class ASMParserUtil {
+public class ASMParserUtil implements Opcodes {
+
+    final static Logger logger = LogManager.getLogger();
 
     private static final HashSet<Character> PRIMITIVES = new HashSet<>(Arrays.asList('Z', 'C', 'B', 'S', 'I', 'F', 'J', 'D'));
 
@@ -56,10 +59,54 @@ public class ASMParserUtil {
      * @return the type of evaluation strategy used
      */
     public static EvaluationStrategies determineEvaluationStrategy(String paramType, boolean isMethodReturn) {
-        char evalChar = paramType.charAt(0);
+        final char evalChar = paramType.charAt(0);
         if ((isArray(evalChar) || isObject(evalChar))) {
             return isMethodReturn ? EvaluationStrategies.BY_SHARING : EvaluationStrategies.BY_REFERENCE;
         } else return EvaluationStrategies.BY_VALUE;
+    }
+
+    /**
+     * Given the ASM5 access parameter and method name, determines the modifier types.
+     * <p>
+     * In Java, all non-static methods are by default "virtual functions." Only methods marked with the keyword final,
+     * which cannot be overridden, along with private methods, which are not inherited, are non-virtual.
+     *
+     * @param access ASM5 access parameter obtained from visitClass and visitMethod.
+     * @param name   name of the method obtained from visitClass and visitMethod.
+     * @return an EnumSet of the applicable modifier types.
+     */
+    public static EnumSet<ModifierTypes> determineModifiers(int access, String name) {
+        EnumSet<ModifierTypes> modifiers = EnumSet.of(ModifierTypes.VIRTUAL);
+        if ("<init>".equals(name)) modifiers.add(ModifierTypes.CONSTRUCTOR);
+        for (int remaining = access, bit; remaining != 0; remaining -= bit) {
+            bit = Integer.lowestOneBit(remaining);
+            switch (bit) {
+                case Opcodes.ACC_STATIC:
+                    modifiers.add(ModifierTypes.STATIC);
+                    modifiers.remove(ModifierTypes.VIRTUAL);
+                    break;
+                case Opcodes.ACC_PUBLIC:
+                    modifiers.add(ModifierTypes.PUBLIC);
+                    break;
+                case Opcodes.ACC_PRIVATE:
+                    modifiers.add(ModifierTypes.PRIVATE);
+                    modifiers.remove(ModifierTypes.VIRTUAL);
+                    break;
+                case Opcodes.ACC_PROTECTED:
+                    modifiers.add(ModifierTypes.PROTECTED);
+                    break;
+                case Opcodes.ACC_NATIVE:
+                    modifiers.add(ModifierTypes.NATIVE);
+                    break;
+                case Opcodes.ACC_ABSTRACT:
+                    modifiers.add(ModifierTypes.ABSTRACT);
+                    break;
+                case Opcodes.ACC_FINAL:
+                    modifiers.remove(ModifierTypes.VIRTUAL);
+                    break;
+            }
+        }
+        return modifiers;
     }
 
     public static boolean isPrimitive(char c) {
