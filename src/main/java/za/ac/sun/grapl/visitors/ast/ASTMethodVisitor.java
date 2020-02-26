@@ -5,12 +5,16 @@ import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.util.ASMifier;
 import za.ac.sun.grapl.domain.enums.EvaluationStrategies;
+import za.ac.sun.grapl.domain.enums.ModifierTypes;
 import za.ac.sun.grapl.domain.models.vertices.MethodParameterInVertex;
 import za.ac.sun.grapl.domain.models.vertices.MethodVertex;
 import za.ac.sun.grapl.domain.models.vertices.ModifierVertex;
 import za.ac.sun.grapl.hooks.IHook;
+import za.ac.sun.grapl.util.ASMParserUtil;
+
+import java.util.EnumSet;
+import java.util.List;
 
 public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
 
@@ -33,21 +37,33 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
 
     @Override
     public void visitCode() {
-        // Create method here rather - ditch line number
-        String shortName = methodName.substring(methodName.lastIndexOf('.') + 1);
-        hook.createVertex(new MethodVertex(shortName, classPath + "#" + methodName, methodSignature, 0, order++));
-        // Method parameter in. If primitive then easy, if object then need to find namespace
-        // TODO: Determine evaluation strategy
-        // TODO: Determine parameters in based on signature
-        // TODO: Determine type based on signature
-        hook.createVertex(new MethodParameterInVertex(methodSignature, "test", EvaluationStrategies.BY_VALUE, "V",0, order++));
-
-        // TODO: Add modifier here, e.g. public, based on access
-//        hook.createVertex();
-
-        // TODO: Add type parameter of the method e.g. what type the method returns
-
         super.visitCode();
+        final String shortName = methodName.substring(methodName.lastIndexOf('.') + 1);
+        hook.createVertex(new MethodVertex(shortName, classPath.concat(".").concat(methodName), methodSignature, 0, order++));
+        // Method parameter in. If primitive then easy, if object then need to find namespace
+        // TODO: Determine parameters in based on signature and parameter types for the method
+        final List<String> params = ASMParserUtil.obtainParameters(methodSignature);
+        for (String p : params) {
+            logger.debug("LONG NAME (" + p + ") SHORT NAME: (" + ASMParserUtil.getShortName(p) + ")");
+        }
+        params.parallelStream().forEach(p -> {
+            hook.createVertex(new MethodParameterInVertex(
+                    methodSignature,
+                    ASMParserUtil.getShortName(p),
+                    ASMParserUtil.determineEvaluationStrategy(p, false),
+                    p, 0, order++));
+            // TODO: Connect method to this vertex with AST edge
+        });
+        // TODO: Determine return type based on signature
+        final String returnType = ASMParserUtil.obtainMethodReturnType(methodSignature);
+
+        // TODO: Determine evaluation strategy
+        final EvaluationStrategies eval = ASMParserUtil.determineEvaluationStrategy(returnType, true);
+        // TODO: Add modifier here, e.g. public, based on access
+        final EnumSet<ModifierTypes> modifiers = ASMParserUtil.determineModifiers(access, methodName);
+        modifiers.forEach(m -> {
+            hook.putVertexIfAbsent(new ModifierVertex(m, order++), "modifierType", m.name());
+        });
     }
 
     @Override

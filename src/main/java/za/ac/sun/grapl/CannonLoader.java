@@ -110,11 +110,11 @@ public class CannonLoader {
     private void fire(final File f) throws IOException {
         try (InputStream fis = new FileInputStream(f)) {
             ClassReader cr = new ClassReader(fis);
-
-            DebugClassVisitor cfgVis = new DebugClassVisitor();
-            ASTClassVisitor astVis = new ASTClassVisitor(hook);
-            cr.accept(cfgVis, 0);
-            cr.accept(astVis,0);
+            // The class visitors are declared here and wrapped by one another in a pipeline
+            DebugClassVisitor rootVisitor = new DebugClassVisitor();
+            ASTClassVisitor astVisitor = new ASTClassVisitor(hook, rootVisitor).order(0);
+            // ^ append new visitors here
+            cr.accept(astVisitor, 0);
         }
     }
 }

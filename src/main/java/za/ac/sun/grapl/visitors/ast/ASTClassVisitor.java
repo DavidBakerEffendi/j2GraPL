@@ -16,9 +16,10 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
     private String classPath;
     private String className;
     private int order;
+    private ASTMethodVisitor astMv;
 
-    public ASTClassVisitor(IHook hook) {
-        super(ASM5);
+    public ASTClassVisitor(IHook hook, ClassVisitor cv) {
+        super(ASM5, cv);
         this.hook = hook;
         this.order = 0;
     }
@@ -47,9 +48,21 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+        order = astMv == null ? order : astMv.getOrder();
+        logger.debug("ORDER -> " + order);
         MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-        ASTMethodVisitor astMv = new ASTMethodVisitor(mv, hook,  access, name, classPath, descriptor);
+        astMv = new ASTMethodVisitor(mv, hook, access, name, classPath, descriptor);
         astMv.setOrder(order);
         return astMv;
     }
+
+    public ASTClassVisitor order(int order) {
+        this.order = order;
+        return this;
+    }
+
+    public int getOrder() {
+        return order;
+    }
+
 }

@@ -46,7 +46,7 @@ public class ASMParserUtil implements Opcodes {
      * @param signature the raw method signature from ASM5
      * @return a list of the parameters
      */
-    public static String obtainReturnType(String signature) {
+    public static String obtainMethodReturnType(String signature) {
         return signature.substring(signature.lastIndexOf(')'));
     }
 
@@ -107,6 +107,21 @@ public class ASMParserUtil implements Opcodes {
             }
         }
         return modifiers;
+    }
+
+    public static String getShortName(String longName) {
+        final StringBuilder sb = new StringBuilder();
+        final char[] sigArr = longName.toCharArray();
+        IntStream.range(0, sigArr.length).mapToObj(i -> sigArr[i]).forEach(c -> {
+            if (isPrimitive(c) && sb.indexOf("L") == -1) {
+                sb.append(c);
+            } else if (isArray(c) || isObject(c)) sb.append(c);
+        });
+        sb.delete(sb.indexOf("L"), sb.length());
+        if (longName.contains("/")) {
+            sb.append(longName.substring(longName.lastIndexOf("/") + 1));
+        }
+        return sb.toString();
     }
 
     public static boolean isPrimitive(char c) {
