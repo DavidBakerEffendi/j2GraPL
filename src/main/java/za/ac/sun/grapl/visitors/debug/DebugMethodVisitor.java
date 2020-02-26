@@ -22,6 +22,8 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.util.ASMifier;
 
+import java.util.StringJoiner;
+
 class DebugMethodVisitor extends MethodVisitor implements Opcodes {
 
     final static Logger logger = LogManager.getLogger();
@@ -37,81 +39,69 @@ class DebugMethodVisitor extends MethodVisitor implements Opcodes {
 
     @Override
     public void visitLabel(Label label) {
-        logger.debug("\t  " + label.toString() + " (label)");
+        logger.debug(new StringJoiner(" ").add("\t ").add(label.toString()).add("(label)"));
         super.visitLabel(label);
     }
 
     @Override
     public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
-        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + owner + " " + name + " " + descriptor + " (visitFieldInsn)");
+        logger.debug(new StringJoiner(" ")
+                .add("\t ").add(ASMifier.OPCODES[opcode]).add(owner).add(name).add(descriptor).add("(visitFieldInsn)"));
         super.visitFieldInsn(opcode, owner, name, descriptor);
     }
 
     @Override
     public void visitVarInsn(int opcode, int var) {
-        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " -> " +  var + " (visitVarInsn)");
+        logger.debug(new StringJoiner(" ")
+                .add("\t ").add(ASMifier.OPCODES[opcode]).add("->").add(String.valueOf(var)).add("visitVarInsn"));
         super.visitVarInsn(opcode, var);
     }
 
     @Override
     public void visitLocalVariable(String name, String descriptor, String signature, Label start, Label end, int index) {
-        logger.debug("\t  " + name + " " + descriptor + " sig:" + signature + " (start;end) -> (" + start + ";" + end + ") (visitLocalVariable)");
+        logger.debug(new StringJoiner(" ")
+                .add("\t ").add(descriptor).add(name)
+                .add("-> (").add(start.toString()).add(";").add(end.toString()).add(") (visitLocalVariable)"));
         super.visitLocalVariable(name, descriptor, signature, start, end, index);
     }
 
     @Override
-    public void visitFrame(int type, int numLocal, Object[] local, int numStack, Object[] stack) {
-        logger.debug("\t  ==FRAME== type: '" + ASMifier.TYPES[type] + "' (" + type + ")");
-        logger.debug("\t  numLocal:" + numLocal);
-        for (Object o : local) {
-            logger.debug("\t     local:" + o);
-        }
-        logger.debug( "\t  numStack:" + numStack);
-        for (Object s : stack) {
-            logger.debug("\t     stack:" + s);
-        }
-        super.visitFrame(type, numLocal, local, numStack, stack);
-    }
-
-    @Override
     public void visitLineNumber(int line, Label start) {
-        logger.debug("\t  " + line + " " + start + " (visitLineNumber)");
+        logger.debug(new StringJoiner(" ")
+                .add("\t ").add(String.valueOf(line)).add(String.valueOf(start)).add("(visitLineNumber)"));
         super.visitLineNumber(line, start);
     }
 
     @Override
-    public void visitMaxs(int maxStack, int maxLocals) {
-        logger.debug("\t  " + maxStack + " " + maxLocals + " (visitMaxs)");
-        super.visitMaxs(maxStack, maxLocals);
-    }
-
-    @Override
     public void visitInsn(int opcode) {
-        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " (visitInsn)");
+        logger.debug(new StringJoiner(" ").add("\t ").add(ASMifier.OPCODES[opcode]).add("(visitInsn)"));
         super.visitInsn(opcode);
     }
 
     @Override
     public void visitJumpInsn(int opcode, Label label) {
-        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + label + " (visitJumpInsn)");
+        logger.debug(new StringJoiner("\t ")
+                .add(ASMifier.OPCODES[opcode]).add(label.toString()).add("(visitJumpInsn)"));
         super.visitJumpInsn(opcode, label);
     }
 
     @Override
     public void visitLdcInsn(Object value) {
-        logger.debug("\t  " + value.toString() + " (visitLdcInsn)");
+        logger.debug(new StringJoiner(" ").add("\t ").add(value.toString()).add("(visitLdcInsn)"));
         super.visitLdcInsn(value);
     }
 
     @Override
     public void visitTypeInsn(int opcode, String type) {
-        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + type + " (visitTypeInsn)");
+        logger.debug(new StringJoiner(" ")
+                .add("\t ").add(ASMifier.OPCODES[opcode]).add(type).add("(visitTypeInsn)"));
         super.visitTypeInsn(opcode, type);
     }
 
     @Override
     public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
-        logger.debug("\t  " + owner + " " + name + " " + desc + " (visitMethodInsn)");
+        logger.debug(new StringJoiner(" ")
+                .add("\t ").add(ASMifier.OPCODES[opcode]).add(owner).add(name).add(desc).add("(visitMethodInsn)"));
         super.visitMethodInsn(opcode, owner, name, desc, itf);
     }
 

@@ -24,6 +24,7 @@ import za.ac.sun.grapl.domain.enums.ModifierTypes;
 import za.ac.sun.grapl.util.ASMParserUtil;
 
 import java.util.EnumSet;
+import java.util.StringJoiner;
 
 public class DebugClassVisitor extends ClassVisitor implements Opcodes {
 
@@ -36,8 +37,9 @@ public class DebugClassVisitor extends ClassVisitor implements Opcodes {
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+        final EnumSet<ModifierTypes> modifierTypes = ASMParserUtil.determineModifiers(access, name);
         logger.debug("");
-        logger.debug("public class " + name + " extends " + superName + " {");
+        logger.debug(new StringJoiner(" ").add(modifierTypes.toString()).add(name).add("extends").add(superName).add("{"));
         this.className = name;
         super.visit(version, access, name, signature, superName, interfaces);
     }
@@ -51,9 +53,9 @@ public class DebugClassVisitor extends ClassVisitor implements Opcodes {
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-        logger.debug("");
         final EnumSet<ModifierTypes> modifierTypes = ASMParserUtil.determineModifiers(access, name);
-        logger.debug("\t" + modifierTypes.toString() + " " + name + descriptor + " {");
+        logger.debug("");
+        logger.debug(new StringJoiner(" ").add("\t").add(modifierTypes.toString()).add(name).add(descriptor).add("{"));
         MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
         return new DebugMethodVisitor(mv);
     }
