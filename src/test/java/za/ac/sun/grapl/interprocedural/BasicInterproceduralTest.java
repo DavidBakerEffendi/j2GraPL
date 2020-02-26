@@ -20,7 +20,7 @@ public class BasicInterproceduralTest {
     @BeforeEach
     public synchronized void setUpAll() throws IOException {
         ResourceCompilationUtil.compileJavaFiles(PATH);
-        hook = new TinkerGraphHook.TinkerGraphHookBuilder("/tmp/intraprocedural_test.kryo").createNewGraph(true).build();
+        hook = new TinkerGraphHook.TinkerGraphHookBuilder("/tmp/grapl/intraprocedural_test.kryo").createNewGraph(true).build();
         fileCannon = new CannonLoader(hook);
     }
 

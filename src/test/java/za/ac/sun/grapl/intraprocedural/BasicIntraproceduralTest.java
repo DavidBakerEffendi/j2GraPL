@@ -25,7 +25,7 @@ public class BasicIntraproceduralTest {
     @BeforeEach
     public void setUpAll() throws IOException {
         ResourceCompilationUtil.compileJavaFiles(PATH);
-        hook = new TinkerGraphHookBuilder("/tmp/intraprocedural_test.xml").createNewGraph(true).build();
+        hook = new TinkerGraphHookBuilder("/tmp/grapl/intraprocedural_test.xml").createNewGraph(true).build();
         fileCannon = new CannonLoader(hook);
     }
 
