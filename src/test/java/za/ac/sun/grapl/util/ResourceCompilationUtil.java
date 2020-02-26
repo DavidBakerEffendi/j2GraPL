@@ -8,9 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -40,7 +38,8 @@ public class ResourceCompilationUtil {
                     .collect(Collectors.toList());
             result.forEach((f) -> fileList.add(new File(f)));
         }
-        javac.getTask(null, fileManager, null, null, null,
+
+        javac.getTask(null, fileManager, null, Arrays.asList("-g"), null,
                 fileManager.getJavaFileObjectsFromFiles(fileList)).call();
     }
 

@@ -49,8 +49,28 @@ class DebugMethodVisitor extends MethodVisitor implements Opcodes {
 
     @Override
     public void visitVarInsn(int opcode, int var) {
-        logger.debug("\t  " + ASMifier.OPCODES[opcode] + var + " (visitVarInsn)");
+        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " -> " +  var + " (visitVarInsn)");
         super.visitVarInsn(opcode, var);
+    }
+
+    @Override
+    public void visitLocalVariable(String name, String descriptor, String signature, Label start, Label end, int index) {
+        logger.debug("\t  " + name + " " + descriptor + " sig:" + signature + " (start;end) -> (" + start + ";" + end + ") (visitLocalVariable)");
+        super.visitLocalVariable(name, descriptor, signature, start, end, index);
+    }
+
+    @Override
+    public void visitFrame(int type, int numLocal, Object[] local, int numStack, Object[] stack) {
+        logger.debug("\t  ==FRAME== type: '" + ASMifier.TYPES[type] + "' (" + type + ")");
+        logger.debug("\t  numLocal:" + numLocal);
+        for (Object o : local) {
+            logger.debug("\t     local:" + o);
+        }
+        logger.debug( "\t  numStack:" + numStack);
+        for (Object s : stack) {
+            logger.debug("\t     stack:" + s);
+        }
+        super.visitFrame(type, numLocal, local, numStack, stack);
     }
 
     @Override

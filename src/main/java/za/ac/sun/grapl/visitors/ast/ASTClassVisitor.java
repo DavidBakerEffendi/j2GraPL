@@ -34,6 +34,9 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
         this.hook.createVertex(new NamespaceBlockVertex(this.className, name, order));
         this.hook.createVertex(new FileVertex(this.className, order++));
+
+        // TODO: Could create MEMBER vertex from here to declare member classes
+
         super.visit(version, access, name, signature, superName, interfaces);
     }
 
@@ -44,13 +47,9 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-        System.out.println(name);
-        System.out.println(classPath);
         MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-        ASTMethodVisitor astMv = new ASTMethodVisitor(mv, hook,  name, classPath, descriptor);
-        System.out.println(order);
+        ASTMethodVisitor astMv = new ASTMethodVisitor(mv, hook,  access, name, classPath, descriptor);
         astMv.setOrder(order);
-        System.out.println(astMv.getOrder());
         return astMv;
     }
 }
