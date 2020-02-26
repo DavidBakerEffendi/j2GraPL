@@ -51,4 +51,22 @@ public class BasicInterproceduralTest {
         fileCannon.fireOne();
     }
 
+    @Test
+    public void basicCall4Test() {
+        final URL resource = getClass().getClassLoader().getResource(PATH + "Basic4.class");
+        final String resourceDir = Objects.requireNonNull(resource).getFile();
+        final File f = new File(resourceDir);
+        fileCannon.loadClassFile(f);
+        fileCannon.fireOne();
+    }
+
+    @Test
+    public void basicCall5Test() {
+        final URL resource = getClass().getClassLoader().getResource(PATH + "Basic5.class");
+        final String resourceDir = Objects.requireNonNull(resource).getFile();
+        final File f = new File(resourceDir);
+        fileCannon.loadClassFile(f);
+        fileCannon.fireOne();
+    }
+
 }
