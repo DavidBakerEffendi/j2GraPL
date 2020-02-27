@@ -7,9 +7,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import za.ac.sun.grapl.domain.enums.EvaluationStrategies;
 import za.ac.sun.grapl.domain.enums.ModifierTypes;
-import za.ac.sun.grapl.domain.models.vertices.MethodParameterInVertex;
-import za.ac.sun.grapl.domain.models.vertices.MethodVertex;
-import za.ac.sun.grapl.domain.models.vertices.ModifierVertex;
+import za.ac.sun.grapl.domain.models.vertices.*;
 import za.ac.sun.grapl.hooks.IHook;
 import za.ac.sun.grapl.util.ASMParserUtil;
 
@@ -24,45 +22,46 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     private final String classPath;
     private final String methodName;
     private final String methodSignature;
+    private MethodVertex methodVertex;
+    private FileVertex fv;
     private int order = 0;
 
-    public ASTMethodVisitor(final MethodVisitor mv, IHook hook, int access, String methodName, String classPath, String methodSignature) {
+    public ASTMethodVisitor(final MethodVisitor mv, IHook hook, int access, String methodName, String classPath, String methodSignature, FileVertex fv) {
         super(ASM5, mv);
         this.hook = hook;
         this.access = access;
         this.methodName = methodName;
         this.classPath = classPath;
         this.methodSignature = methodSignature;
+        this.fv = fv;
     }
 
     @Override
     public void visitCode() {
         super.visitCode();
+        // Create METHOD
         final String shortName = methodName.substring(methodName.lastIndexOf('.') + 1);
-        hook.createVertex(new MethodVertex(shortName, classPath.concat(".").concat(methodName), methodSignature, 0, order++));
-        // Method parameter in. If primitive then easy, if object then need to find namespace
-        // TODO: Determine parameters in based on signature and parameter types for the method
+        this.methodVertex = new MethodVertex(shortName, classPath.concat(".").concat(methodName), methodSignature, 0, order++);
+        hook.createVertex(this.methodVertex);
+        // Join FILE and METHOD
+        hook.joinFileVertexTo(fv, methodVertex);
+        // Create METHOD_PARAM_IN
         final List<String> params = ASMParserUtil.obtainParameters(methodSignature);
-        for (String p : params) {
-            logger.debug("LONG NAME (" + p + ") SHORT NAME: (" + ASMParserUtil.getShortName(p) + ")");
-        }
-        params.parallelStream().forEach(p -> {
-            hook.createVertex(new MethodParameterInVertex(
-                    methodSignature,
-                    ASMParserUtil.getShortName(p),
-                    ASMParserUtil.determineEvaluationStrategy(p, false),
-                    p, 0, order++));
-            // TODO: Connect method to this vertex with AST edge
-        });
-        // TODO: Determine return type based on signature
+        params.forEach(p -> hook.createAndAddToMethod(this.methodVertex,
+                new MethodParameterInVertex(
+                        methodSignature,
+                        ASMParserUtil.getShortName(p),
+                        ASMParserUtil.determineEvaluationStrategy(p, false),
+                        p, 0, order++)));
+        // Create METHOD_RETURN
         final String returnType = ASMParserUtil.obtainMethodReturnType(methodSignature);
-
-        // TODO: Determine evaluation strategy
         final EvaluationStrategies eval = ASMParserUtil.determineEvaluationStrategy(returnType, true);
-        // TODO: Add modifier here, e.g. public, based on access
+        hook.createAndAddToMethod(this.methodVertex,
+                new MethodReturnVertex(ASMParserUtil.getShortName(returnType), returnType, eval, 0, order++));
+        // Create MODIFIER
         final EnumSet<ModifierTypes> modifiers = ASMParserUtil.determineModifiers(access, methodName);
         modifiers.forEach(m -> {
-            hook.putVertexIfAbsent(new ModifierVertex(m, order++), "modifierType", m.name());
+            hook.createAndAddToMethod(this.methodVertex, new ModifierVertex(m, order++));
         });
     }
 

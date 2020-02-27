@@ -1,5 +1,6 @@
 package za.ac.sun.grapl.intraprocedural;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import za.ac.sun.grapl.CannonLoader;
@@ -14,6 +15,7 @@ import java.util.Objects;
 public class ConditionalIntraproceduralTest {
 
     private static final String PATH = "intraprocedural/conditional/";
+    private static final String TEST_DIR = "/tmp/grapl/intraprocedural_test.kryo";
     private CannonLoader fileCannon;
     private TinkerGraphHook hook;
 
@@ -24,6 +26,12 @@ public class ConditionalIntraproceduralTest {
         fileCannon = new CannonLoader(hook);
     }
 
+    @AfterAll
+    static void tearDownAll() {
+        File f = new File(TEST_DIR);
+        if (f.exists()) f.delete();
+    }
+
     @Test
     public void conditional1Test() {
         final URL resource = getClass().getClassLoader().getResource(PATH + "Conditional1.class");
@@ -31,5 +39,6 @@ public class ConditionalIntraproceduralTest {
         File f = new File(resourceDir);
         fileCannon.loadClassFile(f);
         fileCannon.fireOne();
+        // TODO: Compare this to an accepted graph
     }
 }

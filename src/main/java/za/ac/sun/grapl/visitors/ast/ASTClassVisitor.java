@@ -15,7 +15,9 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
     final IHook hook;
     private String classPath;
     private String className;
+    private String namespace;
     private int order;
+    private FileVertex fv;
     private ASTMethodVisitor astMv;
 
     public ASTClassVisitor(IHook hook, ClassVisitor cv) {
@@ -28,13 +30,22 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
         if (name.lastIndexOf('/') != -1) {
             this.className = name.substring(name.lastIndexOf('/') + 1);
+            this.namespace = name.substring(0, name.lastIndexOf('/'));
         } else {
             this.className = name;
+            this.namespace = "";
         }
         this.classPath = name.replaceAll("/", ".");
+        this.namespace = namespace.replaceAll("/", ".");
 
-        this.hook.createVertex(new NamespaceBlockVertex(this.className, name, order));
-        this.hook.createVertex(new FileVertex(this.className, order++));
+
+        fv = new FileVertex(this.className, order++);
+        NamespaceBlockVertex nbv = new NamespaceBlockVertex(
+                this.namespace.contains(".") ? this.namespace.substring(this.namespace.indexOf('.') + 1) : this.namespace,
+                this.namespace, order++);
+        this.hook.createVertex(fv);
+        this.hook.createVertex(nbv);
+        this.hook.joinFileVertexTo(fv, nbv);
 
         // TODO: Could create MEMBER vertex from here to declare member classes
 
@@ -49,9 +60,8 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
         order = astMv == null ? order : astMv.getOrder();
-        logger.debug("ORDER -> " + order);
         MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-        astMv = new ASTMethodVisitor(mv, hook, access, name, classPath, descriptor);
+        astMv = new ASTMethodVisitor(mv, hook, access, name, classPath, descriptor, fv);
         astMv.setOrder(order);
         return astMv;
     }

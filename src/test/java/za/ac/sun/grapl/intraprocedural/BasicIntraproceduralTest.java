@@ -1,7 +1,6 @@
 package za.ac.sun.grapl.intraprocedural;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import za.ac.sun.grapl.CannonLoader;
@@ -16,9 +15,8 @@ import java.util.Objects;
 
 public class BasicIntraproceduralTest {
 
-    final static Logger logger = LogManager.getLogger();
-
     private static final String PATH = "intraprocedural/basic/";
+    private static final String TEST_DIR = "/tmp/grapl/intraprocedural_test.xml";
     private CannonLoader fileCannon;
     private TinkerGraphHook hook;
 
@@ -29,6 +27,12 @@ public class BasicIntraproceduralTest {
         fileCannon = new CannonLoader(hook);
     }
 
+    @AfterAll
+    static void tearDownAll() {
+        File f = new File(TEST_DIR);
+        if (f.exists()) f.delete();
+    }
+
     @Test
     public void basic1Test() {
         final URL resource = getClass().getClassLoader().getResource(PATH + "Basic1.class");
@@ -36,6 +40,16 @@ public class BasicIntraproceduralTest {
         File f = new File(resourceDir);
         fileCannon.loadClassFile(f);
         fileCannon.fireOne();
-        hook.exportCurrentGraph();
+        // TODO: Compare this to an accepted graph
+    }
+
+    @Test
+    public void basic2Test() {
+        final URL resource = getClass().getClassLoader().getResource(PATH + "Basic2.class");
+        String resourceDir = Objects.requireNonNull(resource).getFile();
+        File f = new File(resourceDir);
+        fileCannon.loadClassFile(f);
+        fileCannon.fireOne();
+        // TODO: Compare this to an accepted graph
     }
 }

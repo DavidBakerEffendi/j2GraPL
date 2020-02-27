@@ -13,7 +13,21 @@ public class ASMParserUtil implements Opcodes {
 
     final static Logger logger = LogManager.getLogger();
 
-    private static final HashSet<Character> PRIMITIVES = new HashSet<>(Arrays.asList('Z', 'C', 'B', 'S', 'I', 'F', 'J', 'D'));
+    public static final Map<Character, String> PRIMITIVES;
+
+    static {
+        Map<Character, String> primitives = new HashMap<>();
+        primitives.put('Z', "BOOLEAN");
+        primitives.put('C', "CHARACTER");
+        primitives.put('B', "BYTE");
+        primitives.put('S', "SHORT");
+        primitives.put('I', "INTEGER");
+        primitives.put('F', "FLOAT");
+        primitives.put('J', "LONG");
+        primitives.put('D', "DOUBLE");
+        primitives.put('V', "VOID");
+        PRIMITIVES = Collections.unmodifiableMap(primitives);
+    }
 
     /**
      * Given a method signature, returns a list of all the parameters separated into a list.
@@ -47,7 +61,7 @@ public class ASMParserUtil implements Opcodes {
      * @return a list of the parameters
      */
     public static String obtainMethodReturnType(String signature) {
-        return signature.substring(signature.lastIndexOf(')'));
+        return signature.substring(signature.lastIndexOf(')') + 1).replaceAll(";", "");
     }
 
     /**
@@ -117,15 +131,36 @@ public class ASMParserUtil implements Opcodes {
                 sb.append(c);
             } else if (isArray(c) || isObject(c)) sb.append(c);
         });
-        sb.delete(sb.indexOf("L"), sb.length());
-        if (longName.contains("/")) {
-            sb.append(longName.substring(longName.lastIndexOf("/") + 1));
+
+        if (longName.contains("L")) {
+            sb.delete(sb.indexOf("L"), sb.length());
+            if (longName.contains("/")) {
+                sb.append(longName.substring(longName.lastIndexOf("/") + 1));
+            }
+        } else {
+            int oldLength = sb.length();
+            sb.append(convertAllPrimitives(sb.toString()));
+            sb.delete(0, oldLength);
         }
+
+        return sb.toString();
+    }
+
+    private static String convertAllPrimitives(String signature) {
+        StringBuilder sb = new StringBuilder();
+        char[] sigArr = signature.toCharArray();
+        IntStream.range(0, sigArr.length).mapToObj(i -> sigArr[i]).forEach(c -> {
+            if (isPrimitive(c)) {
+                sb.append(PRIMITIVES.get(c));
+            } else {
+                sb.append(c);
+            }
+        });
         return sb.toString();
     }
 
     public static boolean isPrimitive(char c) {
-        return PRIMITIVES.contains(c);
+        return PRIMITIVES.containsKey(c);
     }
 
     public static boolean isObject(char c) {

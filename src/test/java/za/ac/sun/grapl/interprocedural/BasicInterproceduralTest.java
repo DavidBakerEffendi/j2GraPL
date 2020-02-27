@@ -1,5 +1,6 @@
 package za.ac.sun.grapl.interprocedural;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import za.ac.sun.grapl.CannonLoader;
@@ -14,6 +15,7 @@ import java.util.Objects;
 public class BasicInterproceduralTest {
 
     private static final String PATH = "interprocedural/basic/";
+    private static final String TEST_DIR = "/tmp/grapl/intraprocedural_test.kryo";
     private CannonLoader fileCannon;
     private TinkerGraphHook hook;
 
@@ -22,6 +24,12 @@ public class BasicInterproceduralTest {
         ResourceCompilationUtil.compileJavaFiles(PATH);
         hook = new TinkerGraphHook.TinkerGraphHookBuilder("/tmp/grapl/intraprocedural_test.kryo").createNewGraph(true).build();
         fileCannon = new CannonLoader(hook);
+    }
+
+    @AfterAll
+    static void tearDownAll() {
+        File f = new File(TEST_DIR);
+        if (f.exists()) f.delete();
     }
 
     @Test
