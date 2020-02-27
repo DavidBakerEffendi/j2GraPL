@@ -2,8 +2,10 @@ package intraprocedural.basic;
 
 public class Basic1 {
 
-    public void main(String[] args) {
-        System.out.println("Hello, World!");
+    public static void main(String[] args) {
+        int a = 1;
+        int b = 2;
+        int c = a + b;
     }
 
 }
