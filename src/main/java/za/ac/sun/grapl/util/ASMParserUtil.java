@@ -14,20 +14,7 @@ public class ASMParserUtil implements Opcodes {
     final static Logger logger = LogManager.getLogger();
 
     public static final Map<Character, String> PRIMITIVES;
-
-    static {
-        Map<Character, String> primitives = new HashMap<>();
-        primitives.put('Z', "BOOLEAN");
-        primitives.put('C', "CHARACTER");
-        primitives.put('B', "BYTE");
-        primitives.put('S', "SHORT");
-        primitives.put('I', "INTEGER");
-        primitives.put('F', "FLOAT");
-        primitives.put('J', "LONG");
-        primitives.put('D', "DOUBLE");
-        primitives.put('V', "VOID");
-        PRIMITIVES = Collections.unmodifiableMap(primitives);
-    }
+    public static final Set<String> OPERANDS;
 
     /**
      * Given a method signature, returns a list of all the parameters separated into a list.
@@ -123,6 +110,27 @@ public class ASMParserUtil implements Opcodes {
         return modifiers;
     }
 
+    static {
+        Map<Character, String> primitives = new HashMap<>();
+        primitives.put('Z', "BOOLEAN");
+        primitives.put('C', "CHARACTER");
+        primitives.put('B', "BYTE");
+        primitives.put('S', "SHORT");
+        primitives.put('I', "INTEGER");
+        primitives.put('F', "FLOAT");
+        primitives.put('J', "LONG");
+        primitives.put('D', "DOUBLE");
+        primitives.put('V', "VOID");
+        PRIMITIVES = Collections.unmodifiableMap(primitives);
+        HashSet<String> operands = new HashSet<>();
+        operands.add("ADD");
+        operands.add("SUB");
+        operands.add("MUL");
+        operands.add("DIV");
+        operands.add("REM");
+        OPERANDS = Collections.unmodifiableSet(operands);
+    }
+
     public static String getShortName(String longName) {
         final StringBuilder sb = new StringBuilder();
         final char[] sigArr = longName.toCharArray();
@@ -139,23 +147,10 @@ public class ASMParserUtil implements Opcodes {
             }
         } else {
             int oldLength = sb.length();
-            sb.append(convertAllPrimitives(sb.toString()));
+            sb.append(convertAllPrimitivesToName(sb.toString()));
             sb.delete(0, oldLength);
         }
 
-        return sb.toString();
-    }
-
-    private static String convertAllPrimitives(String signature) {
-        StringBuilder sb = new StringBuilder();
-        char[] sigArr = signature.toCharArray();
-        IntStream.range(0, sigArr.length).mapToObj(i -> sigArr[i]).forEach(c -> {
-            if (isPrimitive(c)) {
-                sb.append(PRIMITIVES.get(c));
-            } else {
-                sb.append(c);
-            }
-        });
         return sb.toString();
     }
 
@@ -171,4 +166,58 @@ public class ASMParserUtil implements Opcodes {
         return c == '[';
     }
 
+    private static String convertAllPrimitivesToName(String signature) {
+        StringBuilder sb = new StringBuilder();
+        char[] sigArr = signature.toCharArray();
+        IntStream.range(0, sigArr.length).mapToObj(i -> sigArr[i]).forEach(c -> {
+            if (isPrimitive(c)) {
+                sb.append(PRIMITIVES.get(c));
+            } else {
+                sb.append(c);
+            }
+        });
+        return sb.toString();
+    }
+
+    /**
+     * From the ASM docs: xADD, xSUB, xMUL, xDIV and xREM correspond to the +,
+     * -, *, / and % operations, where x is either I, L, F or D.
+     *
+     * @param line the possible operand instruction.
+     * @return true if the line is an operand instruction, false if otherwise.
+     */
+    public static boolean isOperand(String line) {
+        if (line.length() != 4) return false;
+        char type = line.charAt(0);
+        if (type != 'I' && type != 'L' && type != 'F' && type != 'D') return false;
+        return OPERANDS.contains(line.substring(1));
+    }
+
+    /**
+     * From the ASM docs: The ILOAD, LLOAD, FLOAD, DLOAD, and ALOAD instructions read a local variable and push its
+     * value on the operand stack. They take as argument the index i of the local variable that must be read.
+     *
+     * @param line the possible LOAD instruction.
+     * @return true if the line is a LOAD instruction, false if otherwise.
+     */
+    public static boolean isLoad(String line) {
+        if (line.length() != 5) return false;
+        char type = line.charAt(0);
+        if (type != 'I' && type != 'L' && type != 'F' && type != 'D' && type != 'A') return false;
+        return "LOAD".contains(line.substring(1));
+    }
+
+    /**
+     * From the ASM docs: ISTORE, LSTORE, FSTORE, DSTORE and ASTORE instructions pop a value from the operand stack
+     * and store it in a local variable designated by its index i.
+     *
+     * @param line the possible STORE instruction.
+     * @return true if the line is a STORE instruction, false if otherwise.
+     */
+    public static boolean isStore(String line) {
+        if (line.length() != 6) return false;
+        char type = line.charAt(0);
+        if (type != 'I' && type != 'L' && type != 'F' && type != 'D' && type != 'A') return false;
+        return "STORE".contains(line.substring(1));
+    }
 }

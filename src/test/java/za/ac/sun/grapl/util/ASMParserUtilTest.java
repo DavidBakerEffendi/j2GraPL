@@ -9,7 +9,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.EnumSet;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.*;
 
 public class ASMParserUtilTest {
 
@@ -61,6 +61,38 @@ public class ASMParserUtilTest {
         assertEquals("String", ASMParserUtil.getShortName("Ljava/util/String"));
         assertEquals("[Double", ASMParserUtil.getShortName("[Ljava/util/Double"));
         assertEquals("[[LONG", ASMParserUtil.getShortName("[[J"));
+    }
+
+    @Test
+    public void testIsOperand() {
+        assertTrue(ASMParserUtil.isOperand("IADD"));
+        assertFalse(ASMParserUtil.isOperand("IAD"));
+        assertFalse(ASMParserUtil.isOperand("DSUBB"));
+        assertFalse(ASMParserUtil.isOperand("JDIV"));
+        assertTrue(ASMParserUtil.isOperand("FREM"));
+        assertTrue(ASMParserUtil.isOperand("LMUL"));
+    }
+
+    @Test
+    public void testIsStore() {
+        assertTrue(ASMParserUtil.isStore("ISTORE"));
+        assertFalse(ASMParserUtil.isStore("ILOAD"));
+        assertFalse(ASMParserUtil.isStore("DSTOR"));
+        assertFalse(ASMParserUtil.isStore("JSTORE"));
+        assertTrue(ASMParserUtil.isStore("FSTORE"));
+        assertTrue(ASMParserUtil.isStore("LSTORE"));
+        assertTrue(ASMParserUtil.isStore("ASTORE"));
+    }
+
+    @Test
+    public void testIsLoad() {
+        assertTrue(ASMParserUtil.isLoad("ILOAD"));
+        assertFalse(ASMParserUtil.isLoad("ISTORE"));
+        assertFalse(ASMParserUtil.isLoad("DLOA"));
+        assertFalse(ASMParserUtil.isLoad("JLOAD"));
+        assertTrue(ASMParserUtil.isLoad("FLOAD"));
+        assertTrue(ASMParserUtil.isLoad("LLOAD"));
+        assertTrue(ASMParserUtil.isLoad("ALOAD"));
     }
 
 }
