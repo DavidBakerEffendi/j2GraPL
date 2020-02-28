@@ -4,6 +4,7 @@ import org.junit.jupiter.api.Test;
 import org.objectweb.asm.Opcodes;
 import za.ac.sun.grapl.domain.enums.EvaluationStrategies;
 import za.ac.sun.grapl.domain.enums.ModifierTypes;
+import za.ac.sun.grapl.domain.enums.Operators;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -55,22 +56,22 @@ public class ASMParserUtilTest {
 
     @Test
     public void testShortNameReturn() {
-        assertEquals("INTEGER", ASMParserUtil.getShortName("I"));
-        assertEquals("BOOLEAN", ASMParserUtil.getShortName("Z"));
-        assertEquals("[INTEGER", ASMParserUtil.getShortName("[I"));
-        assertEquals("String", ASMParserUtil.getShortName("Ljava/util/String"));
-        assertEquals("[Double", ASMParserUtil.getShortName("[Ljava/util/Double"));
-        assertEquals("[[LONG", ASMParserUtil.getShortName("[[J"));
+        assertEquals("INTEGER", ASMParserUtil.getReadableType("I"));
+        assertEquals("BOOLEAN", ASMParserUtil.getReadableType("Z"));
+        assertEquals("[INTEGER", ASMParserUtil.getReadableType("[I"));
+        assertEquals("String", ASMParserUtil.getReadableType("Ljava/util/String"));
+        assertEquals("[Double", ASMParserUtil.getReadableType("[Ljava/util/Double"));
+        assertEquals("[[LONG", ASMParserUtil.getReadableType("[[J"));
     }
 
     @Test
-    public void testIsOperand() {
-        assertTrue(ASMParserUtil.isOperand("IADD"));
-        assertFalse(ASMParserUtil.isOperand("IAD"));
-        assertFalse(ASMParserUtil.isOperand("DSUBB"));
-        assertFalse(ASMParserUtil.isOperand("JDIV"));
-        assertTrue(ASMParserUtil.isOperand("FREM"));
-        assertTrue(ASMParserUtil.isOperand("LMUL"));
+    public void testIsOperator() {
+        assertTrue(ASMParserUtil.isOperator("IADD"));
+        assertFalse(ASMParserUtil.isOperator("IAD"));
+        assertFalse(ASMParserUtil.isOperator("DSUBB"));
+        assertFalse(ASMParserUtil.isOperator("JDIV"));
+        assertTrue(ASMParserUtil.isOperator("FREM"));
+        assertTrue(ASMParserUtil.isOperator("LMUL"));
     }
 
     @Test
@@ -93,6 +94,34 @@ public class ASMParserUtilTest {
         assertTrue(ASMParserUtil.isLoad("FLOAD"));
         assertTrue(ASMParserUtil.isLoad("LLOAD"));
         assertTrue(ASMParserUtil.isLoad("ALOAD"));
+    }
+
+    @Test
+    public void testIsConstant() {
+        assertTrue(ASMParserUtil.isConstant("ACONST_NULL"));
+        assertTrue(ASMParserUtil.isConstant("ICONST_0"));
+        assertTrue(ASMParserUtil.isConstant("FCONST_2"));
+        assertTrue(ASMParserUtil.isConstant("DCONST_3"));
+        assertFalse(ASMParserUtil.isConstant("JCONST_3"));
+    }
+
+    @Test
+    public void testStackOperationType() {
+        assertEquals("INTEGER", ASMParserUtil.getStackOperationType("ILOAD"));
+        assertEquals("OBJECT", ASMParserUtil.getStackOperationType("ASTORE"));
+        assertEquals("LONG", ASMParserUtil.getStackOperationType("LLOAD"));
+        assertEquals("UNKNOWN", ASMParserUtil.getStackOperationType("[LOAD"));
+        assertEquals("UNKNOWN", ASMParserUtil.getStackOperationType("JSTORE"));
+        assertEquals("UNKNOWN", ASMParserUtil.getStackOperationType("IITEST"));
+        assertEquals("UNKNOWN", ASMParserUtil.getStackOperationType("LSTOREL"));
+    }
+
+    @Test
+    public void testParseOperator() {
+        assertEquals(Operators.IADD, ASMParserUtil.parseOperator("IADD"));
+        assertEquals(Operators.LADD, ASMParserUtil.parseOperator("LADD"));
+        assertEquals(Operators.DADD, ASMParserUtil.parseOperator("DADD"));
+        assertEquals(Operators.FADD, ASMParserUtil.parseOperator("FADD"));
     }
 
 }

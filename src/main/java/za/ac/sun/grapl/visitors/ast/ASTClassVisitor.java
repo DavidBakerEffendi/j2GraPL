@@ -1,3 +1,18 @@
+/*
+ * Copyright 2020 David Baker Effendi
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package za.ac.sun.grapl.visitors.ast;
 
 import org.apache.logging.log4j.LogManager;
@@ -38,13 +53,14 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
         this.classPath = name.replaceAll("/", ".");
         this.namespace = namespace.replaceAll("/", ".");
 
-
-        fv = new FileVertex(this.className, order++);
         NamespaceBlockVertex nbv = new NamespaceBlockVertex(
                 this.namespace.contains(".") ? this.namespace.substring(this.namespace.indexOf('.') + 1) : this.namespace,
                 this.namespace, order++);
+        fv = new FileVertex(this.className, order++);
+        // Create FILE and NAMESPACE_BLOCK
         this.hook.createVertex(fv);
         this.hook.createVertex(nbv);
+        // Join FILE and NAMESPACE_BLOCK
         this.hook.joinFileVertexTo(fv, nbv);
 
         // TODO: Could create MEMBER vertex from here to declare member classes

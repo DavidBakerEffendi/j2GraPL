@@ -3,26 +3,9 @@ package intraprocedural.basic;
 public class Basic2 {
 
     public static void main(String[] args) {
-        Sally();
-        John();
-        Dick();
-        Nigel();
-    }
-
-    public static int Sally() {
-        return 4;
-    }
-
-    public static int[] John() {
-        return new int[] {1, 2};
-    }
-
-    public static boolean Dick() {
-        return true;
-    }
-
-    public static double Nigel() {
-        return 3.14;
+        int a = 6;
+        double b = 2.0;
+        double c = a + b;
     }
 
 }

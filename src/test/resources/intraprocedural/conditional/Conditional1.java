@@ -6,9 +6,9 @@ public class Conditional1 {
         int a = 1;
         int b = 2;
         if (a > b) {
-            System.out.println("a is larger than b");
+            a -= b;
         } else {
-            System.out.println("a is less than or equal to b");
+            b += a;
         }
     }
 
