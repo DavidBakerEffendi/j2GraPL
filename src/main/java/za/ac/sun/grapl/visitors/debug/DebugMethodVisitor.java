@@ -1,4 +1,4 @@
-/**
+/*
  * Copyright 2020 David Baker Effendi
  * <p>
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -39,6 +39,7 @@ class DebugMethodVisitor extends MethodVisitor implements Opcodes {
 
     @Override
     public void visitLabel(Label label) {
+        logger.debug("");
         logger.debug(new StringJoiner(" ").add("\t ").add(label.toString()).add("(label)"));
         super.visitLabel(label);
     }
@@ -53,12 +54,13 @@ class DebugMethodVisitor extends MethodVisitor implements Opcodes {
     @Override
     public void visitVarInsn(int opcode, int var) {
         logger.debug(new StringJoiner(" ")
-                .add("\t ").add(ASMifier.OPCODES[opcode]).add("->").add(String.valueOf(var)).add("visitVarInsn"));
+                .add("\t ").add(ASMifier.OPCODES[opcode]).add("->").add(String.valueOf(var)).add("(visitVarInsn)"));
         super.visitVarInsn(opcode, var);
     }
 
     @Override
     public void visitLocalVariable(String name, String descriptor, String signature, Label start, Label end, int index) {
+        logger.debug("\t --- DEBUG INFO ---");
         logger.debug(new StringJoiner(" ")
                 .add("\t ").add(descriptor).add(name)
                 .add("-> (").add(start.toString()).add(";").add(end.toString()).add(") (visitLocalVariable)"));
@@ -80,8 +82,8 @@ class DebugMethodVisitor extends MethodVisitor implements Opcodes {
 
     @Override
     public void visitJumpInsn(int opcode, Label label) {
-        logger.debug(new StringJoiner("\t ")
-                .add(ASMifier.OPCODES[opcode]).add(label.toString()).add("(visitJumpInsn)"));
+        logger.debug(new StringJoiner(" ")
+                .add("\t ").add(ASMifier.OPCODES[opcode]).add(label.toString()).add("(visitJumpInsn)"));
         super.visitJumpInsn(opcode, label);
     }
 
@@ -103,6 +105,13 @@ class DebugMethodVisitor extends MethodVisitor implements Opcodes {
         logger.debug(new StringJoiner(" ")
                 .add("\t ").add(ASMifier.OPCODES[opcode]).add(owner).add(name).add(desc).add("(visitMethodInsn)"));
         super.visitMethodInsn(opcode, owner, name, desc, itf);
+    }
+
+    @Override
+    public void visitIntInsn(int opcode, int operand) {
+        logger.debug(new StringJoiner(" ")
+                .add("\t ").add(ASMifier.OPCODES[opcode]).add(String.valueOf(operand)).add("(visitIntInsn)"));
+        super.visitIntInsn(opcode, operand);
     }
 
     @Override
