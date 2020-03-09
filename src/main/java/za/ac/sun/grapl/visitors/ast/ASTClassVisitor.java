@@ -25,8 +25,8 @@ import za.ac.sun.grapl.domain.models.vertices.NamespaceBlockVertex;
 import za.ac.sun.grapl.hooks.IHook;
 
 public class ASTClassVisitor extends ClassVisitor implements Opcodes {
-
     final static Logger logger = LogManager.getLogger();
+
     final IHook hook;
     private String classPath;
     private String className;
@@ -53,13 +53,21 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
         this.classPath = name.replaceAll("/", ".");
         this.namespace = namespace.replaceAll("/", ".");
 
+        // Populate namespace block chain
+        String[] namespaceList = this.namespace.split("\\.");
         NamespaceBlockVertex nbv = new NamespaceBlockVertex(
-                this.namespace.contains(".") ? this.namespace.substring(this.namespace.indexOf('.') + 1) : this.namespace,
+                namespaceList[namespaceList.length - 1],
                 this.namespace, order++);
+
+        if (namespaceList.length > 1) {
+            this.populateNamespaceChain(namespaceList);
+        } else {
+            this.hook.createVertex(nbv);
+        }
+
         fv = new FileVertex(this.className, order++);
         // Create FILE and NAMESPACE_BLOCK
         this.hook.createVertex(fv);
-        this.hook.createVertex(nbv);
         // Join FILE and NAMESPACE_BLOCK
         this.hook.joinFileVertexTo(fv, nbv);
 
@@ -82,13 +90,22 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
         return astMv;
     }
 
+    private void populateNamespaceChain(String[] namespaceList) {
+        NamespaceBlockVertex prevNamespaceBlock =
+                new NamespaceBlockVertex(namespaceList[namespaceList.length - 1], this.namespace, order++);
+        StringBuilder namespaceBuilder = new StringBuilder();
+        for (int i = namespaceList.length - 2; i >= 0; i--) {
+            namespaceBuilder.append(namespaceList[i]);
+            NamespaceBlockVertex currNamespaceBlock =
+                    new NamespaceBlockVertex(namespaceList[i], namespaceBuilder.toString(), order++);
+            this.hook.joinNamespaceBlocks(currNamespaceBlock, prevNamespaceBlock);
+            prevNamespaceBlock = currNamespaceBlock;
+            namespaceBuilder.append(".");
+        }
+    }
+
     public ASTClassVisitor order(int order) {
         this.order = order;
         return this;
     }
-
-    public int getOrder() {
-        return order;
-    }
-
 }
