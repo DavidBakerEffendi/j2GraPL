@@ -26,7 +26,9 @@ import za.ac.sun.grapl.domain.models.vertices.*;
 import za.ac.sun.grapl.hooks.IHook;
 import za.ac.sun.grapl.util.ASMParserUtil;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Stack;
+import java.util.StringJoiner;
 
 public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
 
@@ -103,17 +105,17 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
             final BlockVertex baseBlock = new BlockVertex(operation.substring(1), order++, 1, operationType, currentLineNo);
             this.hook.assignToBlock(methodVertex, baseBlock, 0);
 
+            logger.debug(new StringJoiner(" ")
+                    .add("Linking a block to left child").add(String.valueOf(baseBlock.order)).add("->")
+                    .add(String.valueOf(order)));
             LocalVertex leftChild = new LocalVertex(varName, varName, varTypes.get(varName), currentLineNo, order++);
             this.hook.assignToBlock(methodVertex, leftChild, baseBlock.order);
-            logger.debug(new StringJoiner(" ")
-                    .add("Linked a block to left child").add(String.valueOf(baseBlock.order)).add("->")
-                    .add(String.valueOf(order)));
 
             logger.debug(new StringJoiner(" ")
-                    .add("Linked a block to right child").add(String.valueOf(baseBlock.order)).add("->")
+                    .add("Linking a block to right child").add(String.valueOf(baseBlock.order)).add("->")
                     .add(String.valueOf(order + 1)));
             if (ASMParserUtil.isOperator(result)) {
-                handleOperator(baseBlock, result, varTypes.get(varName));
+                handleOperator(baseBlock, result, ASMParserUtil.getOperatorType(result));
             } else {
                 // TODO: Assumes RHS is literal - this will be addressed in a later feature
                 this.hook.assignToBlock(
@@ -133,18 +135,21 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
      */
     private void handleOperator(BlockVertex prevBlock, String operator, String operatorType) {
         BlockVertex currBlock = new BlockVertex(operator.substring(1), order++, 1, operatorType, currentLineNo);
-        logger.debug(new StringJoiner(" ")
-                .add("Linked a block to block").add(String.valueOf(prevBlock.order)).add("->")
-                .add(String.valueOf(currBlock.order)));
+        logger.debug(new StringBuilder()
+                .append("Joining block (").append(prevBlock.name).append(", ").append(prevBlock.order)
+                .append(") -> (").append(currBlock.name).append(", ").append(currBlock.order).append(")"));
         hook.assignToBlock(methodVertex, currBlock, prevBlock.order);
 
-        List<String> operands = new LinkedList<>();
         // TODO: if binary, add 2 operands, if unary, add 1. Right now we assume binary
-        operands.add(operandStack.pop());
-        operands.add(operandStack.pop());
-        // TODO: Right now assuming lhs and rhs are variables or literals
-        operands.forEach(operand -> {
-            if (ASMParserUtil.isPrimitive(operand.charAt(0))) {
+        logger.debug(new StringBuilder().append("Next operator: ").append(operator));
+        int noOperands = 2;
+        // TODO: Right now assuming lhs and rhs are variables, literals, or operators
+        for (int i = 0; i < noOperands; i++) {
+            String operand = operandStack.pop();
+            logger.debug(new StringBuilder().append("Next operand: ").append(operand));
+            if (ASMParserUtil.isOperator(operand)) {
+                handleOperator(currBlock, operand, ASMParserUtil.getOperatorType(operand));
+            } else if (ASMParserUtil.isPrimitive(operand.charAt(0))) {
                 LiteralVertex literalVertex = new LiteralVertex(operand, order++, 1, operatorType, currentLineNo);
                 hook.assignToBlock(methodVertex, literalVertex, currBlock.order);
             } else {
@@ -152,7 +157,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
                 LocalVertex localVertex = new LocalVertex(operand, operand, varTypes.get(operand), currentLineNo, order++);
                 hook.assignToBlock(methodVertex, localVertex, currBlock.order);
             }
-        });
+        }
     }
 
     @Override

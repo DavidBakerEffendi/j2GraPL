@@ -15,14 +15,14 @@ import java.util.Objects;
 public class ConditionalIntraproceduralTest {
 
     private static final String PATH = "intraprocedural/conditional/";
-    private static final String TEST_DIR = "/tmp/grapl/intraprocedural_test.kryo";
+    private static final String TEST_DIR = "/tmp/grapl/intraprocedural_test.xml";
     private CannonLoader fileCannon;
     private TinkerGraphHook hook;
 
     @BeforeEach
     public void setUpAll() throws IOException {
         ResourceCompilationUtil.compileJavaFiles(PATH);
-        hook = new TinkerGraphHook.TinkerGraphHookBuilder("/tmp/grapl/intraprocedural_test.kryo").createNewGraph(true).build();
+        hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
         fileCannon = new CannonLoader(hook);
     }
 

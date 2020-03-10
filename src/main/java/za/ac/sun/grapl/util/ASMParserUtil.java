@@ -151,6 +151,23 @@ public class ASMParserUtil implements Opcodes {
         if (!operation.contains("STORE") && !operation.contains("LOAD")) return "UNKNOWN";
         if (operation.length() != 6 && operation.length() != 5) return "UNKNOWN";
         final char type = operation.charAt(0);
+        return stackType(operation.charAt(0));
+    }
+
+    /**
+     * Given an arithmetic operator, returns the type.
+     *
+     * @param operation an xADD, xSUB, xDIV, or xMUL operator.
+     * @return the type of the operator. If the operator is invalid, will return "UNKNOWN".
+     */
+    public static String getOperatorType(String operation) {
+        if (!operation.contains("ADD") && !operation.contains("SUB") && !operation.contains("DIV") && !operation.contains("MUL"))
+            return "UNKNOWN";
+        if (operation.length() != 4) return "UNKNOWN";
+        return stackType(operation.charAt(0));
+    }
+
+    private static String stackType(char type) {
         if (type == 'A') return "OBJECT";
         if (type == 'L') return "LONG";
         if (type == 'J') return "UNKNOWN";
