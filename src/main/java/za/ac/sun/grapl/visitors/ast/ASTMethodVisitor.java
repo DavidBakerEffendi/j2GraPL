@@ -118,6 +118,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
                 handleOperator(baseBlock, result, ASMParserUtil.getOperatorType(result));
             } else {
                 // TODO: Assumes RHS is literal - this will be addressed in a later feature
+                // TODO: The type needs to be inferred from the push operation
                 this.hook.assignToBlock(
                         methodVertex,
                         new LiteralVertex(result, order++, 1, operationType, currentLineNo),
@@ -190,6 +191,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
                     .add("to the operand stack."));
             operandStack.push(line.substring(line.indexOf('_') + 1));
         } else if (ASMParserUtil.isOperator(line)) {
+            // TODO: IAND operators need to be caught
             logger.debug(new StringJoiner(" ").add("Recognized operator").add(line));
             operandStack.push(line);
         }

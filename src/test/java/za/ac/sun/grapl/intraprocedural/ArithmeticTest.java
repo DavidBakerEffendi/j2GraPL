@@ -63,4 +63,27 @@ public class ArithmeticTest {
         hook.exportCurrentGraph();
         // TODO: Compare this to an accepted graph
     }
+
+    @Test
+    public void arithmetic4Test() {
+        // TODO: Check if the increment is auto evaluated or if an operation is actually pushed
+        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic4.class");
+        String resourceDir = Objects.requireNonNull(resource).getFile();
+        File f = new File(resourceDir);
+        fileCannon.loadClassFile(f);
+        fileCannon.fireOne();
+        hook.exportCurrentGraph();
+        // TODO: Compare this to an accepted graph
+    }
+
+    @Test
+    public void arithmetic5Test() {
+        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic5.class");
+        String resourceDir = Objects.requireNonNull(resource).getFile();
+        File f = new File(resourceDir);
+        fileCannon.loadClassFile(f);
+        fileCannon.fireOne();
+        hook.exportCurrentGraph();
+        // TODO: Compare this to an accepted graph
+    }
 }
