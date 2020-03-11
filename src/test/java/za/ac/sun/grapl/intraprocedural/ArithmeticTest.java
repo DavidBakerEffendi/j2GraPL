@@ -5,7 +5,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import za.ac.sun.grapl.CannonLoader;
 import za.ac.sun.grapl.hooks.TinkerGraphHook;
-import za.ac.sun.grapl.hooks.TinkerGraphHook.TinkerGraphHookBuilder;
 import za.ac.sun.grapl.util.ResourceCompilationUtil;
 
 import java.io.File;
@@ -13,18 +12,11 @@ import java.io.IOException;
 import java.net.URL;
 import java.util.Objects;
 
-public class BasicIntraproceduralTest {
-    private static final String PATH = "intraprocedural/basic/";
+public class ArithmeticTest {
+    private static final String PATH = "intraprocedural/arithmetic/";
     private static final String TEST_DIR = "/tmp/grapl/intraprocedural_test.xml";
     private CannonLoader fileCannon;
     private TinkerGraphHook hook;
-
-    @BeforeEach
-    public void setUpAll() throws IOException {
-        ResourceCompilationUtil.compileJavaFiles(PATH);
-        hook = new TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
-        fileCannon = new CannonLoader(hook);
-    }
 
     @AfterAll
     static void tearDownAll() {
@@ -32,9 +24,16 @@ public class BasicIntraproceduralTest {
         if (f.exists()) f.delete();
     }
 
+    @BeforeEach
+    public void setUpAll() throws IOException {
+        ResourceCompilationUtil.compileJavaFiles(PATH);
+        hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
+        fileCannon = new CannonLoader(hook);
+    }
+
     @Test
-    public void basic1Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Basic1.class");
+    public void arithmetic1Test() {
+        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic1.class");
         String resourceDir = Objects.requireNonNull(resource).getFile();
         File f = new File(resourceDir);
         fileCannon.loadClassFile(f);
@@ -44,8 +43,8 @@ public class BasicIntraproceduralTest {
     }
 
     @Test
-    public void basic2Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Basic2.class");
+    public void arithmetic2Test() {
+        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic2.class");
         String resourceDir = Objects.requireNonNull(resource).getFile();
         File f = new File(resourceDir);
         fileCannon.loadClassFile(f);
@@ -55,8 +54,8 @@ public class BasicIntraproceduralTest {
     }
 
     @Test
-    public void basic3Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Basic3.class");
+    public void arithmetic3Test() {
+        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic3.class");
         String resourceDir = Objects.requireNonNull(resource).getFile();
         File f = new File(resourceDir);
         fileCannon.loadClassFile(f);
@@ -66,8 +65,19 @@ public class BasicIntraproceduralTest {
     }
 
     @Test
-    public void basic4Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Basic4.class");
+    public void arithmetic4Test() {
+        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic4.class");
+        String resourceDir = Objects.requireNonNull(resource).getFile();
+        File f = new File(resourceDir);
+        fileCannon.loadClassFile(f);
+        fileCannon.fireOne();
+        hook.exportCurrentGraph();
+        // TODO: Compare this to an accepted graph
+    }
+
+    @Test
+    public void arithmetic5Test() {
+        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic5.class");
         String resourceDir = Objects.requireNonNull(resource).getFile();
         File f = new File(resourceDir);
         fileCannon.loadClassFile(f);
