@@ -31,7 +31,6 @@ import java.util.Stack;
 import java.util.StringJoiner;
 
 public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
-
     private final static Logger logger = LogManager.getLogger();
 
     private final IHook hook;
@@ -42,7 +41,6 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     private final HashMap<Label, Integer> labelToLineNo = new HashMap<>();
     private final HashMap<String, String> localVars = new HashMap<>();
     private final HashMap<String, String> varTypes = new HashMap<>();
-    private final Stack<Integer> blockHistory = new Stack<>();
     private final Stack<String> operandStack = new Stack<>();
     private int order = 0;
     private int currentLineNo = -1;

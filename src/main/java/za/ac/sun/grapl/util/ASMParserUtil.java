@@ -11,7 +11,6 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 public class ASMParserUtil implements Opcodes {
-
     final static Logger logger = LogManager.getLogger();
 
     public static final Map<Character, String> PRIMITIVES;

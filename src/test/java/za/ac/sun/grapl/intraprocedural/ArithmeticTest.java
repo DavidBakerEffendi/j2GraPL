@@ -21,7 +21,7 @@ public class ArithmeticTest {
     @AfterAll
     static void tearDownAll() {
         File f = new File(TEST_DIR);
-//        if (f.exists()) f.delete();
+        if (f.exists()) f.delete();
     }
 
     @BeforeEach
