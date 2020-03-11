@@ -150,21 +150,32 @@ public class ASMParserUtil implements Opcodes {
     public static String getStackOperationType(String operation) {
         if (!operation.contains("STORE") && !operation.contains("LOAD")) return "UNKNOWN";
         if (operation.length() != 6 && operation.length() != 5) return "UNKNOWN";
-        final char type = operation.charAt(0);
         return stackType(operation.charAt(0));
     }
 
-    /**
-     * Given an arithmetic operator, returns the type.
-     *
-     * @param operation an xADD, xSUB, xDIV, or xMUL operator.
-     * @return the type of the operator. If the operator is invalid, will return "UNKNOWN".
-     */
-    public static String getOperatorType(String operation) {
-        if (!operation.contains("ADD") && !operation.contains("SUB") && !operation.contains("DIV") && !operation.contains("MUL"))
-            return "UNKNOWN";
-        if (operation.length() != 4) return "UNKNOWN";
-        return stackType(operation.charAt(0));
+    static {
+        Map<Character, String> primitives = new HashMap<>();
+        primitives.put('Z', "BOOLEAN");
+        primitives.put('C', "CHARACTER");
+        primitives.put('B', "BYTE");
+        primitives.put('S', "SHORT");
+        primitives.put('I', "INTEGER");
+        primitives.put('F', "FLOAT");
+        primitives.put('J', "LONG");
+        primitives.put('D', "DOUBLE");
+        primitives.put('V', "VOID");
+        PRIMITIVES = Collections.unmodifiableMap(primitives);
+        HashSet<String> operands = new HashSet<>();
+        operands.add("ADD");
+        operands.add("SUB");
+        operands.add("MUL");
+        operands.add("DIV");
+        operands.add("REM");
+        operands.add("OR");
+        operands.add("AND");
+        operands.add("SHR");
+        operands.add("SHL");
+        OPERANDS = Collections.unmodifiableSet(operands);
     }
 
     private static String stackType(char type) {
@@ -225,17 +236,15 @@ public class ASMParserUtil implements Opcodes {
     }
 
     /**
-     * From the ASM docs: xADD, xSUB, xMUL, xDIV and xREM correspond to the +,
-     * -, *, / and % operations, where x is either I, L, F or D.
+     * Given an arithmetic operator, returns the type.
      *
-     * @param line the possible operand instruction.
-     * @return true if the line is an operand instruction, false if otherwise.
+     * @param operation an arithmetic operator.
+     * @return the type of the operator. If the operator is invalid, will return "UNKNOWN".
      */
-    public static boolean isOperator(String line) {
-        if (line.length() != 4) return false;
-        char type = line.charAt(0);
-        if (type != 'I' && type != 'L' && type != 'F' && type != 'D') return false;
-        return OPERANDS.contains(line.substring(1));
+    public static String getOperatorType(String operation) {
+        if (!OPERANDS.contains(operation.substring(1))) return "UNKNOWN";
+        if (operation.length() != 4 && operation.length() != 3) return "UNKNOWN";
+        return stackType(operation.charAt(0));
     }
 
     /**
@@ -266,25 +275,18 @@ public class ASMParserUtil implements Opcodes {
         return "STORE".contains(line.substring(1));
     }
 
-    static {
-        Map<Character, String> primitives = new HashMap<>();
-        primitives.put('Z', "BOOLEAN");
-        primitives.put('C', "CHARACTER");
-        primitives.put('B', "BYTE");
-        primitives.put('S', "SHORT");
-        primitives.put('I', "INTEGER");
-        primitives.put('F', "FLOAT");
-        primitives.put('J', "LONG");
-        primitives.put('D', "DOUBLE");
-        primitives.put('V', "VOID");
-        PRIMITIVES = Collections.unmodifiableMap(primitives);
-        HashSet<String> operands = new HashSet<>();
-        operands.add("ADD");
-        operands.add("SUB");
-        operands.add("MUL");
-        operands.add("DIV");
-        operands.add("REM");
-        OPERANDS = Collections.unmodifiableSet(operands);
+    /**
+     * From the ASM docs: xADD, xSUB, xMUL, xDIV and xREM correspond to the +,
+     * -, *, / and % operations, where x is either I, L, F or D.
+     *
+     * @param line the possible operand instruction.
+     * @return true if the line is an operand instruction, false if otherwise.
+     */
+    public static boolean isOperator(String line) {
+        if (line.length() != 4 && line.length() != 3) return false;
+        char type = line.charAt(0);
+        if (type != 'I' && type != 'L' && type != 'F' && type != 'D') return false;
+        return OPERANDS.contains(line.substring(1));
     }
 
     /**

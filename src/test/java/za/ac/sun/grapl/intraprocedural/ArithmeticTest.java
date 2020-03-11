@@ -66,7 +66,6 @@ public class ArithmeticTest {
 
     @Test
     public void arithmetic4Test() {
-        // TODO: Check if the increment is auto evaluated or if an operation is actually pushed
         final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic4.class");
         String resourceDir = Objects.requireNonNull(resource).getFile();
         File f = new File(resourceDir);

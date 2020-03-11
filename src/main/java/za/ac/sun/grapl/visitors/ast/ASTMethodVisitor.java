@@ -189,10 +189,9 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
             logger.debug(new StringJoiner(" ")
                     .add("Recognized constant, pushing").add(line)
                     .add("to the operand stack."));
-            operandStack.push(line.substring(line.indexOf('_') + 1));
+            operandStack.push(line.substring(line.indexOf('_') + 1).replace("M", "-"));
         } else if (ASMParserUtil.isOperator(line)) {
-            // TODO: IAND operators need to be caught
-            logger.debug(new StringJoiner(" ").add("Recognized operator").add(line));
+            logger.debug("Recognized operator".concat(line));
             operandStack.push(line);
         }
     }

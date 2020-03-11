@@ -125,6 +125,8 @@ public class ASMParserUtilTest {
         assertEquals("UNKNOWN", ASMParserUtil.getOperatorType("JMUL"));
         assertEquals("UNKNOWN", ASMParserUtil.getOperatorType("IITEST"));
         assertEquals("UNKNOWN", ASMParserUtil.getOperatorType("LDIVL"));
+        assertEquals("LONG", ASMParserUtil.getOperatorType("LOR"));
+        assertEquals("INTEGER", ASMParserUtil.getOperatorType("IAND"));
     }
 
     @Test
@@ -133,6 +135,7 @@ public class ASMParserUtilTest {
         assertEquals(Operators.LADD, ASMParserUtil.parseOperator("LADD"));
         assertEquals(Operators.DADD, ASMParserUtil.parseOperator("DADD"));
         assertEquals(Operators.FADD, ASMParserUtil.parseOperator("FADD"));
+        assertEquals(Operators.FOR, ASMParserUtil.parseOperator("FOR"));
     }
 
 }
