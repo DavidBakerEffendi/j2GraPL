@@ -1,7 +1,5 @@
 package za.ac.sun.grapl.util;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.Opcodes;
 import za.ac.sun.grapl.domain.enums.EvaluationStrategies;
 import za.ac.sun.grapl.domain.enums.ModifierTypes;
@@ -11,10 +9,9 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 public class ASMParserUtil implements Opcodes {
-    final static Logger logger = LogManager.getLogger();
-
     public static final Map<Character, String> PRIMITIVES;
     public static final Set<String> OPERANDS;
+    public static final Set<String> JUMPS;
 
     /**
      * Given a method signature, returns a list of all the parameters separated into a list.
@@ -175,6 +172,27 @@ public class ASMParserUtil implements Opcodes {
         operands.add("SHR");
         operands.add("SHL");
         OPERANDS = Collections.unmodifiableSet(operands);
+        HashSet<String> jumps = new HashSet<>();
+        jumps.add("IFEQ");
+        jumps.add("IFNE");
+        jumps.add("IFLT");
+        jumps.add("IFGE");
+        jumps.add("IFGT");
+        jumps.add("IFLE");
+        jumps.add("IF_ICMPEQ");
+        jumps.add("IF_ICMPNE");
+        jumps.add("IF_ICMPLT");
+        jumps.add("IF_ICMPGE");
+        jumps.add("IF_ICMPGT");
+        jumps.add("IF_ICMPLE");
+        jumps.add("IF_ACMPEQ");
+        jumps.add("IF_ACMPNE");
+        jumps.add("IFNULL");
+        jumps.add("IFNONNULL");
+        jumps.add("GOTO");
+        jumps.add("TABLESWITCH");
+        jumps.add("LOOKUPSWITCH");
+        JUMPS = Collections.unmodifiableSet(jumps);
     }
 
     private static String stackType(char type) {
@@ -309,5 +327,15 @@ public class ASMParserUtil implements Opcodes {
      */
     public static Operators parseOperator(String line) {
         return Operators.valueOf(line);
+    }
+
+    /**
+     * Determines if the given string is a jump statement.
+     *
+     * @param line the opcode.
+     * @return true if the given string is a jump statement, false if otherwise.
+     */
+    public static boolean isJumpStatement(String line) {
+        return JUMPS.contains(line);
     }
 }

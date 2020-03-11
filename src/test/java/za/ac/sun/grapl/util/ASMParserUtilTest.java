@@ -138,4 +138,14 @@ public class ASMParserUtilTest {
         assertEquals(Operators.FOR, ASMParserUtil.parseOperator("FOR"));
     }
 
+    @Test
+    public void testisJumpStatement() {
+        assertTrue(ASMParserUtil.isJumpStatement("IF_ICMPEQ"));
+        assertTrue(ASMParserUtil.isJumpStatement("IFNE"));
+        assertTrue(ASMParserUtil.isJumpStatement("IFNONNULL"));
+        assertTrue(ASMParserUtil.isJumpStatement("LOOKUPSWITCH"));
+        assertFalse(ASMParserUtil.isJumpStatement("IF"));
+        assertFalse(ASMParserUtil.isJumpStatement(null));
+    }
+
 }
