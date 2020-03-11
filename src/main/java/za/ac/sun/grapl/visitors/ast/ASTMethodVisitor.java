@@ -116,7 +116,6 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
                 handleOperator(baseBlock, result, ASMParserUtil.getOperatorType(result));
             } else {
                 // TODO: Assumes RHS is literal - this will be addressed in a later feature
-                // TODO: The type needs to be inferred from the push operation
                 this.hook.assignToBlock(
                         methodVertex,
                         new LiteralVertex(result, order++, 1, operationType, currentLineNo),
@@ -133,14 +132,15 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
      * @param operatorType the type of the operator.
      */
     private void handleOperator(BlockVertex prevBlock, String operator, String operatorType) {
+        logger.debug(new StringBuilder().append("Next operator: ").append(operator));
+
         BlockVertex currBlock = new BlockVertex(operator.substring(1), order++, 1, operatorType, currentLineNo);
         logger.debug(new StringBuilder()
                 .append("Joining block (").append(prevBlock.name).append(", ").append(prevBlock.order)
                 .append(") -> (").append(currBlock.name).append(", ").append(currBlock.order).append(")"));
         hook.assignToBlock(methodVertex, currBlock, prevBlock.order);
 
-        // TODO: if binary, add 2 operands, if unary, add 1. Right now we assume binary
-        logger.debug(new StringBuilder().append("Next operator: ").append(operator));
+        // TODO: Assume all operations that aren't automatically evaluated by compiler are binary
         int noOperands = 2;
         // TODO: Right now assuming lhs and rhs are variables, literals, or operators
         for (int i = 0; i < noOperands; i++) {
