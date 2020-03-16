@@ -29,7 +29,7 @@ public class ConditionalIntraproceduralTest {
     @AfterAll
     static void tearDownAll() {
         File f = new File(TEST_DIR);
-        if (f.exists()) f.delete();
+//        if (f.exists()) f.delete();
     }
 
     @Test
@@ -39,6 +39,7 @@ public class ConditionalIntraproceduralTest {
         File f = new File(resourceDir);
         fileCannon.loadClassFile(f);
         fileCannon.fireOne();
+        hook.exportCurrentGraph();
         // TODO: Compare this to an accepted graph
     }
 }

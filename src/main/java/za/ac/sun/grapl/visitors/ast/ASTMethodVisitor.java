@@ -38,10 +38,11 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     private final String classPath;
     private final String methodName;
     private final String methodSignature;
-    private final HashMap<Label, Integer> labelToLineNo = new HashMap<>();
+    private final HashMap<Label, Integer> labelBlockNo = new HashMap<>();
     private final HashMap<String, String> localVars = new HashMap<>();
     private final HashMap<String, String> varTypes = new HashMap<>();
     private final Stack<String> operandStack = new Stack<>();
+    private final Stack<Integer> blockHistory = new Stack<>();
     private int order = 0;
     private int currentLineNo = -1;
     private MethodVertex methodVertex;
@@ -101,7 +102,8 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
             logger.debug(new StringJoiner(" ")
                     .add("Creating base block to method with order").add(String.valueOf(order)));
             final BlockVertex baseBlock = new BlockVertex(operation.substring(1), order++, 1, operationType, currentLineNo);
-            this.hook.assignToBlock(methodVertex, baseBlock, 0);
+            if (!blockHistory.empty()) this.hook.assignToBlock(methodVertex, baseBlock, blockHistory.peek());
+            else this.hook.assignToBlock(methodVertex, baseBlock, 0);
 
             logger.debug(new StringJoiner(" ")
                     .add("Linking a block to left child").add(String.valueOf(baseBlock.order)).add("->")
@@ -145,7 +147,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         // TODO: Right now assuming lhs and rhs are variables, literals, or operators
         for (int i = 0; i < noOperands; i++) {
             String operand = operandStack.pop();
-            logger.debug(new StringBuilder().append("Next operand: ").append(operand));
+            logger.debug("Next operand: ".concat(operand));
             if (ASMParserUtil.isOperator(operand)) {
                 handleOperator(currBlock, operand, ASMParserUtil.getOperatorType(operand));
             } else if (ASMParserUtil.isPrimitive(operand.charAt(0))) {
@@ -166,7 +168,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
             generateMethodHeaderVertices(line);
         }
         this.currentLineNo = line;
-        this.labelToLineNo.put(start, line);
+        this.labelBlockNo.put(start, line);
     }
 
     @Override
@@ -229,6 +231,32 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     @Override
     public void visitJumpInsn(int opcode, Label label) {
         super.visitJumpInsn(opcode, label);
+        String jumpOp = ASMifier.OPCODES[opcode];
+        if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) {
+            // TODO
+            logger.debug("Recognized nullary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
+        } else if (ASMParserUtil.UNARY_JUMPS.contains(jumpOp)) {
+            // TODO
+            logger.debug("Recognized unary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
+            String arg1 = operandStack.pop();
+            logger.debug("Jump arguments = [".concat(arg1).concat("]"));
+        } else if (ASMParserUtil.BINARY_JUMPS.contains(jumpOp)) {
+            // TODO
+            logger.debug("Recognized binary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
+            String arg2 = operandStack.pop();
+            String arg1 = operandStack.pop();
+            logger.debug("Jump arguments = [".concat(arg1).concat(", ").concat(arg2).concat("]"));
+            BlockVertex condRoot = new BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo);
+            BlockVertex condBlock = new BlockVertex(ASMParserUtil.parseEquality(jumpOp).toString(), order++, 2, ASMParserUtil.getBinaryJumpType(jumpOp), currentLineNo);
+            // TODO: Should check if arguments are vars or literals
+            LocalVertex var1 = new LocalVertex(arg1, arg1, varTypes.get(arg1), currentLineNo, order++);
+            LocalVertex var2 = new LocalVertex(arg2, arg2, varTypes.get(arg2), currentLineNo, order++);
+            hook.assignToBlock(methodVertex, condRoot, 0);
+            hook.assignToBlock(methodVertex, condBlock, condRoot.order);
+            hook.assignToBlock(methodVertex, var1, condBlock.order);
+            hook.assignToBlock(methodVertex, var2, condBlock.order);
+            blockHistory.push(condRoot.order);
+        }
     }
 
     @Override
