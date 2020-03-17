@@ -1,8 +1,7 @@
 package za.ac.sun.grapl.util;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.Opcodes;
+import za.ac.sun.grapl.domain.enums.Equality;
 import za.ac.sun.grapl.domain.enums.EvaluationStrategies;
 import za.ac.sun.grapl.domain.enums.ModifierTypes;
 import za.ac.sun.grapl.domain.enums.Operators;
@@ -11,10 +10,12 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 public class ASMParserUtil implements Opcodes {
-    final static Logger logger = LogManager.getLogger();
 
     public static final Map<Character, String> PRIMITIVES;
     public static final Set<String> OPERANDS;
+    public static final Set<String> NULLARY_JUMPS;
+    public static final Set<String> UNARY_JUMPS;
+    public static final Set<String> BINARY_JUMPS;
 
     /**
      * Given a method signature, returns a list of all the parameters separated into a list.
@@ -110,6 +111,10 @@ public class ASMParserUtil implements Opcodes {
         return modifiers;
     }
 
+    public static EnumSet<ModifierTypes> determineModifiers(int access) {
+        return determineModifiers(access, null);
+    }
+
     /**
      * Returns the "readable" name of a given raw name from ASM. For example I -> Integer and
      * java/util/String -> String.
@@ -171,10 +176,40 @@ public class ASMParserUtil implements Opcodes {
         operands.add("DIV");
         operands.add("REM");
         operands.add("OR");
+        operands.add("XOR");
         operands.add("AND");
         operands.add("SHR");
         operands.add("SHL");
+        operands.add("USHR");
         OPERANDS = Collections.unmodifiableSet(operands);
+        HashSet<String> nullaryJumps = new HashSet<>();
+        HashSet<String> unaryJumps = new HashSet<>();
+        HashSet<String> binaryJumps = new HashSet<>();
+        // Nullary jumps jump without removing items off the stack
+        nullaryJumps.add("GOTO");
+        nullaryJumps.add("TABLESWITCH");
+        nullaryJumps.add("LOOKUPSWITCH");
+        // Unary jumps pop one parameter off the stack
+        unaryJumps.add("IFEQ");
+        unaryJumps.add("IFNE");
+        unaryJumps.add("IFLT");
+        unaryJumps.add("IFGE");
+        unaryJumps.add("IFGT");
+        unaryJumps.add("IFLE");
+        unaryJumps.add("IFNULL");
+        unaryJumps.add("IFNONNULL");
+        // Binary jumps pop two parameters off the stack
+        binaryJumps.add("IF_ICMPEQ");
+        binaryJumps.add("IF_ICMPNE");
+        binaryJumps.add("IF_ICMPLT");
+        binaryJumps.add("IF_ICMPGE");
+        binaryJumps.add("IF_ICMPGT");
+        binaryJumps.add("IF_ICMPLE");
+        binaryJumps.add("IF_ACMPEQ");
+        binaryJumps.add("IF_ACMPNE");
+        NULLARY_JUMPS = Collections.unmodifiableSet(nullaryJumps);
+        UNARY_JUMPS = Collections.unmodifiableSet(unaryJumps);
+        BINARY_JUMPS = Collections.unmodifiableSet(binaryJumps);
     }
 
     private static String stackType(char type) {
@@ -241,8 +276,8 @@ public class ASMParserUtil implements Opcodes {
      * @return the type of the operator. If the operator is invalid, will return "UNKNOWN".
      */
     public static String getOperatorType(String operation) {
+        if (operation == null) return "UNKNOWN";
         if (!OPERANDS.contains(operation.substring(1))) return "UNKNOWN";
-        if (operation.length() != 4 && operation.length() != 3) return "UNKNOWN";
         return stackType(operation.charAt(0));
     }
 
@@ -254,6 +289,7 @@ public class ASMParserUtil implements Opcodes {
      * @return true if the line is a LOAD instruction, false if otherwise.
      */
     public static boolean isLoad(String line) {
+        if (line == null) return false;
         if (line.length() != 5) return false;
         char type = line.charAt(0);
         if (type != 'I' && type != 'L' && type != 'F' && type != 'D' && type != 'A') return false;
@@ -268,6 +304,7 @@ public class ASMParserUtil implements Opcodes {
      * @return true if the line is a STORE instruction, false if otherwise.
      */
     public static boolean isStore(String line) {
+        if (line == null) return false;
         if (line.length() != 6) return false;
         char type = line.charAt(0);
         if (type != 'I' && type != 'L' && type != 'F' && type != 'D' && type != 'A') return false;
@@ -277,14 +314,21 @@ public class ASMParserUtil implements Opcodes {
     /**
      * From the ASM docs: xADD, xSUB, xMUL, xDIV and xREM correspond to the +,
      * -, *, / and % operations, where x is either I, L, F or D.
+     * <p>
+     * The logic operators only over I and L. These are SHL, SHR, USHR, AND, OR, and XOR.
      *
      * @param line the possible operand instruction.
      * @return true if the line is an operand instruction, false if otherwise.
      */
     public static boolean isOperator(String line) {
-        if (line.length() != 4 && line.length() != 3) return false;
+        if (line == null) return false;
+        if (line.length() > 5 || line.length() < 3) return false;
         char type = line.charAt(0);
         if (type != 'I' && type != 'L' && type != 'F' && type != 'D') return false;
+        if (line.contains("SHL") || line.contains("SHR") || line.contains("USHR") ||
+                line.contains("AND") || line.contains("OR") || line.contains("XOR")) {
+            if (type != 'I' && type != 'L') return false;
+        }
         return OPERANDS.contains(line.substring(1));
     }
 
@@ -296,9 +340,11 @@ public class ASMParserUtil implements Opcodes {
      * @return true if line represents a constant, false if otherwise.
      */
     public static boolean isConstant(String line) {
+        if (line == null) return false;
         if (line.length() < 6) return false;
+        if ("ACONST_NULL".equals(line)) return true;
         char type = line.charAt(0);
-        return line.contains("CONST_") && (type == 'I' || type == 'F' || type == 'D' || type == 'A') && line.length() > 7;
+        return line.contains("CONST_") && (type == 'I' || type == 'F' || type == 'D' || type == 'L') && line.length() > 7;
     }
 
     /**
@@ -310,4 +356,35 @@ public class ASMParserUtil implements Opcodes {
     public static Operators parseOperator(String line) {
         return Operators.valueOf(line);
     }
+
+    /**
+     * Determines if the given string is a jump statement.
+     *
+     * @param line the opcode.
+     * @return true if the given string is a jump statement, false if otherwise.
+     */
+    public static boolean isJumpStatement(String line) {
+        return (NULLARY_JUMPS.contains(line) || UNARY_JUMPS.contains(line) || BINARY_JUMPS.contains(line));
+    }
+
+    public static Equality parseEquality(String jumpStatement) {
+        if (UNARY_JUMPS.contains(jumpStatement)) {
+            String eq = jumpStatement.substring(2);
+            if ("NULL".equals(eq)) return Equality.EQ;
+            else if ("NONNULL".equals(eq)) return Equality.NE;
+            return Equality.valueOf(eq);
+        } else if (BINARY_JUMPS.contains(jumpStatement)) {
+            String eq = jumpStatement.substring(7);
+            return Equality.valueOf(eq);
+        }
+        return Equality.UNKNOWN;
+    }
+
+    public static String getBinaryJumpType(String line) {
+        if (line == null || !BINARY_JUMPS.contains(line)) return "UNKNOWN";
+        if (line.charAt(3) == 'I') return "INTEGER";
+        else if (line.charAt(3) == 'A') return "OBJECT";
+        else return "UNKNOWN";
+    }
+
 }

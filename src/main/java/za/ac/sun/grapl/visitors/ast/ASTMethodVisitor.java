@@ -38,10 +38,14 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     private final String classPath;
     private final String methodName;
     private final String methodSignature;
-    private final HashMap<Label, Integer> labelToLineNo = new HashMap<>();
+    private final HashMap<Label, Integer> labelBlockNo = new HashMap<>();
     private final HashMap<String, String> localVars = new HashMap<>();
     private final HashMap<String, String> varTypes = new HashMap<>();
+    private final HashMap<Label, String> labelJumpMap = new HashMap<>();
     private final Stack<String> operandStack = new Stack<>();
+    private final Stack<Integer> blockHistory = new Stack<>();
+    private final Stack<Label> jumpHistory = new Stack<>();
+    private boolean enteringJumpBody = false;
     private int order = 0;
     private int currentLineNo = -1;
     private MethodVertex methodVertex;
@@ -78,49 +82,75 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         super.visitVarInsn(opcode, var);
         String varName = String.valueOf(var);
         String operation = ASMifier.OPCODES[opcode];
-        if (ASMParserUtil.isLoad(operation)) {
-            final String variableType = ASMParserUtil.getStackOperationType(operation);
-            logger.debug(new StringJoiner(" ")
-                    .add("Recognized load instruction, pushing var (")
-                    .add(varName)
-                    .add(") to operand stack with type").add(variableType));
-            operandStack.push(varName);
-            varTypes.put(varName, variableType);
-        } else if (ASMParserUtil.isStore(operation)) {
-            logger.debug(new StringJoiner(" ")
-                    .add("Recognized store instruction, popping result of").add(operandStack.peek())
-                    .add("from operand stack and assigning result to").add(varName).add("\b."));
-            final String result = operandStack.pop();
-            final String operationType = ASMParserUtil.getStackOperationType(operation);
 
-            if (localVars.containsKey(varName)) localVars.replace(varName, result);
-            else localVars.put(varName, result);
-            if (varTypes.containsKey(varName)) varTypes.replace(varName, operationType);
-            else varTypes.put(varName, operationType);
+        if (ASMParserUtil.isLoad(operation)) visitVarInsnLoad(operation, varName);
+        else if (ASMParserUtil.isStore(operation)) visitVarInsnStore(operation, varName);
+    }
 
-            logger.debug(new StringJoiner(" ")
-                    .add("Creating base block to method with order").add(String.valueOf(order)));
-            final BlockVertex baseBlock = new BlockVertex(operation.substring(1), order++, 1, operationType, currentLineNo);
-            this.hook.assignToBlock(methodVertex, baseBlock, 0);
+    /**
+     * Handles visitVarInsn if the opcode is a load operation.
+     *
+     * @param operation the load operation.
+     * @param varName   the variable name.
+     */
+    private void visitVarInsnLoad(String operation, String varName) {
+        final String variableType = ASMParserUtil.getStackOperationType(operation);
+        logger.debug(new StringJoiner(" ")
+                .add("Recognized load instruction, pushing var (")
+                .add(varName)
+                .add(") to operand stack with type").add(variableType));
+        operandStack.push("V".concat(varName));
+        varTypes.put(varName, variableType);
+    }
 
-            logger.debug(new StringJoiner(" ")
-                    .add("Linking a block to left child").add(String.valueOf(baseBlock.order)).add("->")
-                    .add(String.valueOf(order)));
-            LocalVertex leftChild = new LocalVertex(varName, varName, varTypes.get(varName), currentLineNo, order++);
-            this.hook.assignToBlock(methodVertex, leftChild, baseBlock.order);
+    /**
+     * Handles visitVarInsn if the opcode is a store operation.
+     *
+     * @param operation the store operation.
+     * @param varName   the variable name.
+     */
+    private void visitVarInsnStore(String operation, String varName) {
+        final String result = operandStack.pop();
+        final String sfx = result.substring(1);
+        final char pfx = result.charAt(0);
+        final String operationType = ASMParserUtil.getStackOperationType(operation);
+        logger.debug(new StringJoiner(" ")
+                .add("Recognized store instruction, popping result of").add(result)
+                .add("from operand stack and assigning result to").add(varName).add("\b."));
 
-            logger.debug(new StringJoiner(" ")
-                    .add("Linking a block to right child").add(String.valueOf(baseBlock.order)).add("->")
-                    .add(String.valueOf(order + 1)));
-            if (ASMParserUtil.isOperator(result)) {
-                handleOperator(baseBlock, result, ASMParserUtil.getOperatorType(result));
-            } else {
-                // TODO: Assumes RHS is literal - this will be addressed in a later feature
-                this.hook.assignToBlock(
-                        methodVertex,
-                        new LiteralVertex(result, order++, 1, operationType, currentLineNo),
-                        baseBlock.order);
-            }
+        if (localVars.containsKey(varName)) localVars.replace(varName, result);
+        else localVars.put(varName, result);
+        if (varTypes.containsKey(varName)) varTypes.replace(varName, operationType);
+        else varTypes.put(varName, operationType);
+
+        logger.debug(new StringJoiner(" ")
+                .add("Creating base block to method with order").add(String.valueOf(order)));
+        if (enteringJumpBody) {
+            BlockVertex jumpBodyBlock = new BlockVertex("BODY", order++, 1, "VOID", currentLineNo);
+            this.hook.assignToBlock(methodVertex, jumpBodyBlock, blockHistory.peek());
+            blockHistory.push(jumpBodyBlock.order);
+            enteringJumpBody = false;
+        }
+        final BlockVertex baseBlock = new BlockVertex(operation.substring(1), order++, 1, operationType, currentLineNo);
+        if (!blockHistory.empty()) this.hook.assignToBlock(methodVertex, baseBlock, blockHistory.peek());
+        else this.hook.assignToBlock(methodVertex, baseBlock, 0);
+
+        logger.debug(new StringJoiner(" ")
+                .add("Linking a block to left child").add(String.valueOf(baseBlock.order)).add("->")
+                .add(String.valueOf(order)));
+        LocalVertex leftChild = new LocalVertex(varName, varName, varTypes.get(varName), currentLineNo, order++);
+        this.hook.assignToBlock(methodVertex, leftChild, baseBlock.order);
+
+        logger.debug(new StringJoiner(" ")
+                .add("Linking a block to right child").add(String.valueOf(baseBlock.order)).add("->")
+                .add(String.valueOf(order + 1)));
+        if (ASMParserUtil.isOperator(result)) {
+            handleOperator(baseBlock, result, ASMParserUtil.getOperatorType(result));
+        } else if (pfx == 'C') {
+            this.hook.assignToBlock(
+                    methodVertex,
+                    new LiteralVertex(sfx, order++, 1, operationType, currentLineNo),
+                    baseBlock.order);
         }
     }
 
@@ -142,18 +172,19 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
 
         // TODO: Assume all operations that aren't automatically evaluated by compiler are binary
         int noOperands = 2;
-        // TODO: Right now assuming lhs and rhs are variables, literals, or operators
         for (int i = 0; i < noOperands; i++) {
-            String operand = operandStack.pop();
-            logger.debug(new StringBuilder().append("Next operand: ").append(operand));
+            final String operand = operandStack.pop();
+            final String sfx = operand.substring(1);
+            final char pfx = operand.charAt(0);
+            logger.debug("Next operand: ".concat(operand));
+
             if (ASMParserUtil.isOperator(operand)) {
                 handleOperator(currBlock, operand, ASMParserUtil.getOperatorType(operand));
-            } else if (ASMParserUtil.isPrimitive(operand.charAt(0))) {
-                LiteralVertex literalVertex = new LiteralVertex(operand, order++, 1, operatorType, currentLineNo);
+            } else if (pfx == 'C') {
+                final LiteralVertex literalVertex = new LiteralVertex(sfx, order++, 1, operatorType, currentLineNo);
                 hook.assignToBlock(methodVertex, literalVertex, currBlock.order);
-            } else {
-                // TODO: default assume this is variable
-                LocalVertex localVertex = new LocalVertex(operand, operand, varTypes.get(operand), currentLineNo, order++);
+            } else if (pfx == 'V') {
+                final LocalVertex localVertex = new LocalVertex(sfx, sfx, varTypes.get(sfx), currentLineNo, order++);
                 hook.assignToBlock(methodVertex, localVertex, currBlock.order);
             }
         }
@@ -162,16 +193,19 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     @Override
     public void visitLineNumber(int line, Label start) {
         super.visitLineNumber(line, start);
-        if (this.currentLineNo == -1) {
-            generateMethodHeaderVertices(line);
-        }
+        if (this.currentLineNo == -1) generateMethodHeaderVertices(line);
         this.currentLineNo = line;
-        this.labelToLineNo.put(start, line);
-    }
+        this.labelBlockNo.put(start, line);
 
-    @Override
-    public void visitMaxs(int maxStack, int maxLocals) {
-        super.visitMaxs(maxStack, maxLocals);
+        if (!jumpHistory.isEmpty()) {
+            if (jumpHistory.peek() == start) {
+                logger.debug("Jump location identified: ".concat(start.toString().concat(" for ").concat(labelJumpMap.get(start))));
+                logger.debug("Jump history ".concat(jumpHistory.toString()));
+                blockHistory.pop();
+                blockHistory.pop();
+                jumpHistory.pop();
+            }
+        }
     }
 
     /**
@@ -187,9 +221,9 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
             logger.debug(new StringJoiner(" ")
                     .add("Recognized constant, pushing").add(line)
                     .add("to the operand stack."));
-            operandStack.push(line.substring(line.indexOf('_') + 1).replace("M", "-"));
+            operandStack.push("C".concat(line.substring(line.indexOf('_') + 1).replace("M", "-")));
         } else if (ASMParserUtil.isOperator(line)) {
-            logger.debug("Recognized operator".concat(line));
+            logger.debug("Recognized operator ".concat(line));
             operandStack.push(line);
         }
     }
@@ -207,7 +241,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         logger.debug(new StringJoiner(" ")
                 .add("Recognized constant, pushing").add(line)
                 .add("to the operand stack."));
-        operandStack.push(line);
+        operandStack.push("C".concat(line));
     }
 
     /**
@@ -223,12 +257,74 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         logger.debug(new StringJoiner(" ")
                 .add("Recognized constant, pushing").add(line)
                 .add("to the operand stack."));
-        operandStack.push(line.substring(line.indexOf(' ') + 1));
+        operandStack.push("C".concat(line.substring(line.indexOf(' ') + 1)));
     }
 
     @Override
     public void visitJumpInsn(int opcode, Label label) {
         super.visitJumpInsn(opcode, label);
+        final String jumpOp = ASMifier.OPCODES[opcode];
+        jumpHistory.push(label);
+        labelJumpMap.put(label, ASMifier.OPCODES[opcode]);
+
+        if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) visitJumpInsnNullaryJumps(jumpOp, label);
+        else if (ASMParserUtil.UNARY_JUMPS.contains(jumpOp)) visitJumpInsnUnaryJumps(jumpOp, label);
+        else if (ASMParserUtil.BINARY_JUMPS.contains(jumpOp)) visitJumpInsnBinaryJumps(jumpOp, label);
+
+        enteringJumpBody = true;
+    }
+
+    /**
+     * Handles visitJumpInsn if the opcode is a nullary jump.
+     *
+     * @param jumpOp the jump operation.
+     * @param label  the label to jump to.
+     */
+    private void visitJumpInsnNullaryJumps(String jumpOp, Label label) {
+        logger.debug("Recognized nullary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
+        blockHistory.pop();
+    }
+
+    /**
+     * Handles visitJumpInsn if the opcode is a unary jump.
+     *
+     * @param jumpOp the jump operation.
+     * @param label  the label to jump to if the jump condition is satisfied.
+     */
+    private void visitJumpInsnUnaryJumps(String jumpOp, Label label) {
+        logger.debug("Recognized unary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
+        final String arg1 = operandStack.pop();
+        logger.debug("Jump arguments = [".concat(arg1).concat("]"));
+    }
+
+    /**
+     * Handles visitJumpInsn if the opcode is a binary jump.
+     *
+     * @param jumpOp the jump operation.
+     * @param label  the label to jump to if the jump condition is satisfied.
+     */
+    private void visitJumpInsnBinaryJumps(String jumpOp, Label label) {
+        logger.debug("Recognized binary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
+        final String arg2 = operandStack.pop();
+        final String arg1 = operandStack.pop();
+        logger.debug("Jump arguments = [".concat(arg1).concat(", ").concat(arg2).concat("]"));
+        final char[] pfx = new char[]{arg1.charAt(0), arg2.charAt(0)};
+        final String[] sfx = new String[]{arg1.substring(1), arg2.substring(1)};
+        final String jumpType = ASMParserUtil.getBinaryJumpType(jumpOp);
+
+        BlockVertex condRoot = new BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo);
+        BlockVertex condBlock = new BlockVertex(ASMParserUtil.parseEquality(jumpOp).toString(), order++, 2, jumpType, currentLineNo);
+        hook.assignToBlock(methodVertex, condRoot, 0);
+        hook.assignToBlock(methodVertex, condBlock, condRoot.order);
+
+        for (int i = 0; i < pfx.length; i++) {
+            if (pfx[i] == 'C')
+                hook.assignToBlock(methodVertex, new LiteralVertex(sfx[i], order++, 1, jumpType, currentLineNo), condBlock.order);
+            else if (pfx[i] == 'V')
+                hook.assignToBlock(methodVertex, new LocalVertex(sfx[i], sfx[i], varTypes.get(sfx[i]), currentLineNo, order++), condBlock.order);
+        }
+
+        blockHistory.push(condRoot.order);
     }
 
     @Override
@@ -239,12 +335,6 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     @Override
     public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
         super.visitMethodInsn(opcode, owner, name, desc, itf);
-    }
-
-    @Override
-    public void visitLocalVariable(String name, String descriptor, String signature, Label start, Label end, int index) {
-        // TODO: Identifiers are part of the CFG - LOCAL should just keep index
-        super.visitLocalVariable(name, descriptor, signature, start, end, index);
     }
 
     @Override

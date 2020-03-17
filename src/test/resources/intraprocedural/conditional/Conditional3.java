@@ -1,6 +1,6 @@
 package intraprocedural.conditional;
 
-public class Conditional1 {
+public class Conditional3 {
 
     public static void main(String args[]) {
         int a = 1;
@@ -9,8 +9,9 @@ public class Conditional1 {
             a -= b;
             b -= b;
         } else {
-            b += a;
+            a *= b;
         }
+        b += a;
     }
 
 }
