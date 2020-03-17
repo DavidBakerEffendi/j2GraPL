@@ -2,6 +2,7 @@ package za.ac.sun.grapl.util;
 
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.Opcodes;
+import za.ac.sun.grapl.domain.enums.Equality;
 import za.ac.sun.grapl.domain.enums.EvaluationStrategies;
 import za.ac.sun.grapl.domain.enums.ModifierTypes;
 import za.ac.sun.grapl.domain.enums.Operators;
@@ -136,6 +137,25 @@ public class ASMParserUtilTest {
         assertEquals(Operators.DADD, ASMParserUtil.parseOperator("DADD"));
         assertEquals(Operators.FADD, ASMParserUtil.parseOperator("FADD"));
         assertEquals(Operators.FOR, ASMParserUtil.parseOperator("FOR"));
+    }
+
+    @Test
+    public void testIsJumpStatement() {
+        assertTrue(ASMParserUtil.isJumpStatement("IF_ICMPEQ"));
+        assertTrue(ASMParserUtil.isJumpStatement("IFNE"));
+        assertTrue(ASMParserUtil.isJumpStatement("IFNONNULL"));
+        assertTrue(ASMParserUtil.isJumpStatement("LOOKUPSWITCH"));
+        assertFalse(ASMParserUtil.isJumpStatement("IF"));
+        assertFalse(ASMParserUtil.isJumpStatement(null));
+    }
+
+    @Test
+    public void testParseEquality() {
+        assertEquals(Equality.EQ, ASMParserUtil.parseEquality("IF_ICMPEQ"));
+        assertEquals(Equality.EQ, ASMParserUtil.parseEquality("IFNULL"));
+        assertEquals(Equality.NE, ASMParserUtil.parseEquality("IFNONNULL"));
+        assertEquals(Equality.LE, ASMParserUtil.parseEquality("IF_ICMPLE"));
+        assertEquals(Equality.UNKNOWN, ASMParserUtil.parseEquality("GOTO"));
     }
 
 }
