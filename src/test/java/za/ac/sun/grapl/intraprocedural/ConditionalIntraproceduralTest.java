@@ -29,7 +29,7 @@ public class ConditionalIntraproceduralTest {
     @AfterAll
     static void tearDownAll() {
         File f = new File(TEST_DIR);
-//        if (f.exists()) f.delete();
+        if (f.exists()) f.delete();
     }
 
     @Test
@@ -57,6 +57,17 @@ public class ConditionalIntraproceduralTest {
     @Test
     public void conditional3Test() {
         final URL resource = getClass().getClassLoader().getResource(PATH + "Conditional3.class");
+        String resourceDir = Objects.requireNonNull(resource).getFile();
+        File f = new File(resourceDir);
+        fileCannon.loadClassFile(f);
+        fileCannon.fireOne();
+        hook.exportCurrentGraph();
+        // TODO: Compare this to an accepted graph
+    }
+
+    @Test
+    public void conditional4Test() {
+        final URL resource = getClass().getClassLoader().getResource(PATH + "Conditional4.class");
         String resourceDir = Objects.requireNonNull(resource).getFile();
         File f = new File(resourceDir);
         fileCannon.loadClassFile(f);

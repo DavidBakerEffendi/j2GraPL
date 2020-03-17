@@ -87,18 +87,32 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         else if (ASMParserUtil.isStore(operation)) visitVarInsnStore(operation, varName);
     }
 
+    /**
+     * Handles visitVarInsn if the opcode is a load operation.
+     *
+     * @param operation the load operation.
+     * @param varName   the variable name.
+     */
     private void visitVarInsnLoad(String operation, String varName) {
         final String variableType = ASMParserUtil.getStackOperationType(operation);
         logger.debug(new StringJoiner(" ")
                 .add("Recognized load instruction, pushing var (")
                 .add(varName)
                 .add(") to operand stack with type").add(variableType));
-        operandStack.push(varName);
+        operandStack.push("V".concat(varName));
         varTypes.put(varName, variableType);
     }
 
+    /**
+     * Handles visitVarInsn if the opcode is a store operation.
+     *
+     * @param operation the store operation.
+     * @param varName   the variable name.
+     */
     private void visitVarInsnStore(String operation, String varName) {
         final String result = operandStack.pop();
+        final String sfx = result.substring(1);
+        final char pfx = result.charAt(0);
         final String operationType = ASMParserUtil.getStackOperationType(operation);
         logger.debug(new StringJoiner(" ")
                 .add("Recognized store instruction, popping result of").add(result)
@@ -132,11 +146,10 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
                 .add(String.valueOf(order + 1)));
         if (ASMParserUtil.isOperator(result)) {
             handleOperator(baseBlock, result, ASMParserUtil.getOperatorType(result));
-        } else {
-            // TODO: Assumes RHS is literal - this will be addressed in a later feature
+        } else if (pfx == 'C') {
             this.hook.assignToBlock(
                     methodVertex,
-                    new LiteralVertex(result, order++, 1, operationType, currentLineNo),
+                    new LiteralVertex(sfx, order++, 1, operationType, currentLineNo),
                     baseBlock.order);
         }
     }
@@ -159,18 +172,19 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
 
         // TODO: Assume all operations that aren't automatically evaluated by compiler are binary
         int noOperands = 2;
-        // TODO: Right now assuming lhs and rhs are variables, literals, or operators
         for (int i = 0; i < noOperands; i++) {
-            String operand = operandStack.pop();
+            final String operand = operandStack.pop();
+            final String sfx = operand.substring(1);
+            final char pfx = operand.charAt(0);
             logger.debug("Next operand: ".concat(operand));
+
             if (ASMParserUtil.isOperator(operand)) {
                 handleOperator(currBlock, operand, ASMParserUtil.getOperatorType(operand));
-            } else if (ASMParserUtil.isPrimitive(operand.charAt(0))) {
-                LiteralVertex literalVertex = new LiteralVertex(operand, order++, 1, operatorType, currentLineNo);
+            } else if (pfx == 'C') {
+                final LiteralVertex literalVertex = new LiteralVertex(sfx, order++, 1, operatorType, currentLineNo);
                 hook.assignToBlock(methodVertex, literalVertex, currBlock.order);
-            } else {
-                // TODO: default assume this is variable
-                LocalVertex localVertex = new LocalVertex(operand, operand, varTypes.get(operand), currentLineNo, order++);
+            } else if (pfx == 'V') {
+                final LocalVertex localVertex = new LocalVertex(sfx, sfx, varTypes.get(sfx), currentLineNo, order++);
                 hook.assignToBlock(methodVertex, localVertex, currBlock.order);
             }
         }
@@ -185,9 +199,11 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
 
         if (!jumpHistory.isEmpty()) {
             if (jumpHistory.peek() == start) {
-                logger.debug("Jump location identified: ".concat(start.toString()));
+                logger.debug("Jump location identified: ".concat(start.toString().concat(" for ").concat(labelJumpMap.get(start))));
+                logger.debug("Jump history ".concat(jumpHistory.toString()));
                 blockHistory.pop();
-                if (labelJumpMap.get(start).contains("IF")) blockHistory.pop();
+                blockHistory.pop();
+                jumpHistory.pop();
             }
         }
     }
@@ -205,9 +221,9 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
             logger.debug(new StringJoiner(" ")
                     .add("Recognized constant, pushing").add(line)
                     .add("to the operand stack."));
-            operandStack.push(line.substring(line.indexOf('_') + 1).replace("M", "-"));
+            operandStack.push("C".concat(line.substring(line.indexOf('_') + 1).replace("M", "-")));
         } else if (ASMParserUtil.isOperator(line)) {
-            logger.debug("Recognized operator".concat(line));
+            logger.debug("Recognized operator ".concat(line));
             operandStack.push(line);
         }
     }
@@ -225,7 +241,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         logger.debug(new StringJoiner(" ")
                 .add("Recognized constant, pushing").add(line)
                 .add("to the operand stack."));
-        operandStack.push(line);
+        operandStack.push("C".concat(line));
     }
 
     /**
@@ -241,42 +257,74 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         logger.debug(new StringJoiner(" ")
                 .add("Recognized constant, pushing").add(line)
                 .add("to the operand stack."));
-        operandStack.push(line.substring(line.indexOf(' ') + 1));
+        operandStack.push("C".concat(line.substring(line.indexOf(' ') + 1)));
     }
 
     @Override
     public void visitJumpInsn(int opcode, Label label) {
         super.visitJumpInsn(opcode, label);
-        String jumpOp = ASMifier.OPCODES[opcode];
+        final String jumpOp = ASMifier.OPCODES[opcode];
         jumpHistory.push(label);
         labelJumpMap.put(label, ASMifier.OPCODES[opcode]);
-        if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) {
-            // TODO
-            logger.debug("Recognized nullary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
-            blockHistory.pop();
-        } else if (ASMParserUtil.UNARY_JUMPS.contains(jumpOp)) {
-            // TODO
-            logger.debug("Recognized unary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
-            String arg1 = operandStack.pop();
-            logger.debug("Jump arguments = [".concat(arg1).concat("]"));
-        } else if (ASMParserUtil.BINARY_JUMPS.contains(jumpOp)) {
-            // TODO
-            logger.debug("Recognized binary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
-            String arg2 = operandStack.pop();
-            String arg1 = operandStack.pop();
-            logger.debug("Jump arguments = [".concat(arg1).concat(", ").concat(arg2).concat("]"));
-            BlockVertex condRoot = new BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo);
-            BlockVertex condBlock = new BlockVertex(ASMParserUtil.parseEquality(jumpOp).toString(), order++, 2, ASMParserUtil.getBinaryJumpType(jumpOp), currentLineNo);
-            // TODO: Should check if arguments are vars or literals
-            LocalVertex var1 = new LocalVertex(arg1, arg1, varTypes.get(arg1), currentLineNo, order++);
-            LocalVertex var2 = new LocalVertex(arg2, arg2, varTypes.get(arg2), currentLineNo, order++);
-            hook.assignToBlock(methodVertex, condRoot, 0);
-            hook.assignToBlock(methodVertex, condBlock, condRoot.order);
-            hook.assignToBlock(methodVertex, var1, condBlock.order);
-            hook.assignToBlock(methodVertex, var2, condBlock.order);
-            blockHistory.push(condRoot.order);
-        }
+
+        if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) visitJumpInsnNullaryJumps(jumpOp, label);
+        else if (ASMParserUtil.UNARY_JUMPS.contains(jumpOp)) visitJumpInsnUnaryJumps(jumpOp, label);
+        else if (ASMParserUtil.BINARY_JUMPS.contains(jumpOp)) visitJumpInsnBinaryJumps(jumpOp, label);
+
         enteringJumpBody = true;
+    }
+
+    /**
+     * Handles visitJumpInsn if the opcode is a nullary jump.
+     *
+     * @param jumpOp the jump operation.
+     * @param label  the label to jump to.
+     */
+    private void visitJumpInsnNullaryJumps(String jumpOp, Label label) {
+        logger.debug("Recognized nullary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
+        blockHistory.pop();
+    }
+
+    /**
+     * Handles visitJumpInsn if the opcode is a unary jump.
+     *
+     * @param jumpOp the jump operation.
+     * @param label  the label to jump to if the jump condition is satisfied.
+     */
+    private void visitJumpInsnUnaryJumps(String jumpOp, Label label) {
+        logger.debug("Recognized unary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
+        final String arg1 = operandStack.pop();
+        logger.debug("Jump arguments = [".concat(arg1).concat("]"));
+    }
+
+    /**
+     * Handles visitJumpInsn if the opcode is a binary jump.
+     *
+     * @param jumpOp the jump operation.
+     * @param label  the label to jump to if the jump condition is satisfied.
+     */
+    private void visitJumpInsnBinaryJumps(String jumpOp, Label label) {
+        logger.debug("Recognized binary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
+        final String arg2 = operandStack.pop();
+        final String arg1 = operandStack.pop();
+        logger.debug("Jump arguments = [".concat(arg1).concat(", ").concat(arg2).concat("]"));
+        final char[] pfx = new char[]{arg1.charAt(0), arg2.charAt(0)};
+        final String[] sfx = new String[]{arg1.substring(1), arg2.substring(1)};
+        final String jumpType = ASMParserUtil.getBinaryJumpType(jumpOp);
+
+        BlockVertex condRoot = new BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo);
+        BlockVertex condBlock = new BlockVertex(ASMParserUtil.parseEquality(jumpOp).toString(), order++, 2, jumpType, currentLineNo);
+        hook.assignToBlock(methodVertex, condRoot, 0);
+        hook.assignToBlock(methodVertex, condBlock, condRoot.order);
+
+        for (int i = 0; i < pfx.length; i++) {
+            if (pfx[i] == 'C')
+                hook.assignToBlock(methodVertex, new LiteralVertex(sfx[i], order++, 1, jumpType, currentLineNo), condBlock.order);
+            else if (pfx[i] == 'V')
+                hook.assignToBlock(methodVertex, new LocalVertex(sfx[i], sfx[i], varTypes.get(sfx[i]), currentLineNo, order++), condBlock.order);
+        }
+
+        blockHistory.push(condRoot.order);
     }
 
     @Override
@@ -287,12 +335,6 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     @Override
     public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
         super.visitMethodInsn(opcode, owner, name, desc, itf);
-    }
-
-    @Override
-    public void visitLocalVariable(String name, String descriptor, String signature, Label start, Label end, int index) {
-        // TODO: Identifiers are part of the CFG - LOCAL should just keep index
-        super.visitLocalVariable(name, descriptor, signature, start, end, index);
     }
 
     @Override
