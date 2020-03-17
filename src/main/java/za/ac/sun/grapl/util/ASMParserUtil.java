@@ -110,6 +110,10 @@ public class ASMParserUtil implements Opcodes {
         return modifiers;
     }
 
+    public static EnumSet<ModifierTypes> determineModifiers(int access) {
+        return determineModifiers(access, null);
+    }
+
     /**
      * Returns the "readable" name of a given raw name from ASM. For example I -> Integer and
      * java/util/String -> String.
