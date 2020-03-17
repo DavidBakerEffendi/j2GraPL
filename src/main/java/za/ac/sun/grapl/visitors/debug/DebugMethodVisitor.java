@@ -22,7 +22,6 @@ import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.util.ASMifier;
-import za.ac.sun.grapl.util.ASMParserUtil;
 
 import java.util.StringJoiner;
 
@@ -104,57 +103,57 @@ class DebugMethodVisitor extends MethodVisitor implements Opcodes {
         super.visitInvokeDynamicInsn(name, descriptor, bootstrapMethodHandle, bootstrapMethodArguments);
     }
 
-    @Override
-    public void visitParameter(String name, int access) {
-        logger.debug(new StringJoiner(" ")
-                .add("\t ").add(name).add(ASMParserUtil.determineModifiers(access).toString()).add("(visitParameter)"));
-        super.visitParameter(name, access);
-    }
-
-    @Override
-    public void visitTableSwitchInsn(int min, int max, Label dflt, Label... labels) {
-        StringJoiner sj = new StringJoiner(" ")
-                .add("\t ").add(String.valueOf(min)).add(String.valueOf(max)).add(dflt.toString());
-        if (labels.length > 0) {
-            sj.add("LABELS [");
-            for (Label label : labels) {
-                sj.add(label.toString());
-            }
-            sj.add("]");
-        }
-        logger.debug(sj.add("(visitTableSwitchInsn)"));
-        super.visitTableSwitchInsn(min, max, dflt, labels);
-    }
-
-    @Override
-    public void visitLookupSwitchInsn(Label dflt, int[] keys, Label[] labels) {
-        StringJoiner sj = new StringJoiner(" ")
-                .add("\t ").add(dflt.toString());
-        if (keys.length > 0) {
-            sj.add("KEYS [");
-            for (int k : keys) {
-                sj.add(String.valueOf(k));
-            }
-            sj.add("]");
-        }
-        if (labels.length > 0) {
-            sj.add("LABELS [");
-            for (Label label : labels) {
-                sj.add(label.toString());
-            }
-            sj.add("]");
-        }
-        logger.debug(sj.add("(visitTableSwitchInsn)"));
-        super.visitLookupSwitchInsn(dflt, keys, labels);
-    }
-
-    @Override
-    public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
-        logger.debug(new StringJoiner(" ")
-                .add("\t ").add(start.toString()).add(end.toString())
-                .add(handler.toString()).add(type).add("(visitTryCatchBlock)"));
-        super.visitTryCatchBlock(start, end, handler, type);
-    }
+//    @Override
+//    public void visitParameter(String name, int access) {
+//        logger.debug(new StringJoiner(" ")
+//                .add("\t ").add(name).add(ASMParserUtil.determineModifiers(access).toString()).add("(visitParameter)"));
+//        super.visitParameter(name, access);
+//    }
+//
+//    @Override
+//    public void visitTableSwitchInsn(int min, int max, Label dflt, Label... labels) {
+//        StringJoiner sj = new StringJoiner(" ")
+//                .add("\t ").add(String.valueOf(min)).add(String.valueOf(max)).add(dflt.toString());
+//        if (labels.length > 0) {
+//            sj.add("LABELS [");
+//            for (Label label : labels) {
+//                sj.add(label.toString());
+//            }
+//            sj.add("]");
+//        }
+//        logger.debug(sj.add("(visitTableSwitchInsn)"));
+//        super.visitTableSwitchInsn(min, max, dflt, labels);
+//    }
+//
+//    @Override
+//    public void visitLookupSwitchInsn(Label dflt, int[] keys, Label[] labels) {
+//        StringJoiner sj = new StringJoiner(" ")
+//                .add("\t ").add(dflt.toString());
+//        if (keys.length > 0) {
+//            sj.add("KEYS [");
+//            for (int k : keys) {
+//                sj.add(String.valueOf(k));
+//            }
+//            sj.add("]");
+//        }
+//        if (labels.length > 0) {
+//            sj.add("LABELS [");
+//            for (Label label : labels) {
+//                sj.add(label.toString());
+//            }
+//            sj.add("]");
+//        }
+//        logger.debug(sj.add("(visitTableSwitchInsn)"));
+//        super.visitLookupSwitchInsn(dflt, keys, labels);
+//    }
+//
+//    @Override
+//    public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
+//        logger.debug(new StringJoiner(" ")
+//                .add("\t ").add(start.toString()).add(end.toString())
+//                .add(handler.toString()).add(type).add("(visitTryCatchBlock)"));
+//        super.visitTryCatchBlock(start, end, handler, type);
+//    }
 
     @Override
     public void visitLdcInsn(Object value) {
