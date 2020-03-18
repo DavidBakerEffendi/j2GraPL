@@ -1,8 +1,6 @@
 package za.ac.sun.grapl.intraprocedural;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import za.ac.sun.grapl.CannonLoader;
 import za.ac.sun.grapl.hooks.TinkerGraphHook;
 import za.ac.sun.grapl.util.ResourceCompilationUtil;
@@ -19,60 +17,68 @@ public class ConditionalIntraproceduralTest {
     private CannonLoader fileCannon;
     private TinkerGraphHook hook;
 
-    @BeforeEach
-    public void setUpAll() throws IOException {
+    @BeforeAll
+    static void setUpAll() throws IOException {
         ResourceCompilationUtil.compileJavaFiles(PATH);
-        hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
-        fileCannon = new CannonLoader(hook);
     }
 
     @AfterAll
-    static void tearDownAll() {
+    static void tearDownAll() throws IOException {
+        ResourceCompilationUtil.deleteClassFiles(PATH);
         File f = new File(TEST_DIR);
-        if (f.exists()) f.delete();
+//        if (f.exists()) f.delete();
     }
 
-    @Test
-    public void conditional1Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Conditional1.class");
+    @BeforeEach
+    public void setUp(TestInfo testInfo) {
+        hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
+        fileCannon = new CannonLoader(hook);
+        // Select test resource based on integer in method name
+        final String currentTestNumber = testInfo
+                .getDisplayName()
+                .replaceAll("[^0-9]", "");
+        final URL resource = getClass().getClassLoader().getResource(PATH.concat("Conditional").concat(currentTestNumber).concat(".class"));
         String resourceDir = Objects.requireNonNull(resource).getFile();
+        // Load test resource and project + export graph
         File f = new File(resourceDir);
         fileCannon.loadClassFile(f);
         fileCannon.fireOne();
         hook.exportCurrentGraph();
+    }
+
+    @Test
+    public void conditional1Test() {
         // TODO: Compare this to an accepted graph
     }
 
     @Test
     public void conditional2Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Conditional2.class");
-        String resourceDir = Objects.requireNonNull(resource).getFile();
-        File f = new File(resourceDir);
-        fileCannon.loadClassFile(f);
-        fileCannon.fireOne();
-        hook.exportCurrentGraph();
         // TODO: Compare this to an accepted graph
     }
 
     @Test
     public void conditional3Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Conditional3.class");
-        String resourceDir = Objects.requireNonNull(resource).getFile();
-        File f = new File(resourceDir);
-        fileCannon.loadClassFile(f);
-        fileCannon.fireOne();
-        hook.exportCurrentGraph();
         // TODO: Compare this to an accepted graph
     }
 
     @Test
     public void conditional4Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Conditional4.class");
-        String resourceDir = Objects.requireNonNull(resource).getFile();
-        File f = new File(resourceDir);
-        fileCannon.loadClassFile(f);
-        fileCannon.fireOne();
-        hook.exportCurrentGraph();
         // TODO: Compare this to an accepted graph
     }
+
+    @Test
+    public void conditional5Test() {
+        // TODO: Compare this to an accepted graph
+    }
+
+    @Test
+    public void conditional6Test() {
+        // TODO: Compare this to an accepted graph
+    }
+
+    @Test
+    public void conditional7Test() {
+        // TODO: Compare this to an accepted graph
+    }
+
 }
