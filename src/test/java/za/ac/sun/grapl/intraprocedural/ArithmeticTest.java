@@ -13,6 +13,7 @@ import java.net.URL;
 import java.util.Objects;
 
 public class ArithmeticTest {
+
     private static final String PATH = "intraprocedural/arithmetic/";
     private static final String TEST_DIR = "/tmp/grapl/intraprocedural_test.xml";
     private CannonLoader fileCannon;
@@ -85,4 +86,16 @@ public class ArithmeticTest {
         hook.exportCurrentGraph();
         // TODO: Compare this to an accepted graph
     }
+
+    @Test
+    public void arithmetic6Test() {
+        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic6.class");
+        String resourceDir = Objects.requireNonNull(resource).getFile();
+        File f = new File(resourceDir);
+        fileCannon.loadClassFile(f);
+        fileCannon.fireOne();
+        hook.exportCurrentGraph();
+        // TODO: Compare this to an accepted graph
+    }
+
 }
