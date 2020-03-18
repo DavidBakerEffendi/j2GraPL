@@ -45,14 +45,14 @@ public class ASMParserUtilTest {
 
     @Test
     public void testDetermineModifiers() {
-        assertEquals(ASMParserUtil.determineModifiers(Opcodes.ACC_ABSTRACT, "<init>"),
-                EnumSet.of(ModifierTypes.CONSTRUCTOR, ModifierTypes.ABSTRACT, ModifierTypes.VIRTUAL));
-        assertEquals(ASMParserUtil.determineModifiers(Opcodes.ACC_STATIC + Opcodes.ACC_PUBLIC, "test"),
-                EnumSet.of(ModifierTypes.STATIC, ModifierTypes.PUBLIC));
-        assertEquals(ASMParserUtil.determineModifiers(Opcodes.ACC_PROTECTED, "test"),
-                EnumSet.of(ModifierTypes.VIRTUAL, ModifierTypes.PROTECTED));
-        assertEquals(ASMParserUtil.determineModifiers(Opcodes.ACC_NATIVE + Opcodes.ACC_FINAL),
-                EnumSet.of(ModifierTypes.NATIVE));
+        assertEquals(EnumSet.of(ModifierTypes.CONSTRUCTOR, ModifierTypes.ABSTRACT, ModifierTypes.VIRTUAL),
+                ASMParserUtil.determineModifiers(Opcodes.ACC_ABSTRACT, "<init>"));
+        assertEquals(EnumSet.of(ModifierTypes.STATIC, ModifierTypes.PUBLIC),
+                ASMParserUtil.determineModifiers(Opcodes.ACC_STATIC + Opcodes.ACC_PUBLIC, "test"));
+        assertEquals(EnumSet.of(ModifierTypes.VIRTUAL, ModifierTypes.PROTECTED),
+                ASMParserUtil.determineModifiers(Opcodes.ACC_PROTECTED, "test"));
+        assertEquals(EnumSet.of(ModifierTypes.NATIVE),
+                ASMParserUtil.determineModifiers(Opcodes.ACC_NATIVE + Opcodes.ACC_FINAL));
     }
 
     @Test
