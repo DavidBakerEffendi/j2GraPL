@@ -278,7 +278,6 @@ public class ASMParserUtil implements Opcodes {
     public static String getOperatorType(String operation) {
         if (operation == null) return "UNKNOWN";
         if (!OPERANDS.contains(operation.substring(1))) return "UNKNOWN";
-        if (operation.length() > 5 || operation.length() < 3) return "UNKNOWN";
         return stackType(operation.charAt(0));
     }
 
@@ -382,11 +381,10 @@ public class ASMParserUtil implements Opcodes {
     }
 
     public static String getBinaryJumpType(String line) {
-        if (line == null) return "UNKNOWN";
-        if (!BINARY_JUMPS.contains(line)) return "UNKNOWN";
+        if (line == null || !BINARY_JUMPS.contains(line)) return "UNKNOWN";
         if (line.charAt(3) == 'I') return "INTEGER";
-        if (line.charAt(3) == 'A') return "OBJECT";
-        return "UNKNOWN";
+        else if (line.charAt(3) == 'A') return "OBJECT";
+        else return "UNKNOWN";
     }
 
 }

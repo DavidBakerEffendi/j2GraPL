@@ -178,6 +178,7 @@ public class ASMParserUtilTest {
         assertEquals(Equality.NE, ASMParserUtil.parseEquality("IFNONNULL"));
         assertEquals(Equality.LE, ASMParserUtil.parseEquality("IF_ICMPLE"));
         assertEquals(Equality.UNKNOWN, ASMParserUtil.parseEquality("GOTO"));
+        assertEquals(Equality.UNKNOWN, ASMParserUtil.parseEquality("IF_JCMPLE"));
     }
 
     @Test
