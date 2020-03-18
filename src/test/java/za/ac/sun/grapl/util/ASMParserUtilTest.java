@@ -73,6 +73,8 @@ public class ASMParserUtilTest {
         assertFalse(ASMParserUtil.isOperator("JDIV"));
         assertTrue(ASMParserUtil.isOperator("FREM"));
         assertTrue(ASMParserUtil.isOperator("LMUL"));
+        assertFalse(ASMParserUtil.isOperator("DUSHR"));
+        assertTrue(ASMParserUtil.isOperator("IUSHR"));
     }
 
     @Test
@@ -128,6 +130,7 @@ public class ASMParserUtilTest {
         assertEquals("UNKNOWN", ASMParserUtil.getOperatorType("LDIVL"));
         assertEquals("LONG", ASMParserUtil.getOperatorType("LOR"));
         assertEquals("INTEGER", ASMParserUtil.getOperatorType("IAND"));
+        assertEquals("INTEGER", ASMParserUtil.getOperatorType("IUSHR"));
     }
 
     @Test
@@ -136,7 +139,7 @@ public class ASMParserUtilTest {
         assertEquals(Operators.LADD, ASMParserUtil.parseOperator("LADD"));
         assertEquals(Operators.DADD, ASMParserUtil.parseOperator("DADD"));
         assertEquals(Operators.FADD, ASMParserUtil.parseOperator("FADD"));
-        assertEquals(Operators.FOR, ASMParserUtil.parseOperator("FOR"));
+        assertEquals(Operators.LOR, ASMParserUtil.parseOperator("LOR"));
     }
 
     @Test

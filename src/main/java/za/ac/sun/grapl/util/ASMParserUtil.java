@@ -175,9 +175,11 @@ public class ASMParserUtil implements Opcodes {
         operands.add("DIV");
         operands.add("REM");
         operands.add("OR");
+        operands.add("XOR");
         operands.add("AND");
         operands.add("SHR");
         operands.add("SHL");
+        operands.add("USHR");
         OPERANDS = Collections.unmodifiableSet(operands);
         HashSet<String> nullaryJumps = new HashSet<>();
         HashSet<String> unaryJumps = new HashSet<>();
@@ -274,7 +276,7 @@ public class ASMParserUtil implements Opcodes {
      */
     public static String getOperatorType(String operation) {
         if (!OPERANDS.contains(operation.substring(1))) return "UNKNOWN";
-        if (operation.length() != 4 && operation.length() != 3) return "UNKNOWN";
+        if (operation.length() > 5 || operation.length() < 3) return "UNKNOWN";
         return stackType(operation.charAt(0));
     }
 
@@ -309,14 +311,21 @@ public class ASMParserUtil implements Opcodes {
     /**
      * From the ASM docs: xADD, xSUB, xMUL, xDIV and xREM correspond to the +,
      * -, *, / and % operations, where x is either I, L, F or D.
+     * <p>
+     * The logic operators only over I and L. These are SHL, SHR, USHR, AND, OR, and XOR.
      *
      * @param line the possible operand instruction.
      * @return true if the line is an operand instruction, false if otherwise.
      */
     public static boolean isOperator(String line) {
-        if (line.length() != 4 && line.length() != 3) return false;
+        if (line == null) return false;
+        if (line.length() > 5 || line.length() < 3) return false;
         char type = line.charAt(0);
         if (type != 'I' && type != 'L' && type != 'F' && type != 'D') return false;
+        if (line.contains("SHL") || line.contains("SHR") || line.contains("USHR") ||
+                line.contains("AND") || line.contains("OR") || line.contains("XOR")) {
+            if (type != 'I' && type != 'L') return false;
+        }
         return OPERANDS.contains(line.substring(1));
     }
 

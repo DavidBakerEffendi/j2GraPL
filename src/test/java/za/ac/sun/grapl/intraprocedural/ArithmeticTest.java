@@ -21,7 +21,7 @@ public class ArithmeticTest {
     @AfterAll
     static void tearDownAll() {
         File f = new File(TEST_DIR);
-        if (f.exists()) f.delete();
+//        if (f.exists()) f.delete();
     }
 
     @BeforeEach
@@ -85,4 +85,16 @@ public class ArithmeticTest {
         hook.exportCurrentGraph();
         // TODO: Compare this to an accepted graph
     }
+
+    @Test
+    public void arithmetic6Test() {
+        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic6.class");
+        String resourceDir = Objects.requireNonNull(resource).getFile();
+        File f = new File(resourceDir);
+        fileCannon.loadClassFile(f);
+        fileCannon.fireOne();
+        hook.exportCurrentGraph();
+        // TODO: Compare this to an accepted graph
+    }
+
 }
