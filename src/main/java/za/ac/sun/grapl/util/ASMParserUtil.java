@@ -1,10 +1,7 @@
 package za.ac.sun.grapl.util;
 
 import org.objectweb.asm.Opcodes;
-import za.ac.sun.grapl.domain.enums.Equality;
-import za.ac.sun.grapl.domain.enums.EvaluationStrategies;
-import za.ac.sun.grapl.domain.enums.ModifierTypes;
-import za.ac.sun.grapl.domain.enums.Operators;
+import za.ac.sun.grapl.domain.enums.*;
 
 import java.util.*;
 import java.util.stream.IntStream;
@@ -367,6 +364,38 @@ public class ASMParserUtil implements Opcodes {
         return (NULLARY_JUMPS.contains(line) || UNARY_JUMPS.contains(line) || BINARY_JUMPS.contains(line));
     }
 
+    /**
+     * Parses the jump statement equality and returns the opposite.
+     *
+     * @param jumpStatement the string of a jump statement e.g. IF_ICMPGE.
+     * @return the {@link Equality} of the opposite jump statement, UNKNOWN if it could not be determined.
+     */
+    public static Equality parseAndFlipEquality(String jumpStatement) {
+        Equality original = parseEquality(jumpStatement);
+        switch (original) {
+            case EQ:
+                return Equality.NE;
+            case NE:
+                return Equality.EQ;
+            case LT:
+                return Equality.GE;
+            case GE:
+                return Equality.LT;
+            case GT:
+                return Equality.LE;
+            case LE:
+                return Equality.GT;
+            default:
+                return Equality.UNKNOWN;
+        }
+    }
+
+    /**
+     * Parses the equality of the given jump statement.
+     *
+     * @param jumpStatement the string of a jump statement e.g. IF_ICMPGE.
+     * @return the {@link Equality} of the jump statement, UNKNOWN if it could not be determined.
+     */
     public static Equality parseEquality(String jumpStatement) {
         if (UNARY_JUMPS.contains(jumpStatement)) {
             String eq = jumpStatement.substring(2);
@@ -380,11 +409,33 @@ public class ASMParserUtil implements Opcodes {
         return Equality.UNKNOWN;
     }
 
+    /**
+     * Determines the type of the given binary jump.
+     *
+     * @param line the binary jump.
+     * @return INTEGER or OBJECT of the binary jump, UNKNOWN if the input is invalid.
+     */
     public static String getBinaryJumpType(String line) {
         if (line == null || !BINARY_JUMPS.contains(line)) return "UNKNOWN";
         if (line.charAt(3) == 'I') return "INTEGER";
         else if (line.charAt(3) == 'A') return "OBJECT";
         else return "UNKNOWN";
+    }
+
+    /**
+     * Parses the jump operation and returns its {@link JumpAssociations} used in control flow construction.
+     *
+     * @param jumpOp the jump operation e.g. IF_ICMPLE, GOTO, etc.
+     * @return the jump association of the jump operation, null if there is no association.
+     */
+    public static JumpAssociations parseJumpAssociation(String jumpOp) {
+        JumpAssociations assoc = null;
+        if (ASMParserUtil.BINARY_JUMPS.contains(jumpOp)) {
+            assoc = JumpAssociations.IF_CMP;
+        } else if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) {
+            assoc = JumpAssociations.JUMP;
+        }
+        return assoc;
     }
 
 }
