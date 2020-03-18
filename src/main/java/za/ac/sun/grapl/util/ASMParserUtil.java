@@ -10,6 +10,7 @@ import java.util.*;
 import java.util.stream.IntStream;
 
 public class ASMParserUtil implements Opcodes {
+
     public static final Map<Character, String> PRIMITIVES;
     public static final Set<String> OPERANDS;
     public static final Set<String> NULLARY_JUMPS;
@@ -275,6 +276,7 @@ public class ASMParserUtil implements Opcodes {
      * @return the type of the operator. If the operator is invalid, will return "UNKNOWN".
      */
     public static String getOperatorType(String operation) {
+        if (operation == null) return "UNKNOWN";
         if (!OPERANDS.contains(operation.substring(1))) return "UNKNOWN";
         if (operation.length() > 5 || operation.length() < 3) return "UNKNOWN";
         return stackType(operation.charAt(0));
@@ -288,6 +290,7 @@ public class ASMParserUtil implements Opcodes {
      * @return true if the line is a LOAD instruction, false if otherwise.
      */
     public static boolean isLoad(String line) {
+        if (line == null) return false;
         if (line.length() != 5) return false;
         char type = line.charAt(0);
         if (type != 'I' && type != 'L' && type != 'F' && type != 'D' && type != 'A') return false;
@@ -302,6 +305,7 @@ public class ASMParserUtil implements Opcodes {
      * @return true if the line is a STORE instruction, false if otherwise.
      */
     public static boolean isStore(String line) {
+        if (line == null) return false;
         if (line.length() != 6) return false;
         char type = line.charAt(0);
         if (type != 'I' && type != 'L' && type != 'F' && type != 'D' && type != 'A') return false;
@@ -337,6 +341,7 @@ public class ASMParserUtil implements Opcodes {
      * @return true if line represents a constant, false if otherwise.
      */
     public static boolean isConstant(String line) {
+        if (line == null) return false;
         if (line.length() < 6) return false;
         char type = line.charAt(0);
         return line.contains("CONST_") && (type == 'I' || type == 'F' || type == 'D' || type == 'A') && line.length() > 7;
@@ -376,9 +381,11 @@ public class ASMParserUtil implements Opcodes {
     }
 
     public static String getBinaryJumpType(String line) {
+        if (line == null) return "UNKNOWN";
         if (!BINARY_JUMPS.contains(line)) return "UNKNOWN";
         if (line.charAt(3) == 'I') return "INTEGER";
         if (line.charAt(3) == 'A') return "OBJECT";
         return "UNKNOWN";
     }
+
 }

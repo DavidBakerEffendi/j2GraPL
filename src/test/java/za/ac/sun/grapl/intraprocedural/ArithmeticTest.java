@@ -13,6 +13,7 @@ import java.net.URL;
 import java.util.Objects;
 
 public class ArithmeticTest {
+
     private static final String PATH = "intraprocedural/arithmetic/";
     private static final String TEST_DIR = "/tmp/grapl/intraprocedural_test.xml";
     private CannonLoader fileCannon;
@@ -21,7 +22,7 @@ public class ArithmeticTest {
     @AfterAll
     static void tearDownAll() {
         File f = new File(TEST_DIR);
-//        if (f.exists()) f.delete();
+        if (f.exists()) f.delete();
     }
 
     @BeforeEach
