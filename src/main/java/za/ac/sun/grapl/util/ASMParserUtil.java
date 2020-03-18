@@ -345,7 +345,7 @@ public class ASMParserUtil implements Opcodes {
         if (line.length() < 6) return false;
         if ("ACONST_NULL".equals(line)) return true;
         char type = line.charAt(0);
-        return line.contains("CONST_") && (type == 'I' || type == 'F' || type == 'D') && line.length() > 7;
+        return line.contains("CONST_") && (type == 'I' || type == 'F' || type == 'D' || type == 'L') && line.length() > 7;
     }
 
     /**
