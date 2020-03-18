@@ -51,7 +51,7 @@ public class ASMParserUtilTest {
                 EnumSet.of(ModifierTypes.STATIC, ModifierTypes.PUBLIC));
         assertEquals(ASMParserUtil.determineModifiers(Opcodes.ACC_PROTECTED, "test"),
                 EnumSet.of(ModifierTypes.VIRTUAL, ModifierTypes.PROTECTED));
-        assertEquals(ASMParserUtil.determineModifiers(Opcodes.ACC_NATIVE + Opcodes.ACC_FINAL, "test"),
+        assertEquals(ASMParserUtil.determineModifiers(Opcodes.ACC_NATIVE + Opcodes.ACC_FINAL),
                 EnumSet.of(ModifierTypes.NATIVE));
     }
 
@@ -75,6 +75,17 @@ public class ASMParserUtilTest {
         assertTrue(ASMParserUtil.isOperator("LMUL"));
         assertFalse(ASMParserUtil.isOperator("DUSHR"));
         assertTrue(ASMParserUtil.isOperator("IUSHR"));
+        assertTrue(ASMParserUtil.isOperator("LUSHR"));
+        assertTrue(ASMParserUtil.isOperator("IOR"));
+        assertTrue(ASMParserUtil.isOperator("LOR"));
+        assertTrue(ASMParserUtil.isOperator("IXOR"));
+        assertTrue(ASMParserUtil.isOperator("LXOR"));
+        assertTrue(ASMParserUtil.isOperator("LAND"));
+        assertTrue(ASMParserUtil.isOperator("LSHR"));
+        assertTrue(ASMParserUtil.isOperator("ISHR"));
+        assertTrue(ASMParserUtil.isOperator("ISHL"));
+        assertTrue(ASMParserUtil.isOperator("LSHL"));
+        assertFalse(ASMParserUtil.isOperator(null));
     }
 
     @Test
@@ -86,6 +97,7 @@ public class ASMParserUtilTest {
         assertTrue(ASMParserUtil.isStore("FSTORE"));
         assertTrue(ASMParserUtil.isStore("LSTORE"));
         assertTrue(ASMParserUtil.isStore("ASTORE"));
+        assertFalse(ASMParserUtil.isStore(null));
     }
 
     @Test
@@ -97,6 +109,7 @@ public class ASMParserUtilTest {
         assertTrue(ASMParserUtil.isLoad("FLOAD"));
         assertTrue(ASMParserUtil.isLoad("LLOAD"));
         assertTrue(ASMParserUtil.isLoad("ALOAD"));
+        assertFalse(ASMParserUtil.isLoad(null));
     }
 
     @Test
@@ -104,8 +117,12 @@ public class ASMParserUtilTest {
         assertTrue(ASMParserUtil.isConstant("ACONST_NULL"));
         assertTrue(ASMParserUtil.isConstant("ICONST_0"));
         assertTrue(ASMParserUtil.isConstant("FCONST_2"));
-        assertTrue(ASMParserUtil.isConstant("DCONST_3"));
+        assertTrue(ASMParserUtil.isConstant("DCONST_1"));
+        assertTrue(ASMParserUtil.isConstant("LCONST_1"));
         assertFalse(ASMParserUtil.isConstant("JCONST_3"));
+        assertFalse(ASMParserUtil.isConstant("JCONST_392831093289210"));
+        assertFalse(ASMParserUtil.isConstant("JCO"));
+        assertFalse(ASMParserUtil.isConstant(null));
     }
 
     @Test
@@ -125,12 +142,13 @@ public class ASMParserUtilTest {
         assertEquals("OBJECT", ASMParserUtil.getOperatorType("ASUB"));
         assertEquals("LONG", ASMParserUtil.getOperatorType("LADD"));
         assertEquals("UNKNOWN", ASMParserUtil.getOperatorType("[DIV"));
-        assertEquals("UNKNOWN", ASMParserUtil.getOperatorType("JMUL"));
-        assertEquals("UNKNOWN", ASMParserUtil.getOperatorType("IITEST"));
+        assertEquals("UNKNOWN", ASMParserUtil.getOperatorType("JM"));
+        assertEquals("UNKNOWN", ASMParserUtil.getOperatorType("IITESTLL"));
         assertEquals("UNKNOWN", ASMParserUtil.getOperatorType("LDIVL"));
         assertEquals("LONG", ASMParserUtil.getOperatorType("LOR"));
         assertEquals("INTEGER", ASMParserUtil.getOperatorType("IAND"));
         assertEquals("INTEGER", ASMParserUtil.getOperatorType("IUSHR"));
+        assertEquals("UNKNOWN", ASMParserUtil.getOperatorType(null));
     }
 
     @Test
@@ -156,9 +174,18 @@ public class ASMParserUtilTest {
     public void testParseEquality() {
         assertEquals(Equality.EQ, ASMParserUtil.parseEquality("IF_ICMPEQ"));
         assertEquals(Equality.EQ, ASMParserUtil.parseEquality("IFNULL"));
+        assertEquals(Equality.LE, ASMParserUtil.parseEquality("IFLE"));
         assertEquals(Equality.NE, ASMParserUtil.parseEquality("IFNONNULL"));
         assertEquals(Equality.LE, ASMParserUtil.parseEquality("IF_ICMPLE"));
         assertEquals(Equality.UNKNOWN, ASMParserUtil.parseEquality("GOTO"));
+    }
+
+    @Test
+    public void testGetBinaryJumpType() {
+        assertEquals("INTEGER", ASMParserUtil.getBinaryJumpType("IF_ICMPEQ"));
+        assertEquals("OBJECT", ASMParserUtil.getBinaryJumpType("IF_ACMPEQ"));
+        assertEquals("UNKNOWN", ASMParserUtil.getBinaryJumpType("IF_LCMPEQ"));
+        assertEquals("UNKNOWN", ASMParserUtil.getBinaryJumpType(null));
     }
 
 }
