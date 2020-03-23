@@ -3,26 +3,20 @@ package intraprocedural.conditional;
 public class Conditional6 {
 
     public static void main(String args[]) {
-        int a = 1;
-        int b = 2;
-        // IF_ICMPNE L1
-        if (a == 3) {
-            a -= b;
-            // IF_ICMPLE L2
-            if (b > 2) {
-                b -= b;
-                // GOTO L3
-            } else {
-                // L2
-                b /= b;
+        int a = 1; // L?
+        int b = 2; // L?
+        if (a == 3) { // IF_ICMPNE L1 L413218476
+            a -= b; // L?
+        } else { // GOTO L2 L392904516
+            // L1 L413218476
+            if (b > 2) { // IF_ICMPLE L3 L116289363
+                b -= b; // L?
+            } else { // GOTO L4 L1561502550
+                b /= b; // L3 L116289363
             }
-            // GOTO L3
-        } else {
-            // L1
-            a *= b;
+            a *= b; // L4 L1561502550
         }
-        // L3
-        b += a;
+        b += a; // L2 L392904516
     }
 
 }

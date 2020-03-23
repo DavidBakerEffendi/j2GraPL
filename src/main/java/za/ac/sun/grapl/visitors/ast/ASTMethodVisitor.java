@@ -26,11 +26,10 @@ import za.ac.sun.grapl.domain.models.vertices.*;
 import za.ac.sun.grapl.hooks.IHook;
 import za.ac.sun.grapl.util.ASMParserUtil;
 
-import java.util.HashMap;
-import java.util.Stack;
-import java.util.StringJoiner;
+import java.util.*;
 
 public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
+
     private final static Logger logger = LogManager.getLogger();
 
     private final IHook hook;
@@ -41,16 +40,18 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     private final HashMap<Label, Integer> labelBlockNo = new HashMap<>();
     private final HashMap<String, String> localVars = new HashMap<>();
     private final HashMap<String, String> varTypes = new HashMap<>();
-    private final HashMap<Label, String> labelJumpMap = new HashMap<>();
     private final Stack<String> operandStack = new Stack<>();
     private final Stack<Integer> blockHistory = new Stack<>();
-    private final Stack<Label> jumpHistory = new Stack<>();
+
+    private final Map<Label, List<JumpAssoc>> lblJumpAssocs = new HashMap<>();
+    private final Stack<JumpState> jumpStateHistory = new Stack<>();
+    private JumpState jumpState = JumpState.METHOD_BODY;
+
     private boolean enteringJumpBody = false;
     private int order = 0;
     private int currentLineNo = -1;
     private MethodVertex methodVertex;
     private FileVertex fv;
-
 
     public ASTMethodVisitor(final MethodVisitor mv, IHook hook, int access, String methodName, String classPath, String methodSignature, FileVertex fv) {
         super(ASM5, mv);
@@ -60,6 +61,84 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         this.classPath = classPath;
         this.methodSignature = methodSignature;
         this.fv = fv;
+    }
+
+    /**
+     * Handles visitVarInsn if the opcode is a store operation.
+     *
+     * @param operation the store operation.
+     * @param varName   the variable name.
+     */
+    private void visitVarInsnStore(String operation, String varName) {
+        final String result = operandStack.pop();
+        final String sfx = result.substring(1);
+        final char pfx = result.charAt(0);
+        final String operationType = ASMParserUtil.getStackOperationType(operation);
+        logger.debug(new StringJoiner(" ")
+                .add("Recognized store instruction, popping result of").add(result)
+                .add("from operand stack and assigning result to").add(varName).add("\b."));
+
+        if (localVars.containsKey(varName)) localVars.replace(varName, result);
+        else localVars.put(varName, result);
+        if (varTypes.containsKey(varName)) varTypes.replace(varName, operationType);
+        else varTypes.put(varName, operationType);
+
+        logger.debug("Creating base block to method with order ".concat(String.valueOf(order)));
+        if (enteringJumpBody) {
+            enteringJumpBody = false;
+            BlockVertex jumpBodyBlock = new BlockVertex(jumpState.name(), order++, 1, "VOID", currentLineNo);
+            this.hook.assignToBlock(methodVertex, jumpBodyBlock, blockHistory.peek());
+            blockHistory.push(jumpBodyBlock.order);
+        }
+        final BlockVertex baseBlock = new BlockVertex(operation.substring(1), order++, 1, operationType, currentLineNo);
+        if (!blockHistory.empty())
+            this.hook.assignToBlock(methodVertex, baseBlock, blockHistory.peek());
+        else
+            this.hook.assignToBlock(methodVertex, baseBlock, 0);
+        blockHistory.push(baseBlock.order);
+
+        logger.debug(new StringJoiner(" ")
+                .add("Linking a block to left child").add(String.valueOf(baseBlock.order)).add("->")
+                .add(String.valueOf(order)));
+        LocalVertex leftChild = new LocalVertex(varName, varName, varTypes.get(varName), currentLineNo, order++);
+        this.hook.assignToBlock(methodVertex, leftChild, baseBlock.order);
+
+        logger.debug(new StringJoiner(" ")
+                .add("Linking a block to right child").add(String.valueOf(baseBlock.order)).add("->")
+                .add(String.valueOf(order + 1)));
+        if (ASMParserUtil.isOperator(result)) {
+            handleOperator(baseBlock, result, ASMParserUtil.getOperatorType(result));
+        } else if (pfx == 'C') {
+            this.hook.assignToBlock(
+                    methodVertex,
+                    new LiteralVertex(sfx, order++, 1, operationType, currentLineNo),
+                    baseBlock.order);
+        }
+        blockHistory.pop();
+    }
+
+    @Override
+    public void visitLineNumber(int line, Label start) {
+        super.visitLineNumber(line, start);
+        if (this.currentLineNo == -1) generateMethodHeaderVertices(line);
+        this.currentLineNo = line;
+        this.labelBlockNo.put(start, line);
+
+        if (lblJumpAssocs.containsKey(start)) {
+            List<JumpAssoc> assocs = lblJumpAssocs.get(start);
+            if (assocs.contains(JumpAssoc.IF_CMP) && jumpState == JumpState.IF_ROOT) {
+                pushJumpState(JumpState.ELSE_BODY);
+                enteringJumpBody = true;
+            } else if ((assocs.contains(JumpAssoc.IF_CMP) && jumpState == JumpState.IF_BODY) ||
+                    (assocs.contains(JumpAssoc.GOTO) && jumpState == JumpState.ELSE_BODY)) {
+                popJumpState();
+                jumpState = popJumpState();
+            } else if (assocs.contains(JumpAssoc.GOTO) && jumpState == JumpState.IF_BODY) {
+                jumpState = JumpState.IF_ROOT;
+                popJumpState();
+            }
+        }
+
     }
 
     @Override
@@ -103,55 +182,17 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         varTypes.put(varName, variableType);
     }
 
-    /**
-     * Handles visitVarInsn if the opcode is a store operation.
-     *
-     * @param operation the store operation.
-     * @param varName   the variable name.
-     */
-    private void visitVarInsnStore(String operation, String varName) {
-        final String result = operandStack.pop();
-        final String sfx = result.substring(1);
-        final char pfx = result.charAt(0);
-        final String operationType = ASMParserUtil.getStackOperationType(operation);
-        logger.debug(new StringJoiner(" ")
-                .add("Recognized store instruction, popping result of").add(result)
-                .add("from operand stack and assigning result to").add(varName).add("\b."));
+    @Override
+    public void visitJumpInsn(int opcode, Label label) {
+        super.visitJumpInsn(opcode, label);
+        final String jumpOp = ASMifier.OPCODES[opcode];
+        addJumpLabelAssoc(label, jumpOp);
 
-        if (localVars.containsKey(varName)) localVars.replace(varName, result);
-        else localVars.put(varName, result);
-        if (varTypes.containsKey(varName)) varTypes.replace(varName, operationType);
-        else varTypes.put(varName, operationType);
+        if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) visitJumpInsnNullaryJumps(jumpOp, label);
+        else if (ASMParserUtil.UNARY_JUMPS.contains(jumpOp)) visitJumpInsnUnaryJumps(jumpOp, label);
+        else if (ASMParserUtil.BINARY_JUMPS.contains(jumpOp)) visitJumpInsnBinaryJumps(jumpOp, label);
 
-        logger.debug(new StringJoiner(" ")
-                .add("Creating base block to method with order").add(String.valueOf(order)));
-        if (enteringJumpBody) {
-            BlockVertex jumpBodyBlock = new BlockVertex("BODY", order++, 1, "VOID", currentLineNo);
-            this.hook.assignToBlock(methodVertex, jumpBodyBlock, blockHistory.peek());
-            blockHistory.push(jumpBodyBlock.order);
-            enteringJumpBody = false;
-        }
-        final BlockVertex baseBlock = new BlockVertex(operation.substring(1), order++, 1, operationType, currentLineNo);
-        if (!blockHistory.empty()) this.hook.assignToBlock(methodVertex, baseBlock, blockHistory.peek());
-        else this.hook.assignToBlock(methodVertex, baseBlock, 0);
-
-        logger.debug(new StringJoiner(" ")
-                .add("Linking a block to left child").add(String.valueOf(baseBlock.order)).add("->")
-                .add(String.valueOf(order)));
-        LocalVertex leftChild = new LocalVertex(varName, varName, varTypes.get(varName), currentLineNo, order++);
-        this.hook.assignToBlock(methodVertex, leftChild, baseBlock.order);
-
-        logger.debug(new StringJoiner(" ")
-                .add("Linking a block to right child").add(String.valueOf(baseBlock.order)).add("->")
-                .add(String.valueOf(order + 1)));
-        if (ASMParserUtil.isOperator(result)) {
-            handleOperator(baseBlock, result, ASMParserUtil.getOperatorType(result));
-        } else if (pfx == 'C') {
-            this.hook.assignToBlock(
-                    methodVertex,
-                    new LiteralVertex(sfx, order++, 1, operationType, currentLineNo),
-                    baseBlock.order);
-        }
+        enteringJumpBody = true;
     }
 
     /**
@@ -190,21 +231,30 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         }
     }
 
-    @Override
-    public void visitLineNumber(int line, Label start) {
-        super.visitLineNumber(line, start);
-        if (this.currentLineNo == -1) generateMethodHeaderVertices(line);
-        this.currentLineNo = line;
-        this.labelBlockNo.put(start, line);
-
-        if (!jumpHistory.isEmpty()) {
-            if (jumpHistory.peek() == start) {
-                logger.debug("Jump location identified: ".concat(start.toString().concat(" for ").concat(labelJumpMap.get(start))));
-                logger.debug("Jump history ".concat(jumpHistory.toString()));
-                blockHistory.pop();
-                blockHistory.pop();
-                jumpHistory.pop();
+    /**
+     * Handles visitJumpInsn if the opcode is a nullary jump.
+     *
+     * @param jumpOp the jump operation.
+     * @param label  the label to jump to.
+     */
+    private void visitJumpInsnNullaryJumps(String jumpOp, Label label) {
+        logger.debug("Recognized nullary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
+        long numGotoAssocs = lblJumpAssocs.get(label).stream().filter((t) -> t == JumpAssoc.GOTO).count();
+        if (jumpState == JumpState.IF_BODY) {
+            if (lblJumpAssocs.get(label).contains(JumpAssoc.IF_CMP)) {
+                System.out.println("Extra pop");
+                popJumpState();
+                popJumpState();
             }
+            popJumpState();
+            jumpState = JumpState.IF_ROOT;
+        } else if (numGotoAssocs >= 2) {
+            System.out.println("extra assocs");
+            for (int i = 0; i < numGotoAssocs; i++) {
+                popJumpState();
+            }
+            popJumpState();
+            jumpState = JumpState.IF_ROOT;
         }
     }
 
@@ -260,43 +310,6 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         operandStack.push("C".concat(line.substring(line.indexOf(' ') + 1)));
     }
 
-    @Override
-    public void visitJumpInsn(int opcode, Label label) {
-        super.visitJumpInsn(opcode, label);
-        final String jumpOp = ASMifier.OPCODES[opcode];
-        jumpHistory.push(label);
-        labelJumpMap.put(label, ASMifier.OPCODES[opcode]);
-
-        if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) visitJumpInsnNullaryJumps(jumpOp, label);
-        else if (ASMParserUtil.UNARY_JUMPS.contains(jumpOp)) visitJumpInsnUnaryJumps(jumpOp, label);
-        else if (ASMParserUtil.BINARY_JUMPS.contains(jumpOp)) visitJumpInsnBinaryJumps(jumpOp, label);
-
-        enteringJumpBody = true;
-    }
-
-    /**
-     * Handles visitJumpInsn if the opcode is a nullary jump.
-     *
-     * @param jumpOp the jump operation.
-     * @param label  the label to jump to.
-     */
-    private void visitJumpInsnNullaryJumps(String jumpOp, Label label) {
-        logger.debug("Recognized nullary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
-        blockHistory.pop();
-    }
-
-    /**
-     * Handles visitJumpInsn if the opcode is a unary jump.
-     *
-     * @param jumpOp the jump operation.
-     * @param label  the label to jump to if the jump condition is satisfied.
-     */
-    private void visitJumpInsnUnaryJumps(String jumpOp, Label label) {
-        logger.debug("Recognized unary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
-        final String arg1 = operandStack.pop();
-        logger.debug("Jump arguments = [".concat(arg1).concat("]"));
-    }
-
     /**
      * Handles visitJumpInsn if the opcode is a binary jump.
      *
@@ -312,9 +325,14 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         final String[] sfx = new String[]{arg1.substring(1), arg2.substring(1)};
         final String jumpType = ASMParserUtil.getBinaryJumpType(jumpOp);
 
+        pushJumpState(JumpState.IF_ROOT);
+
         BlockVertex condRoot = new BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo);
-        BlockVertex condBlock = new BlockVertex(ASMParserUtil.parseEquality(jumpOp).toString(), order++, 2, jumpType, currentLineNo);
-        hook.assignToBlock(methodVertex, condRoot, 0);
+        BlockVertex condBlock = new BlockVertex(ASMParserUtil.parseAndFlipEquality(jumpOp).toString(), order++, 2, jumpType, currentLineNo);
+        if (blockHistory.isEmpty())
+            hook.assignToBlock(methodVertex, condRoot, 0);
+        else
+            hook.assignToBlock(methodVertex, condRoot, blockHistory.peek());
         hook.assignToBlock(methodVertex, condBlock, condRoot.order);
 
         for (int i = 0; i < pfx.length; i++) {
@@ -325,6 +343,41 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         }
 
         blockHistory.push(condRoot.order);
+        // Let "body" methods know that they need to enter body
+        pushJumpState(JumpState.IF_BODY);
+        enteringJumpBody = true;
+    }
+
+    private void addJumpLabelAssoc(Label label, String jumpOp) {
+        // TODO: Temporary parsing
+        JumpAssoc assoc = JumpAssoc.GOTO;
+        if (ASMParserUtil.BINARY_JUMPS.contains(jumpOp)) {
+            assoc = JumpAssoc.IF_CMP;
+        } else if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) {
+            assoc = JumpAssoc.GOTO;
+        }
+        if (lblJumpAssocs.containsKey(label)) {
+            lblJumpAssocs.get(label).add(assoc);
+        } else {
+            lblJumpAssocs.put(label, new LinkedList<>(Collections.singletonList(assoc)));
+        }
+    }
+
+    /**
+     * Handles visitJumpInsn if the opcode is a unary jump.
+     *
+     * @param jumpOp the jump operation.
+     * @param label  the label to jump to if the jump condition is satisfied.
+     */
+    private void visitJumpInsnUnaryJumps(String jumpOp, Label label) {
+        logger.debug("Recognized unary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
+        final String arg1 = operandStack.pop();
+        logger.debug("Jump arguments = [".concat(arg1).concat("]"));
+    }
+
+    private void pushJumpState(JumpState state) {
+        jumpState = state;
+        jumpStateHistory.push(state);
     }
 
     @Override
@@ -371,6 +424,23 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         // Create MODIFIER
         ASMParserUtil.determineModifiers(access, methodName)
                 .forEach(m -> hook.createAndAddToMethod(this.methodVertex, new ModifierVertex(m, order++)));
+    }
+
+    private JumpState popJumpState() {
+        blockHistory.pop();
+        return jumpStateHistory.pop();
+    }
+
+    private enum JumpState {
+        METHOD_BODY,
+        IF_ROOT,
+        IF_BODY,
+        ELSE_BODY
+    }
+
+    private enum JumpAssoc {
+        IF_CMP,
+        GOTO
     }
 
     public int getOrder() {

@@ -367,6 +367,26 @@ public class ASMParserUtil implements Opcodes {
         return (NULLARY_JUMPS.contains(line) || UNARY_JUMPS.contains(line) || BINARY_JUMPS.contains(line));
     }
 
+    public static Equality parseAndFlipEquality(String jumpStatement) {
+        Equality original = parseEquality(jumpStatement);
+        switch (original) {
+            case EQ:
+                return Equality.NE;
+            case NE:
+                return Equality.EQ;
+            case LT:
+                return Equality.GE;
+            case GE:
+                return Equality.LT;
+            case GT:
+                return Equality.LE;
+            case LE:
+                return Equality.GT;
+            default:
+                return Equality.UNKNOWN;
+        }
+    }
+
     public static Equality parseEquality(String jumpStatement) {
         if (UNARY_JUMPS.contains(jumpStatement)) {
             String eq = jumpStatement.substring(2);

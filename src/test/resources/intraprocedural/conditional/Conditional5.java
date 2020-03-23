@@ -3,22 +3,19 @@ package intraprocedural.conditional;
 public class Conditional5 {
 
     public static void main(String args[]) {
-        int a = 1;
-        int b = 2;
-        // IF_ICMPNE L1
-        if (a == 3) {
-            a -= b;
-            // IF_ICMPLE L2
-            if (b > 2) {
-                b -= b;
+        int a = 1; // L?
+        int b = 2; // L?
+        if (a == 3) { // IF_ICMPNE L1 L1104422581
+            a -= b; // L?
+            if (b > 2) { // IF_ICMPLE L2 L170052458
+                b -= b; // L?
+            } else { // GOTO L3 L1504937617
+                b /= b; // L2 L170052458
             }
-            // GOTO L2
-        } else {
-            // L1
-            a *= b;
+        } else { // GOTO L3 L1504937617
+            a *= b; // L1 L1104422581
         }
-        // L2
-        b += a;
+        b += a; // L3 L1504937617
     }
 
 }
