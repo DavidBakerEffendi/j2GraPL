@@ -22,11 +22,15 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.util.ASMifier;
 import za.ac.sun.grapl.domain.enums.EvaluationStrategies;
+import za.ac.sun.grapl.domain.enums.JumpAssociations;
 import za.ac.sun.grapl.domain.models.vertices.*;
 import za.ac.sun.grapl.hooks.IHook;
 import za.ac.sun.grapl.util.ASMParserUtil;
 
 import java.util.*;
+
+import static za.ac.sun.grapl.domain.enums.JumpAssociations.IF_CMP;
+import static za.ac.sun.grapl.domain.enums.JumpAssociations.JUMP;
 
 public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
 
@@ -37,16 +41,14 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     private final String classPath;
     private final String methodName;
     private final String methodSignature;
-    private final HashMap<Label, Integer> labelBlockNo = new HashMap<>();
-    private final HashMap<String, String> localVars = new HashMap<>();
-    private final HashMap<String, String> varTypes = new HashMap<>();
+    private final Map<Label, Integer> labelBlockNo = new HashMap<>();
+    private final Map<String, String> localVars = new HashMap<>();
+    private final Map<String, String> varTypes = new HashMap<>();
+    private final Map<Label, List<JumpAssociations>> lblJumpAssocs = new HashMap<>();
     private final Stack<String> operandStack = new Stack<>();
     private final Stack<Integer> blockHistory = new Stack<>();
-
-    private final Map<Label, List<JumpAssoc>> lblJumpAssocs = new HashMap<>();
     private final Stack<JumpState> jumpStateHistory = new Stack<>();
     private JumpState jumpState = JumpState.METHOD_BODY;
-
     private boolean enteringJumpBody = false;
     private int order = 0;
     private int currentLineNo = -1;
@@ -84,12 +86,6 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         else varTypes.put(varName, operationType);
 
         logger.debug("Creating base block to method with order ".concat(String.valueOf(order)));
-        if (enteringJumpBody) {
-            enteringJumpBody = false;
-            BlockVertex jumpBodyBlock = new BlockVertex(jumpState.name(), order++, 1, "VOID", currentLineNo);
-            this.hook.assignToBlock(methodVertex, jumpBodyBlock, blockHistory.peek());
-            blockHistory.push(jumpBodyBlock.order);
-        }
         final BlockVertex baseBlock = new BlockVertex(operation.substring(1), order++, 1, operationType, currentLineNo);
         if (!blockHistory.empty())
             this.hook.assignToBlock(methodVertex, baseBlock, blockHistory.peek());
@@ -125,20 +121,23 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         this.labelBlockNo.put(start, line);
 
         if (lblJumpAssocs.containsKey(start)) {
-            List<JumpAssoc> assocs = lblJumpAssocs.get(start);
-            if (assocs.contains(JumpAssoc.IF_CMP) && jumpState == JumpState.IF_ROOT) {
+            List<JumpAssociations> assocs = lblJumpAssocs.get(start);
+            if ((assocs.contains(IF_CMP)) && jumpState == JumpState.IF_ROOT) {
                 pushJumpState(JumpState.ELSE_BODY);
                 enteringJumpBody = true;
-            } else if ((assocs.contains(JumpAssoc.IF_CMP) && jumpState == JumpState.IF_BODY) ||
-                    (assocs.contains(JumpAssoc.GOTO) && jumpState == JumpState.ELSE_BODY)) {
+            } else if ((assocs.contains(IF_CMP) && jumpState == JumpState.IF_BODY) ||
+                    (assocs.contains(JUMP) && jumpStateHistory.peek() == JumpState.ELSE_BODY)) {
                 popJumpState();
-                jumpState = popJumpState();
-            } else if (assocs.contains(JumpAssoc.GOTO) && jumpState == JumpState.IF_BODY) {
-                jumpState = JumpState.IF_ROOT;
                 popJumpState();
             }
         }
 
+        if (enteringJumpBody) {
+            enteringJumpBody = false;
+            BlockVertex jumpBodyBlock = new BlockVertex(jumpState.name(), order++, 1, "VOID", currentLineNo);
+            this.hook.assignToBlock(methodVertex, jumpBodyBlock, blockHistory.peek());
+            blockHistory.push(jumpBodyBlock.order);
+        }
     }
 
     @Override
@@ -239,23 +238,24 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
      */
     private void visitJumpInsnNullaryJumps(String jumpOp, Label label) {
         logger.debug("Recognized nullary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
-        long numGotoAssocs = lblJumpAssocs.get(label).stream().filter((t) -> t == JumpAssoc.GOTO).count();
+        long numGotoAssocs = lblJumpAssocs.get(label).stream().filter((t) -> t == JUMP).count();
+
         if (jumpState == JumpState.IF_BODY) {
-            if (lblJumpAssocs.get(label).contains(JumpAssoc.IF_CMP)) {
-                System.out.println("Extra pop");
+            if (lblJumpAssocs.get(label).contains(IF_CMP)) {
                 popJumpState();
                 popJumpState();
             }
             popJumpState();
-            jumpState = JumpState.IF_ROOT;
+            jumpStateHistory.pop(); // So that there aren't duplicate IF_ROOTs
+            pushJumpState(JumpState.IF_ROOT);
         } else if (numGotoAssocs >= 2) {
-            System.out.println("extra assocs");
             for (int i = 0; i < numGotoAssocs; i++) {
                 popJumpState();
             }
             popJumpState();
-            jumpState = JumpState.IF_ROOT;
+            pushJumpState(JumpState.IF_ROOT);
         }
+
     }
 
     /**
@@ -348,14 +348,14 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         enteringJumpBody = true;
     }
 
+    /**
+     * Will associate the jump operation with the label in {@link ASTMethodVisitor#lblJumpAssocs}.
+     *
+     * @param label  the {@link Label} to associate.
+     * @param jumpOp the jump operation to parse and append to the current jump associations.
+     */
     private void addJumpLabelAssoc(Label label, String jumpOp) {
-        // TODO: Temporary parsing
-        JumpAssoc assoc = JumpAssoc.GOTO;
-        if (ASMParserUtil.BINARY_JUMPS.contains(jumpOp)) {
-            assoc = JumpAssoc.IF_CMP;
-        } else if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) {
-            assoc = JumpAssoc.GOTO;
-        }
+        JumpAssociations assoc = ASMParserUtil.parseJumpAssociation(jumpOp);
         if (lblJumpAssocs.containsKey(label)) {
             lblJumpAssocs.get(label).add(assoc);
         } else {
@@ -373,11 +373,6 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         logger.debug("Recognized unary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
         final String arg1 = operandStack.pop();
         logger.debug("Jump arguments = [".concat(arg1).concat("]"));
-    }
-
-    private void pushJumpState(JumpState state) {
-        jumpState = state;
-        jumpStateHistory.push(state);
     }
 
     @Override
@@ -398,6 +393,11 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         logger.debug("VAR TYPES: ".concat(varTypes.toString()));
     }
 
+    /**
+     * Generates the method meta-data vertices describing the method being visited.
+     *
+     * @param lineNumber the line number on which the method is within the class.
+     */
     public void generateMethodHeaderVertices(int lineNumber) {
         // Create METHOD
         final String shortName = methodName.substring(methodName.lastIndexOf('.') + 1);
@@ -426,9 +426,14 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
                 .forEach(m -> hook.createAndAddToMethod(this.methodVertex, new ModifierVertex(m, order++)));
     }
 
-    private JumpState popJumpState() {
+    private void pushJumpState(JumpState state) {
+        jumpState = state;
+        jumpStateHistory.push(state);
+    }
+
+    private void popJumpState() {
         blockHistory.pop();
-        return jumpStateHistory.pop();
+        jumpState = jumpStateHistory.pop();
     }
 
     private enum JumpState {
@@ -436,11 +441,6 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         IF_ROOT,
         IF_BODY,
         ELSE_BODY
-    }
-
-    private enum JumpAssoc {
-        IF_CMP,
-        GOTO
     }
 
     public int getOrder() {

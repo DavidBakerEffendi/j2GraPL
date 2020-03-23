@@ -37,7 +37,7 @@ public class ConditionalIntraproceduralTest {
     static void tearDownAll() throws IOException {
         ResourceCompilationUtil.deleteClassFiles(PATH);
         File f = new File(TEST_DIR);
-//        if (f.exists()) f.delete();
+        if (f.exists()) f.delete();
     }
 
     @BeforeEach
@@ -252,7 +252,7 @@ public class ConditionalIntraproceduralTest {
 
     @Test
     public void conditional5Test() {
-        // This test is a modified version of Conditional 5
+        // This test is a modified version of Conditional 4
         // Get conditional root
         Vertex ifRoot = g.V(methodRoot).repeat(__.out("AST")).emit()
                 .has(BlockVertex.LABEL.toString(), "name", "IF").next();
@@ -285,7 +285,7 @@ public class ConditionalIntraproceduralTest {
                 .has(BlockVertex.LABEL.toString(), "name", "STORE").hasNext());
         assertTrue(g.V(nestedIfBody).repeat(__.out("AST")).emit()
                 .has(BlockVertex.LABEL.toString(), "name", "SUB").hasNext());
-        // Check nested if body branch
+        // Check nested else body branch
         assertTrue(g.V(nestedIf).repeat(__.out("AST")).emit()
                 .has(BlockVertex.LABEL.toString(), "name", "ELSE_BODY").hasNext());
         Vertex nestedElseBody = g.V(nestedIf).repeat(__.out("AST")).emit()
@@ -339,7 +339,89 @@ public class ConditionalIntraproceduralTest {
 
     @Test
     public void conditional6Test() {
-        // TODO: Compare this to an accepted graph
+        // This test is a modified version of Conditional 5
+        // Get conditional root
+        Vertex ifRoot = g.V(methodRoot).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "IF").next();
+        assertNotNull(ifRoot);
+        // Check if branch
+        Vertex ifBody = g.V(ifRoot).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").next();
+        assertNotNull(ifBody);
+        assertTrue(g.V(ifBody).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "STORE").hasNext());
+        assertTrue(g.V(ifBody).repeat(__.out("AST")).emit()
+                .has(LocalVertex.LABEL.toString(), "name", "1").hasNext());
+        assertTrue(g.V(ifBody).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "SUB").hasNext());
+        assertTrue(g.V(ifBody).repeat(__.out("AST")).emit()
+                .has(LocalVertex.LABEL.toString(), "name", "2").hasNext());
+        assertTrue(g.V(ifBody).repeat(__.out("AST")).emit()
+                .has(LocalVertex.LABEL.toString(), "name", "1").hasNext());
+        // Check else branch
+        Vertex elseBody = g.V(ifRoot).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "ELSE_BODY").next();
+        assertNotNull(elseBody);
+        assertTrue(g.V(elseBody).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "STORE").hasNext());
+        assertTrue(g.V(elseBody).repeat(__.out("AST")).emit()
+                .has(LocalVertex.LABEL.toString(), "name", "2").hasNext());
+        assertTrue(g.V(elseBody).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "MUL").hasNext());
+        assertTrue(g.V(elseBody).repeat(__.out("AST")).emit()
+                .has(LocalVertex.LABEL.toString(), "name", "2").hasNext());
+        assertTrue(g.V(elseBody).repeat(__.out("AST")).emit()
+                .has(LocalVertex.LABEL.toString(), "name", "1").hasNext());
+        // Check nested else branch
+        assertTrue(g.V(elseBody).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "IF").hasNext());
+        Vertex nestedIf = g.V(elseBody).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "IF").next();
+        // Check nested if body branch
+        assertTrue(g.V(nestedIf).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").hasNext());
+        Vertex nestedIfBody = g.V(nestedIf).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").next();
+        assertTrue(g.V(nestedIfBody).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "STORE").hasNext());
+        assertTrue(g.V(nestedIfBody).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "SUB").hasNext());
+        // Check nested if body branch
+        assertTrue(g.V(nestedIf).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "ELSE_BODY").hasNext());
+        Vertex nestedElseBody = g.V(nestedIf).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "ELSE_BODY").next();
+        assertTrue(g.V(nestedElseBody).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "STORE").hasNext());
+        assertTrue(g.V(nestedElseBody).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "DIV").hasNext());
+        // Check nested condition branch
+        assertTrue(g.V(ifRoot).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", Equality.GT.name()).hasNext());
+        assertTrue(g.V(ifRoot).repeat(__.out("AST")).emit()
+                .has(LocalVertex.LABEL.toString(), "name", "1").hasNext());
+        assertTrue(g.V(ifRoot).repeat(__.out("AST")).emit()
+                .has(LocalVertex.LABEL.toString(), "name", "2").hasNext());
+        // Check condition branch
+        assertTrue(g.V(ifRoot).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", Equality.EQ.name()).hasNext());
+        assertTrue(g.V(ifRoot).repeat(__.out("AST")).emit()
+                .has(LocalVertex.LABEL.toString(), "name", "1").hasNext());
+        assertTrue(g.V(ifRoot).repeat(__.out("AST")).emit()
+                .has(LocalVertex.LABEL.toString(), "name", "2").hasNext());
+        // Check method-level operation
+        Vertex methodStoreRoot = g.V(methodRoot).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "STORE").next();
+        assertTrue(g.V(methodStoreRoot).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "ADD").hasNext());
+        assertTrue(g.V(methodStoreRoot).repeat(__.out("AST")).emit()
+                .has(LocalVertex.LABEL.toString(), "name", "2").hasNext());
+        Vertex storeOp = g.V(methodRoot).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "ADD").next();
+        assertTrue(g.V(storeOp).repeat(__.out("AST")).emit()
+                .has(LocalVertex.LABEL.toString(), "name", "2").hasNext());
+        assertTrue(g.V(storeOp).repeat(__.out("AST")).emit()
+                .has(LocalVertex.LABEL.toString(), "name", "1").hasNext());
     }
 
 }

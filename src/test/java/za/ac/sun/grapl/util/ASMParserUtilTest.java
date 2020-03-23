@@ -2,10 +2,7 @@ package za.ac.sun.grapl.util;
 
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.Opcodes;
-import za.ac.sun.grapl.domain.enums.Equality;
-import za.ac.sun.grapl.domain.enums.EvaluationStrategies;
-import za.ac.sun.grapl.domain.enums.ModifierTypes;
-import za.ac.sun.grapl.domain.enums.Operators;
+import za.ac.sun.grapl.domain.enums.*;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -182,11 +179,33 @@ public class ASMParserUtilTest {
     }
 
     @Test
+    public void testParseAndFlipEquality() {
+        assertEquals(Equality.NE, ASMParserUtil.parseAndFlipEquality("IF_ICMPEQ"));
+        assertEquals(Equality.NE, ASMParserUtil.parseAndFlipEquality("IFNULL"));
+        assertEquals(Equality.GT, ASMParserUtil.parseAndFlipEquality("IFLE"));
+        assertEquals(Equality.EQ, ASMParserUtil.parseAndFlipEquality("IFNONNULL"));
+        assertEquals(Equality.GT, ASMParserUtil.parseAndFlipEquality("IF_ICMPLE"));
+        assertEquals(Equality.GE, ASMParserUtil.parseAndFlipEquality("IFLT"));
+        assertEquals(Equality.LE, ASMParserUtil.parseAndFlipEquality("IF_ICMPGT"));
+        assertEquals(Equality.GT, ASMParserUtil.parseAndFlipEquality("IF_ICMPLE"));
+        assertEquals(Equality.UNKNOWN, ASMParserUtil.parseAndFlipEquality("GOTO"));
+        assertEquals(Equality.UNKNOWN, ASMParserUtil.parseAndFlipEquality("IF_JCMPLE"));
+    }
+
+    @Test
     public void testGetBinaryJumpType() {
         assertEquals("INTEGER", ASMParserUtil.getBinaryJumpType("IF_ICMPEQ"));
         assertEquals("OBJECT", ASMParserUtil.getBinaryJumpType("IF_ACMPEQ"));
         assertEquals("UNKNOWN", ASMParserUtil.getBinaryJumpType("IF_LCMPEQ"));
         assertEquals("UNKNOWN", ASMParserUtil.getBinaryJumpType(null));
+    }
+
+    @Test
+    public void testParseJumpAssociation() {
+        assertEquals(JumpAssociations.JUMP, ASMParserUtil.parseJumpAssociation("GOTO"));
+        assertEquals(JumpAssociations.IF_CMP, ASMParserUtil.parseJumpAssociation("IF_ACMPEQ"));
+        assertEquals(null, ASMParserUtil.parseJumpAssociation("IF_LCMPEQ"));
+        assertEquals(null, ASMParserUtil.parseJumpAssociation(null));
     }
 
 }
