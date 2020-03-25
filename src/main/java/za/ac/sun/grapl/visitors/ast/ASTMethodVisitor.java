@@ -47,7 +47,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     private final Map<Label, List<JumpAssociations>> lblJumpAssocs = new HashMap<>();
     private final Stack<String> operandStack = new Stack<>();
     private final Stack<Integer> blockHistory = new Stack<>();
-    private final Stack<JumpState> jumpStateHistory = new Stack<>();
+    private final Stack<JumpSnapshot> jumpStateHistory = new Stack<>();
     private JumpState jumpState = JumpState.METHOD_BODY;
     private boolean enteringJumpBody = false;
     private int order = 0;
@@ -122,11 +122,11 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
 
         if (lblJumpAssocs.containsKey(start)) {
             List<JumpAssociations> assocs = lblJumpAssocs.get(start);
-            if ((assocs.contains(IF_CMP)) && jumpState == JumpState.IF_ROOT) {
-                pushJumpState(JumpState.ELSE_BODY);
+            if ((assocs.contains(IF_CMP)) && jumpStateHistory.peek().state == JumpState.IF_ROOT) {
+                pushJumpState(JumpState.ELSE_BODY, start);
                 enteringJumpBody = true;
-            } else if ((assocs.contains(IF_CMP) && jumpState == JumpState.IF_BODY) ||
-                    (assocs.contains(JUMP) && jumpStateHistory.peek() == JumpState.ELSE_BODY)) {
+            } else if ((assocs.contains(IF_CMP) && jumpStateHistory.peek().state == JumpState.IF_BODY) ||
+                    (assocs.contains(JUMP) && jumpStateHistory.peek().state == JumpState.ELSE_BODY)) {
                 popJumpState();
                 popJumpState();
             }
@@ -179,6 +179,12 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
                 .add(") to operand stack with type").add(variableType));
         operandStack.push("V".concat(varName));
         varTypes.put(varName, variableType);
+    }
+
+    @Override
+    public void visitIincInsn(int var, int increment) {
+        super.visitIincInsn(var, increment);
+        // TODO: This still has to be implemented
     }
 
     @Override
@@ -241,19 +247,19 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         long numGotoAssocs = lblJumpAssocs.get(label).stream().filter((t) -> t == JUMP).count();
 
         if (jumpState == JumpState.IF_BODY) {
-            if (lblJumpAssocs.get(label).contains(IF_CMP)) {
+            if (lblJumpAssocs.get(label).contains(IF_CMP) && jumpStateHistory.peek().label == label) {
                 popJumpState();
                 popJumpState();
             }
             popJumpState();
             jumpStateHistory.pop(); // So that there aren't duplicate IF_ROOTs
-            pushJumpState(JumpState.IF_ROOT);
+            pushJumpState(JumpState.IF_ROOT, label);
         } else if (numGotoAssocs >= 2) {
             for (int i = 0; i < numGotoAssocs; i++) {
                 popJumpState();
             }
             popJumpState();
-            pushJumpState(JumpState.IF_ROOT);
+            pushJumpState(JumpState.IF_ROOT, label);
         }
 
     }
@@ -325,7 +331,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         final String[] sfx = new String[]{arg1.substring(1), arg2.substring(1)};
         final String jumpType = ASMParserUtil.getBinaryJumpType(jumpOp);
 
-        pushJumpState(JumpState.IF_ROOT);
+        pushJumpState(JumpState.IF_ROOT, label);
 
         BlockVertex condRoot = new BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo);
         BlockVertex condBlock = new BlockVertex(ASMParserUtil.parseAndFlipEquality(jumpOp).toString(), order++, 2, jumpType, currentLineNo);
@@ -344,7 +350,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
 
         blockHistory.push(condRoot.order);
         // Let "body" methods know that they need to enter body
-        pushJumpState(JumpState.IF_BODY);
+        pushJumpState(JumpState.IF_BODY, label);
         enteringJumpBody = true;
     }
 
@@ -426,14 +432,14 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
                 .forEach(m -> hook.createAndAddToMethod(this.methodVertex, new ModifierVertex(m, order++)));
     }
 
-    private void pushJumpState(JumpState state) {
+    private void pushJumpState(JumpState state, Label label) {
         jumpState = state;
-        jumpStateHistory.push(state);
+        jumpStateHistory.push(new JumpSnapshot(state, label));
     }
 
     private void popJumpState() {
         blockHistory.pop();
-        jumpState = jumpStateHistory.pop();
+        jumpState = jumpStateHistory.pop().state;
     }
 
     private enum JumpState {
@@ -450,4 +456,22 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     public void setOrder(int order) {
         this.order = order;
     }
+
+    private static class JumpSnapshot {
+
+        public final JumpState state;
+        public final Label label;
+
+        public JumpSnapshot(JumpState state, Label label) {
+            this.state = state;
+            this.label = label;
+        }
+
+        @Override
+        public String toString() {
+            return "[".concat(state.toString())
+                    .concat(" -> ").concat(label.toString()).concat("]");
+        }
+    }
+
 }
