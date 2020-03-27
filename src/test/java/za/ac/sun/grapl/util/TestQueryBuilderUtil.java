@@ -6,6 +6,10 @@ import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import za.ac.sun.grapl.domain.enums.EdgeLabels;
 import za.ac.sun.grapl.domain.enums.VertexLabels;
+import za.ac.sun.grapl.domain.models.vertices.BlockVertex;
+import za.ac.sun.grapl.domain.models.vertices.MethodParameterInVertex;
+import za.ac.sun.grapl.domain.models.vertices.MethodReturnVertex;
+import za.ac.sun.grapl.domain.models.vertices.ModifierVertex;
 
 public class TestQueryBuilderUtil {
 
@@ -15,6 +19,22 @@ public class TestQueryBuilderUtil {
 
     public static GraphTraversal<Vertex, Vertex> getVertexAlongEdge(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex, VertexLabels label, String key, String value) {
         return buildASTRepeat(g, edge, rootVertex).has(label.toString(), key, value);
+    }
+
+    public static GraphTraversal<Vertex, Vertex> buildStoreTraversal(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex) {
+        return getVertexAlongEdge(g, edge, rootVertex, BlockVertex.LABEL, "name", "STORE");
+    }
+
+    public static GraphTraversal<Vertex, Vertex> buildMethodModifierTraversal(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex) {
+        return buildASTRepeat(g, edge, rootVertex).hasLabel(ModifierVertex.LABEL.toString());
+    }
+
+    public static GraphTraversal<Vertex, Vertex> buildMethodReturnTraversal(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex) {
+        return buildASTRepeat(g, edge, rootVertex).hasLabel(MethodReturnVertex.LABEL.toString());
+    }
+
+    public static GraphTraversal<Vertex, Vertex> buildMethodParameterInTraversal(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex) {
+        return buildASTRepeat(g, edge, rootVertex).hasLabel(MethodParameterInVertex.LABEL.toString());
     }
 
 }

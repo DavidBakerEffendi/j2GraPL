@@ -1,5 +1,7 @@
 package za.ac.sun.grapl.intraprocedural;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
@@ -25,6 +27,8 @@ import static za.ac.sun.grapl.util.TestQueryBuilderUtil.getVertexAlongEdge;
 
 public class ConditionalIntraproceduralTest {
 
+    final static Logger logger = LogManager.getLogger();
+
     private static final String PATH = "intraprocedural/conditional/";
     private static final String TEST_DIR = "/tmp/grapl/intraprocedural_test.xml";
     private CannonLoader fileCannon;
@@ -41,7 +45,11 @@ public class ConditionalIntraproceduralTest {
     static void tearDownAll() throws IOException {
         ResourceCompilationUtil.deleteClassFiles(PATH);
         File f = new File(TEST_DIR);
-        if (f.exists()) f.delete();
+        if (f.exists()) {
+            if (!f.delete()) {
+                logger.warn("Could not clear " + ConditionalIntraproceduralTest.class.getName() + "'s test resources.");
+            }
+        }
     }
 
     @BeforeEach
@@ -73,8 +81,7 @@ public class ConditionalIntraproceduralTest {
     @Test
     public void conditional1Test() {
         // Get conditional root
-        final GraphTraversal<Vertex, Vertex> ifRootTraversal = g.V(methodRoot).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF");
+        final GraphTraversal<Vertex, Vertex> ifRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "IF");
         assertTrue(ifRootTraversal.hasNext());
         Vertex ifRoot = ifRootTraversal.next();
         // Check if branch
