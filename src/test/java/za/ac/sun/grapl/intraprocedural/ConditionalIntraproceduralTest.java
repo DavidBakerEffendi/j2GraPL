@@ -41,7 +41,7 @@ public class ConditionalIntraproceduralTest {
     static void tearDownAll() throws IOException {
         ResourceCompilationUtil.deleteClassFiles(PATH);
         File f = new File(TEST_DIR);
-//        if (f.exists()) f.delete();
+        if (f.exists()) f.delete();
     }
 
     @BeforeEach
@@ -526,4 +526,5 @@ public class ConditionalIntraproceduralTest {
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, elseBody, BlockVertex.LABEL, "name", "STORE").hasNext());
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, elseBody, BlockVertex.LABEL, "name", "MUL").hasNext());
     }
+
 }
