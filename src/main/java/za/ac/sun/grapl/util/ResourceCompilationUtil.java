@@ -21,12 +21,23 @@ public class ResourceCompilationUtil {
 
     final static Logger logger = LogManager.getLogger();
 
-    public static void validateFileAsDirectory(File f) throws IOException {
+    /**
+     * Validates the given file as a directory that exists.
+     *
+     * @param f the file to validate
+     * @throws IOException if the file is not a valid directory or does not exist.
+     */
+    private static void validateFileAsDirectory(File f) throws IOException {
         // Validate path
         if (!f.isDirectory()) throw new IOException("The path must point to a valid directory!");
         if (!f.exists()) throw new IOException("The path does not exist!");
     }
 
+    /**
+     * Given a path to a Java source file, programmatically compiles the source (.java) file.
+     *
+     * @param file the source file to compile
+     */
     public static void compileJavaFile(File file) {
         final JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
         final StandardJavaFileManager fileManager = javac.getStandardFileManager(null, null, null);
@@ -79,6 +90,13 @@ public class ResourceCompilationUtil {
         }
     }
 
+    /**
+     * Returns a list of all the class files under a given directory recursively.
+     *
+     * @param path the path to the directory
+     * @return a list of all .class files under the given directory
+     * @throws IOException if the path is not a directory or does not exist
+     */
     public static List<String> fetchClassFiles(File path) throws IOException {
         validateFileAsDirectory(path);
         try (Stream<Path> walk = Files.walk(Paths.get(path.getAbsolutePath()))) {

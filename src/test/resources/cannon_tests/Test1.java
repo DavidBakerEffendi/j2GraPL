@@ -1,4 +1,4 @@
-package intraprocedural.basic;
+package cannon_tests;
 
 public class Test1 {
 
