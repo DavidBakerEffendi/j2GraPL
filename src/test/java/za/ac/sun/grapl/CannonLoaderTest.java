@@ -1,73 +1,68 @@
 package za.ac.sun.grapl;
 
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import za.ac.sun.grapl.hooks.TinkerGraphHook;
-import za.ac.sun.grapl.util.ResourceCompilationUtil;
 
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 import java.util.Objects;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class CannonLoaderTest {
 
-    private static final String PATH = "intraprocedural/basic/";
-    private CannonLoader fileCannon;
-    private File validFile;
-    private TinkerGraphHook hook;
+    private static CannonLoader fileCannon;
+    private static File validSourceFile;
+    private static File validClassFile;
+    private static File validDirectory;
+    private static TinkerGraphHook hook;
 
-    @BeforeEach
-    public void setUpAll() throws IOException {
-        ResourceCompilationUtil.compileJavaFiles(PATH);
-        final URL resource = getClass().getClassLoader().getResource("intraprocedural/basic/Basic1.class");
-        String resourceDir = Objects.requireNonNull(resource).getFile();
-        this.validFile = new File(resourceDir);
-        hook = new TinkerGraphHook.TinkerGraphHookBuilder("/tmp/grapl/intraprocedural_test.kryo").createNewGraph(true).build();
+    @BeforeAll
+    static void setUpAll() {
+        final URL validSourceURL = CannonLoaderTest.class.getClassLoader().getResource("cannon_tests/Test1.java");
+        final URL validClassURL = CannonLoaderTest.class.getClassLoader().getResource("cannon_tests/Test2.class");
+        final URL validDirectoryURL = CannonLoaderTest.class.getClassLoader().getResource("cannon_tests/dir_test");
+        String validSourceFileDir = Objects.requireNonNull(validSourceURL).getFile();
+        String validClassFileDir = Objects.requireNonNull(validClassURL).getFile();
+        String validDirectoryFileDir = Objects.requireNonNull(validDirectoryURL).getFile();
+        validSourceFile = new File(validSourceFileDir);
+        validClassFile = new File(validClassFileDir);
+        validDirectory = new File(validDirectoryFileDir);
+        hook = new TinkerGraphHook.TinkerGraphHookBuilder("/tmp/grapl/intraprocedural_test.xml").createNewGraph(true).build();
         fileCannon = new CannonLoader(hook);
     }
 
     @Test
-    public void validClassFireOneTest() {
-        fileCannon.loadClassFile(this.validFile);
-        fileCannon.fireOne();
+    public void validSourceFileTest() throws IOException {
+        fileCannon.load(validSourceFile);
+        fileCannon.fire();
+        hook.exportCurrentGraph();
     }
 
     @Test
-    public void validClassFireAllTest() {
-        fileCannon.loadClassFile(this.validFile);
-        fileCannon.fireAll();
+    public void validClassFileTest() throws IOException {
+        fileCannon.load(validClassFile);
+        fileCannon.fire();
+        hook.exportCurrentGraph();
     }
 
     @Test
-    public void loadNullClassFireOneTest() {
-        assertThrows(NullPointerException.class, () -> fileCannon.loadClassFile(null));
+    public void validDirectoryTest() throws IOException {
+        fileCannon.load(validDirectory);
+        fileCannon.fire();
+        hook.exportCurrentGraph();
     }
 
     @Test
-    public void fireOneThatDoesNotExistTest() {
-        fileCannon.loadClassFile(new File("dne.class"));
-        assertDoesNotThrow(() -> fileCannon.fireOne());
+    public void loadNullFileTest() {
+        assertThrows(NullPointerException.class, () -> fileCannon.load(null));
     }
 
     @Test
-    public void fireAllThatDoesNotExistTest() {
-        fileCannon.loadClassFile(new File("dne1.class"));
-        fileCannon.loadClassFile(new File("dne2.class"));
-        assertDoesNotThrow(() -> fileCannon.fireAll());
+    public void loadFileThatDoesNotExistTest() {
+        assertThrows(NullPointerException.class, () -> fileCannon.load(new File("dne.class")));
     }
 
-    @Test
-    public void fireOutofBoundsTest() {
-        fileCannon.loadClassFile(this.validFile);
-        assertDoesNotThrow(() -> fileCannon.fireOne(2));
-    }
-
-    @Test
-    public void emptyJarTest() {
-        fileCannon.loadJarFile(null);
-    }
 }

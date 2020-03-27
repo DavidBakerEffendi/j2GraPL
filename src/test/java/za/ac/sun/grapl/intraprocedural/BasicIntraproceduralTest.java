@@ -6,7 +6,10 @@ import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.tinkergraph.structure.TinkerGraph;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import za.ac.sun.grapl.CannonLoader;
 import za.ac.sun.grapl.domain.enums.EdgeLabels;
 import za.ac.sun.grapl.domain.models.vertices.BlockVertex;
@@ -17,7 +20,6 @@ import za.ac.sun.grapl.util.ResourceCompilationUtil;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.util.Objects;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -28,16 +30,13 @@ public class BasicIntraproceduralTest {
 
     final static Logger logger = LogManager.getLogger();
 
-    private static final String PATH = "intraprocedural/basic/";
-    private static final String TEST_DIR = "/tmp/grapl/intraprocedural_test.xml";
-    private CannonLoader fileCannon;
-    private TinkerGraphHook hook;
+    private static final File PATH;
+    private static final String TEST_DIR = "/tmp/grapl/j2grapl_test.xml";
     private GraphTraversalSource g;
     private String currentTestNumber;
 
-    @BeforeAll
-    static void setUpAll() throws IOException {
-        ResourceCompilationUtil.compileJavaFiles(PATH);
+    static {
+        PATH = new File(Objects.requireNonNull(ArithmeticTest.class.getClassLoader().getResource("intraprocedural/basic")).getFile());
     }
 
     @AfterAll
@@ -52,19 +51,18 @@ public class BasicIntraproceduralTest {
     }
 
     @BeforeEach
-    public void setUp(TestInfo testInfo) {
-        hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
-        fileCannon = new CannonLoader(hook);
+    public void setUp(TestInfo testInfo) throws IOException {
+        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
+        CannonLoader fileCannon = new CannonLoader(hook);
         // Select test resource based on integer in method name
         currentTestNumber = testInfo
                 .getDisplayName()
                 .replaceAll("[^0-9]", "");
-        final URL resource = getClass().getClassLoader().getResource(PATH.concat("Basic").concat(currentTestNumber).concat(".class"));
-        String resourceDir = Objects.requireNonNull(resource).getFile();
+        String resourceDir = PATH.getAbsolutePath().concat("/Basic").concat(currentTestNumber).concat(".java");
         // Load test resource and project + export graph
         File f = new File(resourceDir);
-        fileCannon.loadClassFile(f);
-        fileCannon.fireOne();
+        fileCannon.load(f);
+        fileCannon.fire();
         hook.exportCurrentGraph();
 
         g = TinkerGraph.open().traversal();

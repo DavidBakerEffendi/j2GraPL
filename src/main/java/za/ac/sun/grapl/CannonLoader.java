@@ -19,12 +19,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.ClassReader;
 import za.ac.sun.grapl.hooks.IHook;
+import za.ac.sun.grapl.util.ResourceCompilationUtil;
 import za.ac.sun.grapl.visitors.ast.ASTClassVisitor;
 import za.ac.sun.grapl.visitors.debug.DebugClassVisitor;
 
-import java.io.*;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.LinkedList;
-import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
 public class CannonLoader {
@@ -34,35 +37,42 @@ public class CannonLoader {
     private final LinkedList<File> loadedFiles;
     private final IHook hook;
 
-    public CannonLoader(IHook hook) {
+    public CannonLoader(final IHook hook) {
         this.loadedFiles = new LinkedList<>();
         this.hook = hook;
     }
 
     /**
-     * Loads a single Java class file into the cannon.
+     * Loads a single Java class file or directory of class files into the cannon.
      *
-     * @param file the Java class file.
+     * @param file the Java source/class file or directory of source/class files.
      * @throws NullPointerException if the file is null
+     * @throws IOException          In the case of a directory given, this would throw if .java files fail to compile
      */
-    public void loadClassFile(File file) throws NullPointerException {
+    public void load(final File file) throws NullPointerException, IOException {
         if (file == null) throw new NullPointerException("File may not be null!");
-        this.loadedFiles.add(file);
-    }
-
-    /**
-     * Loads a single Java JAR file into the cannon.
-     *
-     * @param jarFile the JAR file.
-     */
-    public void loadJarFile(JarFile jarFile) {
-        // TODO: Load class files into the cannon
+        if (file.isDirectory()) {
+            // Any .java files will automatically be compiled
+            ResourceCompilationUtil.compileJavaFiles(file);
+            ResourceCompilationUtil.fetchClassFiles(file).forEach((f) -> loadedFiles.add(new File(f)));
+        } else if (file.isFile()) {
+            if (file.getName().endsWith(".java")) {
+                ResourceCompilationUtil.compileJavaFile(file);
+                this.loadedFiles.add(new File(file.getAbsolutePath().replace(".java", ".class")));
+            } else if (file.getName().endsWith(".jar")) {
+                // TODO: Load class files into the cannon
+            } else if (file.getName().endsWith(".class")) {
+                this.loadedFiles.add(file);
+            }
+        } else if (!file.exists()) {
+            throw new NullPointerException("File '" + file.getName() + "' does not exist!");
+        }
     }
 
     /**
      * Fires all loaded Java classes currently loaded.
      */
-    public void fireAll() {
+    public void fire() {
         this.loadedFiles.stream().flatMap(f -> {
             try {
                 this.fire(f);
@@ -74,31 +84,6 @@ public class CannonLoader {
             e1.addSuppressed(e2);
             return e1;
         }).ifPresent(logger::error);
-    }
-
-    /**
-     * Fires the first file in the list of loaded in the cannon.
-     */
-    public void fireOne() {
-        this.fireOne(0);
-    }
-
-    /**
-     * Fires the file at index i in the cannon.
-     *
-     * @param i the index of the file to fire.
-     */
-    public void fireOne(final int i) {
-        File f;
-        try {
-            f = this.loadedFiles.get(i);
-            this.fire(f);
-        } catch (IOException e) {
-            if (e instanceof FileNotFoundException) logger.error("File at " + i + " not found!", e);
-            else logger.error("I/O Exception while accessing '" + i + "'.", e);
-        } catch (IndexOutOfBoundsException e) {
-            logger.error("Index " + i + " is out of bounds!", e);
-        }
     }
 
     /**

@@ -1,80 +1,82 @@
 package za.ac.sun.grapl.interprocedural;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
+import org.apache.tinkerpop.gremlin.tinkergraph.structure.TinkerGraph;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestInfo;
 import za.ac.sun.grapl.CannonLoader;
 import za.ac.sun.grapl.hooks.TinkerGraphHook;
+import za.ac.sun.grapl.intraprocedural.ArithmeticTest;
 import za.ac.sun.grapl.util.ResourceCompilationUtil;
 
 import java.io.File;
 import java.io.IOException;
-import java.net.URL;
 import java.util.Objects;
 
 public class BasicInterproceduralTest {
 
-    private static final String PATH = "interprocedural/basic/";
-    private static final String TEST_DIR = "/tmp/grapl/intraprocedural_test.kryo";
-    private CannonLoader fileCannon;
-    private TinkerGraphHook hook;
+    final static Logger logger = LogManager.getLogger();
 
-    @BeforeEach
-    public synchronized void setUpAll() throws IOException {
-        ResourceCompilationUtil.compileJavaFiles(PATH);
-        hook = new TinkerGraphHook.TinkerGraphHookBuilder("/tmp/grapl/intraprocedural_test.kryo").createNewGraph(true).build();
-        fileCannon = new CannonLoader(hook);
+    private static final File PATH;
+    private static final String TEST_DIR = "/tmp/grapl/j2grapl_test.kryo";
+    private CannonLoader fileCannon;
+
+    static {
+        PATH = new File(Objects.requireNonNull(ArithmeticTest.class.getClassLoader().getResource("interprocedural/basic/")).getFile());
     }
 
+    private GraphTraversalSource g;
+
     @AfterAll
-    static void tearDownAll() {
+    static void tearDownAll() throws IOException {
+        ResourceCompilationUtil.deleteClassFiles(PATH);
         File f = new File(TEST_DIR);
-        if (f.exists()) f.delete();
+        if (f.exists()) {
+            if (!f.delete()) {
+                logger.warn("Could not clear " + ArithmeticTest.class.getName() + "'s test resources.");
+            }
+        }
+    }
+
+    @BeforeEach
+    public void setUp(TestInfo testInfo) throws IOException {
+        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
+        fileCannon = new CannonLoader(hook);
+        // Select test resource based on integer in method name
+        final String currentTestNumber = testInfo.getDisplayName().replaceAll("[^0-9]", "");
+        String resourceDir = PATH.getAbsolutePath().concat("/Basic").concat(currentTestNumber).concat(".java");
+        // Load test resource and project + export graph
+        File f = new File(resourceDir);
+        fileCannon.load(f);
+        fileCannon.fire();
+        hook.exportCurrentGraph();
+
+        g = TinkerGraph.open().traversal();
+        g.io(TEST_DIR).read().iterate();
     }
 
     @Test
     public void basicCall1Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Basic1.class");
-        final String resourceDir = Objects.requireNonNull(resource).getFile();
-        final File f = new File(resourceDir);
-        fileCannon.loadClassFile(f);
-        fileCannon.fireOne();
     }
 
     @Test
     public void basicCall2Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Basic2.class");
-        final String resourceDir = Objects.requireNonNull(resource).getFile();
-        final File f = new File(resourceDir);
-        fileCannon.loadClassFile(f);
-        fileCannon.fireOne();
     }
 
     @Test
     public void basicCall3Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Basic3.class");
-        final String resourceDir = Objects.requireNonNull(resource).getFile();
-        final File f = new File(resourceDir);
-        fileCannon.loadClassFile(f);
-        fileCannon.fireOne();
     }
 
     @Test
     public void basicCall4Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Basic4.class");
-        final String resourceDir = Objects.requireNonNull(resource).getFile();
-        final File f = new File(resourceDir);
-        fileCannon.loadClassFile(f);
-        fileCannon.fireOne();
     }
 
     @Test
     public void basicCall5Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Basic5.class");
-        final String resourceDir = Objects.requireNonNull(resource).getFile();
-        final File f = new File(resourceDir);
-        fileCannon.loadClassFile(f);
-        fileCannon.fireOne();
     }
 
 }
