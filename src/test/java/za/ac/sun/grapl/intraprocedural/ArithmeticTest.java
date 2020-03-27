@@ -1,8 +1,6 @@
 package za.ac.sun.grapl.intraprocedural;
 
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import za.ac.sun.grapl.CannonLoader;
 import za.ac.sun.grapl.hooks.TinkerGraphHook;
 import za.ac.sun.grapl.util.ResourceCompilationUtil;
@@ -19,82 +17,62 @@ public class ArithmeticTest {
     private CannonLoader fileCannon;
     private TinkerGraphHook hook;
 
+    @BeforeAll
+    static void setUpAll() throws IOException {
+        ResourceCompilationUtil.compileJavaFiles(PATH);
+    }
+
     @AfterAll
-    static void tearDownAll() {
+    static void tearDownAll() throws IOException {
+        ResourceCompilationUtil.deleteClassFiles(PATH);
         File f = new File(TEST_DIR);
         if (f.exists()) f.delete();
     }
 
     @BeforeEach
-    public void setUpAll() throws IOException {
-        ResourceCompilationUtil.compileJavaFiles(PATH);
+    public void setUp(TestInfo testInfo) {
         hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
         fileCannon = new CannonLoader(hook);
-    }
-
-    @Test
-    public void arithmetic1Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic1.class");
+        // Select test resource based on integer in method name
+        final String currentTestNumber = testInfo
+                .getDisplayName()
+                .replaceAll("[^0-9]", "");
+        final URL resource = getClass().getClassLoader().getResource(PATH.concat("Arithmetic").concat(currentTestNumber).concat(".class"));
         String resourceDir = Objects.requireNonNull(resource).getFile();
+        // Load test resource and project + export graph
         File f = new File(resourceDir);
         fileCannon.loadClassFile(f);
         fileCannon.fireOne();
         hook.exportCurrentGraph();
+    }
+
+    @Test
+    public void arithmetic1Test() {
         // TODO: Compare this to an accepted graph
     }
 
     @Test
     public void arithmetic2Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic2.class");
-        String resourceDir = Objects.requireNonNull(resource).getFile();
-        File f = new File(resourceDir);
-        fileCannon.loadClassFile(f);
-        fileCannon.fireOne();
-        hook.exportCurrentGraph();
         // TODO: Compare this to an accepted graph
     }
 
     @Test
     public void arithmetic3Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic3.class");
-        String resourceDir = Objects.requireNonNull(resource).getFile();
-        File f = new File(resourceDir);
-        fileCannon.loadClassFile(f);
-        fileCannon.fireOne();
-        hook.exportCurrentGraph();
         // TODO: Compare this to an accepted graph
     }
 
     @Test
     public void arithmetic4Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic4.class");
-        String resourceDir = Objects.requireNonNull(resource).getFile();
-        File f = new File(resourceDir);
-        fileCannon.loadClassFile(f);
-        fileCannon.fireOne();
-        hook.exportCurrentGraph();
         // TODO: Compare this to an accepted graph
     }
 
     @Test
     public void arithmetic5Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic5.class");
-        String resourceDir = Objects.requireNonNull(resource).getFile();
-        File f = new File(resourceDir);
-        fileCannon.loadClassFile(f);
-        fileCannon.fireOne();
-        hook.exportCurrentGraph();
         // TODO: Compare this to an accepted graph
     }
 
     @Test
     public void arithmetic6Test() {
-        final URL resource = getClass().getClassLoader().getResource(PATH + "Arithmetic6.class");
-        String resourceDir = Objects.requireNonNull(resource).getFile();
-        File f = new File(resourceDir);
-        fileCannon.loadClassFile(f);
-        fileCannon.fireOne();
-        hook.exportCurrentGraph();
         // TODO: Compare this to an accepted graph
     }
 
