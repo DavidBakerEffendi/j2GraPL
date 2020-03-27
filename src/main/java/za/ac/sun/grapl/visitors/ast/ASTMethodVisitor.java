@@ -50,7 +50,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     private final Stack<JumpSnapshot> jumpStateHistory = new Stack<>();
     private JumpState jumpState = JumpState.METHOD_BODY;
     private boolean enteringJumpBody = false;
-    private boolean leftEmptyBody = false;
+    private boolean currentJumpBodyEmpty = false;
     private int order = 0;
     private int currentLineNo = -1;
     private MethodVertex methodVertex;
@@ -73,7 +73,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
      * @param varName   the variable name.
      */
     private void visitVarInsnStore(String operation, String varName) {
-        leftEmptyBody = false;
+        currentJumpBodyEmpty = false;
         final String result = operandStack.pop();
         final String sfx = result.substring(1);
         final char pfx = result.charAt(0);
@@ -122,28 +122,19 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         this.currentLineNo = line;
         this.labelBlockNo.put(start, line);
 
-        System.out.println("@" + start);
-
         if (lblJumpAssocs.containsKey(start)) {
             List<JumpAssociations> assocs = lblJumpAssocs.get(start);
-            System.out.println("Assocs " + assocs);
-            System.out.println("Hist " + jumpStateHistory);
-            System.out.println("Bloch hist " + blockHistory);
             while (jumpStateHistory.size() >= 2 && assocs.contains(IF_CMP)
                     && jumpStateHistory.peek().label != start && !blockHistory.isEmpty()
                     && jumpStateHistory.peek().state == JumpState.IF_ROOT) {
-                System.out.println("Popping!");
                 popJumpState();
                 popJumpState();
-                System.out.println("New state hist " + jumpStateHistory);
             }
             if ((assocs.contains(IF_CMP)) && jumpStateHistory.peek().state == JumpState.IF_ROOT) {
-                System.out.println("entering jump body");
                 pushJumpState(JumpState.ELSE_BODY, start);
                 enteringJumpBody = true;
             } else if ((assocs.contains(IF_CMP) && jumpStateHistory.peek().state == JumpState.IF_BODY) ||
                     (assocs.contains(JUMP) && jumpStateHistory.peek().state == JumpState.ELSE_BODY)) {
-                System.out.println("pop x2 out");
                 popJumpState();
                 popJumpState();
             }
@@ -201,7 +192,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     @Override
     public void visitIincInsn(int var, int increment) {
         super.visitIincInsn(var, increment);
-        leftEmptyBody = false;
+        currentJumpBodyEmpty = false;
         // TODO: This still has to be implemented
     }
 
@@ -210,11 +201,11 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         super.visitJumpInsn(opcode, label);
         final String jumpOp = ASMifier.OPCODES[opcode];
         addJumpLabelAssoc(label, jumpOp);
-        System.out.println("Entering jump " + jumpOp + " to " + label + " hist " + jumpStateHistory);
+
         if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) visitJumpInsnNullaryJumps(jumpOp, label);
         else if (ASMParserUtil.UNARY_JUMPS.contains(jumpOp)) visitJumpInsnUnaryJumps(jumpOp, label);
         else if (ASMParserUtil.BINARY_JUMPS.contains(jumpOp)) visitJumpInsnBinaryJumps(jumpOp, label);
-        System.out.println("Leaving jump " + jumpOp + " to " + label + " hist " + jumpStateHistory);
+
         enteringJumpBody = true;
     }
 
@@ -265,19 +256,16 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         long numGotoAssocs = lblJumpAssocs.get(label).stream().filter((t) -> t == JUMP).count();
 
         if (jumpState == JumpState.IF_BODY) {
-            int debug = 0;
             if (lblJumpAssocs.get(label).contains(IF_CMP) && jumpStateHistory.peek().label == label) {
                 popJumpState();
                 popJumpState();
-                debug += 2;
             }
             Label tempLabel = jumpStateHistory.peek().label;
-            if (!leftEmptyBody) {
+            if (!currentJumpBodyEmpty) {
                 popJumpState();
             }
-            jumpStateHistory.pop(); // So that there aren't duplicate IF_ROOTs
+            jumpStateHistory.pop(); // So that there aren't duplicate IF_ROOTs - this may be a result of a bug
             pushJumpState(JumpState.IF_ROOT, tempLabel);
-            System.out.println("POP x" + (debug + 1) + " PUSH x1");
         } else if (numGotoAssocs >= 2) {
             for (int i = 0; i < numGotoAssocs; i++) {
                 popJumpState();
@@ -285,7 +273,6 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
             Label tempLabel = jumpStateHistory.peek().label;
             popJumpState();
             pushJumpState(JumpState.IF_ROOT, tempLabel);
-            System.out.println("POP x" + (numGotoAssocs + 1) + " PUSH x1");
         }
 
     }
@@ -376,9 +363,8 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         // Let "body" methods know that they need to enter body
         pushJumpState(JumpState.IF_BODY, label);
         enteringJumpBody = true;
-        // Trigger "empty body" which will only be changed before another GOTO encountered
-        leftEmptyBody = true;
-        System.out.println("blocc hist " + blockHistory);
+        // Trigger "empty body" which will only be checked before another GOTO is encountered
+        currentJumpBodyEmpty = true;
     }
 
     /**
