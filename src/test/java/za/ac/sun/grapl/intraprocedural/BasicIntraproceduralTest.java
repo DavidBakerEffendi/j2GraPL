@@ -219,4 +219,28 @@ public class BasicIntraproceduralTest {
                 .hasLabel(VertexLabels.NAMESPACE_BLOCK.toString()).hasNext());
     }
 
+    @Test
+    public void basic6Test() throws IOException {
+        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(false).build();
+        Cannon fileCannon = new Cannon(hook);
+        String resourceDir = PATH.getAbsolutePath().concat("/basic6/Basic6.java");
+        // Load test resource and project + export graph
+        File f = new File(resourceDir);
+        fileCannon.load(f);
+        fileCannon.fire();
+        hook.exportCurrentGraph();
+
+//        g = TinkerGraph.open().traversal();
+//        g.io(TEST_DIR).read().iterate();
+
+//        // This is Basic1 without a package, so we will just check that no package is present
+//        final GraphTraversal<Vertex, Vertex> mainMethodTraversal = g.V()
+//                .has("METHOD", "fullName", "Basic".concat(currentTestNumber).concat(".main"));
+//        assertTrue(mainMethodTraversal.hasNext());
+//        final Vertex mainMethod = mainMethodTraversal.next();
+//
+//        assertFalse(g.V(mainMethod).repeat(__.in(EdgeLabels.AST.toString())).emit()
+//                .hasLabel(VertexLabels.NAMESPACE_BLOCK.toString()).hasNext());
+    }
+
 }

@@ -24,7 +24,8 @@ import za.ac.sun.grapl.domain.models.vertices.FileVertex;
 import za.ac.sun.grapl.domain.models.vertices.NamespaceBlockVertex;
 import za.ac.sun.grapl.hooks.IHook;
 
-import java.util.Objects;
+import java.util.*;
+import java.util.stream.Collector;
 
 public class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
@@ -100,17 +101,30 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
     }
 
     private void populateNamespaceChain(String[] namespaceList) {
+        List<String> reversedNamespaceList = new LinkedList<>();
+        Arrays.stream(namespaceList).collect(Collector.of(
+                ArrayDeque::new,
+                ArrayDeque::addFirst,
+                (d1, d2) -> {
+                    d2.addAll(d1);
+                    return d2;
+                }))
+                .forEach(s -> reversedNamespaceList.add(String.valueOf(s)));
+        System.out.println(reversedNamespaceList);
+
         NamespaceBlockVertex prevNamespaceBlock =
                 new NamespaceBlockVertex(namespaceList[namespaceList.length - 1], this.namespace, order++);
         StringBuilder namespaceBuilder = new StringBuilder();
         for (int i = namespaceList.length - 2; i >= 0; i--) {
-            namespaceBuilder.append(namespaceList[i]);
+            namespaceBuilder.append(reversedNamespaceList.get(i + 1));
             NamespaceBlockVertex currNamespaceBlock =
                     new NamespaceBlockVertex(namespaceList[i], namespaceBuilder.toString(), order++);
             this.hook.joinNamespaceBlocks(currNamespaceBlock, prevNamespaceBlock);
+            System.out.println("Linking " + currNamespaceBlock.fullName + " -> " + prevNamespaceBlock.fullName);
             prevNamespaceBlock = currNamespaceBlock;
             namespaceBuilder.append(".");
         }
+        System.out.println(namespaceBuilder);
     }
 
     public ASTClassVisitor order(int order) {
