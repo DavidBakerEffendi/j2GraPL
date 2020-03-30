@@ -24,7 +24,10 @@ import za.ac.sun.grapl.domain.models.vertices.FileVertex;
 import za.ac.sun.grapl.domain.models.vertices.NamespaceBlockVertex;
 import za.ac.sun.grapl.hooks.IHook;
 
+import java.util.Objects;
+
 public class ASTClassVisitor extends ClassVisitor implements Opcodes {
+
     final static Logger logger = LogManager.getLogger();
 
     final IHook hook;
@@ -53,23 +56,29 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
         this.classPath = name.replaceAll("/", ".");
         this.namespace = namespace.replaceAll("/", ".");
 
-        // Populate namespace block chain
-        String[] namespaceList = this.namespace.split("\\.");
-        NamespaceBlockVertex nbv = new NamespaceBlockVertex(
-                namespaceList[namespaceList.length - 1],
-                this.namespace, order++);
-
-        if (namespaceList.length > 1) {
-            this.populateNamespaceChain(namespaceList);
-        } else {
-            this.hook.createVertex(nbv);
+        // Build NAMESPACE_BLOCK if packages are present
+        NamespaceBlockVertex nbv = null;
+        if (!this.namespace.isEmpty()) {
+            // Populate namespace block chain
+            String[] namespaceList = this.namespace.split("\\.");
+            nbv = new NamespaceBlockVertex(
+                    namespaceList[namespaceList.length - 1],
+                    this.namespace, order++);
+            if (namespaceList.length > 1) {
+                this.populateNamespaceChain(namespaceList);
+            } else {
+                this.hook.createVertex(nbv);
+            }
         }
 
         fv = new FileVertex(this.className, order++);
-        // Create FILE and NAMESPACE_BLOCK
+        // Create FILE
         this.hook.createVertex(fv);
-        // Join FILE and NAMESPACE_BLOCK
-        this.hook.joinFileVertexTo(fv, nbv);
+
+        // Join FILE and NAMESPACE_BLOCK if namespace is present
+        if (!Objects.isNull(nbv)) {
+            this.hook.joinFileVertexTo(fv, nbv);
+        }
 
         // TODO: Could create MEMBER vertex from here to declare member classes
 
@@ -108,4 +117,5 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
         this.order = order;
         return this;
     }
+
 }

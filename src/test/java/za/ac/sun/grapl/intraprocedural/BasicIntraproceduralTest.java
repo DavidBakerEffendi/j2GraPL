@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.tinkergraph.structure.TinkerGraph;
 import org.junit.jupiter.api.AfterAll;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import za.ac.sun.grapl.Cannon;
 import za.ac.sun.grapl.domain.enums.EdgeLabels;
+import za.ac.sun.grapl.domain.enums.VertexLabels;
 import za.ac.sun.grapl.domain.models.vertices.BlockVertex;
 import za.ac.sun.grapl.domain.models.vertices.LiteralVertex;
 import za.ac.sun.grapl.domain.models.vertices.LocalVertex;
@@ -22,8 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static za.ac.sun.grapl.util.TestQueryBuilderUtil.*;
 
 public class BasicIntraproceduralTest {
@@ -43,11 +44,11 @@ public class BasicIntraproceduralTest {
     static void tearDownAll() throws IOException {
         ResourceCompilationUtil.deleteClassFiles(PATH);
         File f = new File(TEST_DIR);
-        if (f.exists()) {
-            if (!f.delete()) {
-                logger.warn("Could not clear " + BasicIntraproceduralTest.class.getName() + "'s test resources.");
-            }
-        }
+//        if (f.exists()) {
+//            if (!f.delete()) {
+//                logger.warn("Could not clear " + BasicIntraproceduralTest.class.getName() + "'s test resources.");
+//            }
+//        }
     }
 
     @BeforeEach
@@ -204,6 +205,18 @@ public class BasicIntraproceduralTest {
         assertTrue(buildMethodModifierTraversal(g, EdgeLabels.AST, sallyVertex).has("name", "STATIC").hasNext());
         assertTrue(buildMethodModifierTraversal(g, EdgeLabels.AST, sallyVertex).has("name", "PUBLIC").hasNext());
         assertTrue(buildMethodReturnTraversal(g, EdgeLabels.AST, sallyVertex).has("name", "INTEGER").hasNext());
+    }
+
+    @Test
+    public void basic5Test() {
+        // This is Basic1 without a package, so we will just check that no package is present
+        final GraphTraversal<Vertex, Vertex> mainMethodTraversal = g.V()
+                .has("METHOD", "fullName", "Basic".concat(currentTestNumber).concat(".main"));
+        assertTrue(mainMethodTraversal.hasNext());
+        final Vertex mainMethod = mainMethodTraversal.next();
+
+        assertFalse(g.V(mainMethod).repeat(__.in(EdgeLabels.AST.toString())).emit()
+                .hasLabel(VertexLabels.NAMESPACE_BLOCK.toString()).hasNext());
     }
 
 }
