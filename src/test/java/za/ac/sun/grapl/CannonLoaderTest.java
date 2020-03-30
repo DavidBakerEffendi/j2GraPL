@@ -13,7 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class CannonLoaderTest {
 
-    private static CannonLoader fileCannon;
+    private static Cannon fileCannon;
     private static File validSourceFile;
     private static File validClassFile;
     private static File validDirectory;
@@ -31,7 +31,7 @@ public class CannonLoaderTest {
         validClassFile = new File(validClassFileDir);
         validDirectory = new File(validDirectoryFileDir);
         hook = new TinkerGraphHook.TinkerGraphHookBuilder("/tmp/grapl/intraprocedural_test.xml").createNewGraph(true).build();
-        fileCannon = new CannonLoader(hook);
+        fileCannon = new Cannon(hook);
     }
 
     @Test
