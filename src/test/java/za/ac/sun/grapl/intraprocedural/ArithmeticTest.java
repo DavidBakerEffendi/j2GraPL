@@ -10,7 +10,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import za.ac.sun.grapl.CannonLoader;
+import za.ac.sun.grapl.Cannon;
 import za.ac.sun.grapl.domain.enums.EdgeLabels;
 import za.ac.sun.grapl.domain.models.vertices.BlockVertex;
 import za.ac.sun.grapl.domain.models.vertices.LiteralVertex;
@@ -54,7 +54,7 @@ public class ArithmeticTest {
     @BeforeEach
     public void setUp(TestInfo testInfo) throws IOException {
         TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
-        CannonLoader fileCannon = new CannonLoader(hook);
+        Cannon fileCannon = new Cannon(hook);
         // Select test resource based on integer in method name
         final String currentTestNumber = testInfo
                 .getDisplayName()

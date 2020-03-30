@@ -8,7 +8,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
-import za.ac.sun.grapl.CannonLoader;
+import za.ac.sun.grapl.Cannon;
 import za.ac.sun.grapl.hooks.TinkerGraphHook;
 import za.ac.sun.grapl.intraprocedural.ArithmeticTest;
 import za.ac.sun.grapl.util.ResourceCompilationUtil;
@@ -23,7 +23,7 @@ public class BasicInterproceduralTest {
 
     private static final File PATH;
     private static final String TEST_DIR = "/tmp/grapl/j2grapl_test.kryo";
-    private CannonLoader fileCannon;
+    private Cannon fileCannon;
 
     static {
         PATH = new File(Objects.requireNonNull(ArithmeticTest.class.getClassLoader().getResource("interprocedural/basic/")).getFile());
@@ -45,7 +45,7 @@ public class BasicInterproceduralTest {
     @BeforeEach
     public void setUp(TestInfo testInfo) throws IOException {
         TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
-        fileCannon = new CannonLoader(hook);
+        fileCannon = new Cannon(hook);
         // Select test resource based on integer in method name
         final String currentTestNumber = testInfo.getDisplayName().replaceAll("[^0-9]", "");
         String resourceDir = PATH.getAbsolutePath().concat("/Basic").concat(currentTestNumber).concat(".java");

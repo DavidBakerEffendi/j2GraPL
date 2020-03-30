@@ -30,14 +30,14 @@ import java.io.InputStream;
 import java.util.LinkedList;
 import java.util.stream.Stream;
 
-public class CannonLoader {
+public class Cannon {
 
     final static Logger logger = LogManager.getLogger();
 
     private final LinkedList<File> loadedFiles;
     private final IHook hook;
 
-    public CannonLoader(final IHook hook) {
+    public Cannon(final IHook hook) {
         this.loadedFiles = new LinkedList<>();
         this.hook = hook;
     }
