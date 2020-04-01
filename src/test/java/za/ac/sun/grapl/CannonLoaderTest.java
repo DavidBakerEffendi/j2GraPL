@@ -1,8 +1,12 @@
 package za.ac.sun.grapl;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import za.ac.sun.grapl.hooks.TinkerGraphHook;
+import za.ac.sun.grapl.intraprocedural.ConditionalIntraproceduralTest;
 
 import java.io.File;
 import java.io.IOException;
@@ -13,6 +17,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class CannonLoaderTest {
 
+    final static Logger logger = LogManager.getLogger();
+
+    private static final String TEST_DIR = "/tmp/grapl/j2grapl_test.xml";
     private static Cannon fileCannon;
     private static File validSourceFile;
     private static File validClassFile;
@@ -30,8 +37,18 @@ public class CannonLoaderTest {
         validSourceFile = new File(validSourceFileDir);
         validClassFile = new File(validClassFileDir);
         validDirectory = new File(validDirectoryFileDir);
-        hook = new TinkerGraphHook.TinkerGraphHookBuilder("/tmp/grapl/intraprocedural_test.xml").createNewGraph(true).build();
+        hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
         fileCannon = new Cannon(hook);
+    }
+
+    @AfterAll
+    static void tearDown() {
+        File f = new File(TEST_DIR);
+        if (f.exists()) {
+            if (!f.delete()) {
+                logger.warn("Could not clear " + ConditionalIntraproceduralTest.class.getName() + "'s test resources.");
+            }
+        }
     }
 
     @Test
