@@ -421,7 +421,6 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         // Create METHOD
         final String shortName = methodName.substring(methodName.lastIndexOf('.') + 1);
         this.methodVertex = new MethodVertex(shortName, classPath.concat(".").concat(methodName), methodSignature, lineNumber, order++);
-        hook.createVertex(this.methodVertex);
         // Join FILE and METHOD
         hook.joinFileVertexTo(fv, methodVertex);
         // Create METHOD_PARAM_IN

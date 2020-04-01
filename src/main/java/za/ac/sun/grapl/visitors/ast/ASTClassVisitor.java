@@ -24,13 +24,14 @@ import za.ac.sun.grapl.domain.models.vertices.FileVertex;
 import za.ac.sun.grapl.domain.models.vertices.NamespaceBlockVertex;
 import za.ac.sun.grapl.hooks.IHook;
 
+import java.util.Objects;
+
 public class ASTClassVisitor extends ClassVisitor implements Opcodes {
+
     final static Logger logger = LogManager.getLogger();
 
     final IHook hook;
     private String classPath;
-    private String className;
-    private String namespace;
     private int order;
     private FileVertex fv;
     private ASTMethodVisitor astMv;
@@ -43,33 +44,31 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
+        String className;
+        String namespace;
         if (name.lastIndexOf('/') != -1) {
-            this.className = name.substring(name.lastIndexOf('/') + 1);
-            this.namespace = name.substring(0, name.lastIndexOf('/'));
+            className = name.substring(name.lastIndexOf('/') + 1);
+            namespace = name.substring(0, name.lastIndexOf('/'));
         } else {
-            this.className = name;
-            this.namespace = "";
+            className = name;
+            namespace = "";
         }
         this.classPath = name.replaceAll("/", ".");
-        this.namespace = namespace.replaceAll("/", ".");
+        namespace = namespace.replaceAll("/", ".");
 
-        // Populate namespace block chain
-        String[] namespaceList = this.namespace.split("\\.");
-        NamespaceBlockVertex nbv = new NamespaceBlockVertex(
-                namespaceList[namespaceList.length - 1],
-                this.namespace, order++);
-
-        if (namespaceList.length > 1) {
-            this.populateNamespaceChain(namespaceList);
-        } else {
-            this.hook.createVertex(nbv);
+        // Build NAMESPACE_BLOCK if packages are present
+        NamespaceBlockVertex nbv = null;
+        if (!namespace.isEmpty()) {
+            // Populate namespace block chain
+            String[] namespaceList = namespace.split("\\.");
+            if (namespaceList.length > 0) nbv = this.populateNamespaceChain(namespaceList);
         }
 
-        fv = new FileVertex(this.className, order++);
-        // Create FILE and NAMESPACE_BLOCK
-        this.hook.createVertex(fv);
-        // Join FILE and NAMESPACE_BLOCK
-        this.hook.joinFileVertexTo(fv, nbv);
+        fv = new FileVertex(className, order++);
+        // Join FILE and NAMESPACE_BLOCK if namespace is present
+        if (!Objects.isNull(nbv)) {
+            this.hook.joinFileVertexTo(fv, nbv);
+        }
 
         // TODO: Could create MEMBER vertex from here to declare member classes
 
@@ -90,22 +89,30 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
         return astMv;
     }
 
-    private void populateNamespaceChain(String[] namespaceList) {
-        NamespaceBlockVertex prevNamespaceBlock =
-                new NamespaceBlockVertex(namespaceList[namespaceList.length - 1], this.namespace, order++);
-        StringBuilder namespaceBuilder = new StringBuilder();
-        for (int i = namespaceList.length - 2; i >= 0; i--) {
-            namespaceBuilder.append(namespaceList[i]);
-            NamespaceBlockVertex currNamespaceBlock =
-                    new NamespaceBlockVertex(namespaceList[i], namespaceBuilder.toString(), order++);
-            this.hook.joinNamespaceBlocks(currNamespaceBlock, prevNamespaceBlock);
+    /**
+     * Creates a change of namespace block vertices and returns the final one in the chain.
+     *
+     * @param namespaceList a list of package names
+     * @return the final namespace block vertex in the chain (the one associated with the file)
+     */
+    private NamespaceBlockVertex populateNamespaceChain(String[] namespaceList) {
+        NamespaceBlockVertex prevNamespaceBlock = new NamespaceBlockVertex(namespaceList[0], namespaceList[0], order++);
+        if (namespaceList.length == 1) return prevNamespaceBlock;
+
+        NamespaceBlockVertex currNamespaceBlock = null;
+        StringBuilder namespaceBuilder = new StringBuilder(namespaceList[0]);
+        for (int i = 1; i < namespaceList.length; i++) {
+            namespaceBuilder.append(".".concat(namespaceList[i]));
+            currNamespaceBlock = new NamespaceBlockVertex(namespaceList[i], namespaceBuilder.toString(), order++);
+            this.hook.joinNamespaceBlocks(prevNamespaceBlock, currNamespaceBlock);
             prevNamespaceBlock = currNamespaceBlock;
-            namespaceBuilder.append(".");
         }
+        return currNamespaceBlock;
     }
 
     public ASTClassVisitor order(int order) {
         this.order = order;
         return this;
     }
+
 }

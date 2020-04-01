@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
+import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.__;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.tinkergraph.structure.TinkerGraph;
 import org.junit.jupiter.api.AfterAll;
@@ -12,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import za.ac.sun.grapl.Cannon;
 import za.ac.sun.grapl.domain.enums.EdgeLabels;
+import za.ac.sun.grapl.domain.enums.VertexLabels;
 import za.ac.sun.grapl.domain.models.vertices.BlockVertex;
 import za.ac.sun.grapl.domain.models.vertices.LiteralVertex;
 import za.ac.sun.grapl.domain.models.vertices.LocalVertex;
@@ -22,8 +24,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.*;
 import static za.ac.sun.grapl.util.TestQueryBuilderUtil.*;
 
 public class BasicIntraproceduralTest {
@@ -69,15 +70,8 @@ public class BasicIntraproceduralTest {
         g.io(TEST_DIR).read().iterate();
     }
 
-    @Test
-    public void basic1Test() {
-        final GraphTraversal<Vertex, Vertex> methodTraversal = g.V()
-                .has("METHOD", "fullName", "intraprocedural.basic.Basic".concat(currentTestNumber).concat(".main"));
-        assertTrue(methodTraversal.hasNext());
-        final Vertex methodRoot = methodTraversal.next();
-
+    private void testBasic1Structure(Vertex methodRoot) {
         assertTrue(buildStoreTraversal(g, EdgeLabels.AST, methodRoot).hasNext());
-        assertEquals(3, buildStoreTraversal(g, EdgeLabels.AST, methodRoot).count().next());
 
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, LocalVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, LiteralVertex.LABEL, "name", "3").has("typeFullName", "INTEGER").hasNext());
@@ -91,6 +85,17 @@ public class BasicIntraproceduralTest {
         final Vertex addVertex = addTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, addVertex, LocalVertex.LABEL, "name", "2").has("typeFullName", "INTEGER").hasNext());
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, addVertex, LocalVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
+    }
+
+    @Test
+    public void basic1Test() {
+        final GraphTraversal<Vertex, Vertex> methodTraversal = g.V()
+                .has("METHOD", "fullName", "intraprocedural.basic.Basic".concat(currentTestNumber).concat(".main"));
+        assertTrue(methodTraversal.hasNext());
+        final Vertex methodRoot = methodTraversal.next();
+        assertEquals(3, buildStoreTraversal(g, EdgeLabels.AST, methodRoot).count().next());
+
+        testBasic1Structure(methodRoot);
     }
 
     @Test
@@ -204,6 +209,65 @@ public class BasicIntraproceduralTest {
         assertTrue(buildMethodModifierTraversal(g, EdgeLabels.AST, sallyVertex).has("name", "STATIC").hasNext());
         assertTrue(buildMethodModifierTraversal(g, EdgeLabels.AST, sallyVertex).has("name", "PUBLIC").hasNext());
         assertTrue(buildMethodReturnTraversal(g, EdgeLabels.AST, sallyVertex).has("name", "INTEGER").hasNext());
+    }
+
+    @Test
+    public void basic5Test() {
+        // This is Basic1 without a package, so we will just check that no package is present
+        final GraphTraversal<Vertex, Vertex> mainMethodTraversal = g.V()
+                .has("METHOD", "fullName", "Basic".concat(currentTestNumber).concat(".main"));
+        assertTrue(mainMethodTraversal.hasNext());
+        final Vertex mainMethod = mainMethodTraversal.next();
+
+        assertFalse(g.V(mainMethod).repeat(__.in(EdgeLabels.AST.toString())).emit()
+                .hasLabel(VertexLabels.NAMESPACE_BLOCK.toString()).hasNext());
+
+        testBasic1Structure(mainMethod);
+    }
+
+    @Test
+    public void basic6Test() throws IOException {
+        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(false).build();
+        Cannon fileCannon = new Cannon(hook);
+        String resourceDir = PATH.getAbsolutePath().concat("/basic6/Basic6.java");
+        // Load test resource and project + export graph
+        File f = new File(resourceDir);
+        fileCannon.load(f);
+        fileCannon.fire();
+        hook.exportCurrentGraph();
+
+        g = TinkerGraph.open().traversal();
+        g.io(TEST_DIR).read().iterate();
+
+        // This is Basic1 in two separate packages
+        final GraphTraversal<Vertex, Vertex> intraNamespaceTraversal = g.V().has(VertexLabels.NAMESPACE_BLOCK.toString(), "fullName", "intraprocedural");
+        assertTrue(intraNamespaceTraversal.hasNext());
+        final Vertex intraNamespaceVertex = intraNamespaceTraversal.next();
+        final GraphTraversal<Vertex, Vertex> basicNamespaceTraversal = getVertexAlongEdge(g, EdgeLabels.AST, intraNamespaceVertex, VertexLabels.NAMESPACE_BLOCK, "fullName", "intraprocedural.basic");
+        assertTrue(basicNamespaceTraversal.hasNext());
+        final Vertex basicNamespaceVertex = basicNamespaceTraversal.next();
+        final GraphTraversal<Vertex, Vertex> basic6NamespaceTraversal = getVertexAlongEdge(g, EdgeLabels.AST, basicNamespaceVertex, VertexLabels.NAMESPACE_BLOCK, "fullName", "intraprocedural.basic.basic6");
+        assertTrue(basic6NamespaceTraversal.hasNext());
+        final Vertex basic6NamespaceVertex = basic6NamespaceTraversal.next();
+
+        final GraphTraversal<Vertex, Vertex> basicMethodTraversal = getVertexAlongEdge(g, EdgeLabels.AST, basicNamespaceVertex, VertexLabels.METHOD, "name", "main");
+        assertTrue(basicMethodTraversal.hasNext());
+        final GraphTraversal<Vertex, Vertex> basic6MethodTraversal = getVertexAlongEdge(g, EdgeLabels.AST, basic6NamespaceVertex, VertexLabels.METHOD, "name", "main");
+        assertTrue(basic6MethodTraversal.hasNext());
+
+        assertEquals(6, buildStoreTraversal(g, EdgeLabels.AST, intraNamespaceVertex).count().next());
+
+        testBasic1Structure(basicNamespaceVertex);
+        testBasic1Structure(basic6NamespaceVertex);
+    }
+
+    @Test
+    public void basic7Test() {
+        // This is Basic1 in one package
+        final GraphTraversal<Vertex, Vertex> intraNamespaceTraversal = g.V().has(VertexLabels.NAMESPACE_BLOCK.toString(), "fullName", "basic");
+        assertTrue(intraNamespaceTraversal.hasNext());
+        final Vertex intraNamespaceVertex = intraNamespaceTraversal.next();
+        testBasic1Structure(intraNamespaceVertex);
     }
 
 }
