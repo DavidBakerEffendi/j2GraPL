@@ -40,8 +40,6 @@ project. One can choose the main artifact or fat jar but here is how one can imp
   <systemPath>${project.basedir}/lib/j2GraPL-X.X.X.jar</systemPath>
 </dependency>
 ``` 
-To add the GraPL driver one can do the following. This can either be built from source or extracted from `lib` under 
-this repository.
 
 ## Dependencies
 
