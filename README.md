@@ -48,20 +48,22 @@ For a quick and simply in-memory graph projection of a Java program:
 ```java
 import za.ac.sun.grapl.Cannon;
 import za.ac.sun.grapl.hooks.TinkerGraphHook;
+import java.io.File;
+import java.io.IOException;
 
 public class GraPLDemo {
 
-    public static void main(String[] args) {
+    public static void main(String[] args) throws IOException {
         TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder("/tmp/grapl/j2grapl_demo.xml")
                                             .createNewGraph(true)
                                             .build();
         // Attach the hook to the cannon
         Cannon cannon = new Cannon(hook);
-        File f = new File("./GraPLDemo.java");
+        File f = new File("./Example.java"); // or new File("./Example.class")
         // Load the cannon with source files, class files, or a directory containing either
-        hook.load(f);
+        cannon.load(f);
         // Fire the loaded files to be projected the graph database
-        hook.fire(f);
+        cannon.fire();
         // For the TinkerGraph hook, we can export this graph using the format and 
         // directory specified in the constructor
         hook.exportCurrentGraph();
