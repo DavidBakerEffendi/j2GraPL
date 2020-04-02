@@ -29,7 +29,8 @@ git clone https://github.com/DavidBakerEffendi/j2GraPL.git
 cd j2GraPL
 mvn package
 ```
-This will build `target/j2GraPL-X.X.X.jar` which can then be imported into your local project. E.g.
+This will build `target/j2GraPL-X.X.X[-jar-with-dependencies].jar` and which can then be imported into your local 
+project. One can choose the main artifact or fat jar but here is how one can import this into one's Maven project. E.g.
 ```mxml
 <dependency>
   <groupId>za.ac.sun.grapl</groupId>
@@ -42,9 +43,50 @@ This will build `target/j2GraPL-X.X.X.jar` which can then be imported into your 
 To add the GraPL driver one can do the following. This can either be built from source or extracted from `lib` under 
 this repository.
 
+## Dependencies
+
+### Packages
+
+The following packages are used by j2GraPL:
+
+* `org.ow2.asm:asm:7.3.1`
+* `org.ow2.asm:asm-util:7.3.1`
+* `org.apache.logging.log4j:log4j-core:2.8.2`
+* `org.apache.logging.log4j:log4j-slf4j-impl:2.8.2`
+* `za.ac.sun.grapl:GraPLHook4j` (under `lib`)
+
+It is not recommended to use the fat jar in your project if using a build tool such as Ant, Maven, Gradle, etc. Rather
+use the main artifact and add the dependencies manually (in your `pom.xml`, `build.gradle`, etc.). 
+
+### Java Support
+
+The following versions of Java are officially supported:
+* OpenJDK 8
+* OpenJDK 9
+* OpenJDK 10
+* OpenJDK 11
+
 ## Quickstart
 
-For a quick and simply in-memory graph projection of a Java program:
+We use this directory as the base for the following short tutorial - no build tools required. First, we need a Java program to analyze. Here is an
+example of a file we can create:
+```java
+public class Example {
+
+	public static void main(String[] args) {
+		int a = 1;
+		int b = 2;
+		if (a > b) {
+			a = b + 1;
+		} else {
+			b -= a + 1;
+		}
+	}
+
+}
+```
+
+For a quick and simple in-memory graph projection of a Java program:
 ```java
 import za.ac.sun.grapl.Cannon;
 import za.ac.sun.grapl.hooks.TinkerGraphHook;
@@ -54,7 +96,7 @@ import java.io.IOException;
 public class GraPLDemo {
 
     public static void main(String[] args) throws IOException {
-        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder("/tmp/grapl/j2grapl_demo.xml")
+        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder("./j2grapl_demo.xml")
                                             .createNewGraph(true)
                                             .build();
         // Attach the hook to the cannon
@@ -71,4 +113,17 @@ public class GraPLDemo {
 
 }
 ```
+
+To compile both of these, we can use the `target/j2GraPL-X.X.X-jar-with-dependencies.jar` with 
+`lib/GraPLHook4j-X.X.X-jar-with-dependencies.jar`. This can be combined as:
+```bash
+javac -cp ".:target/j2GraPL-X.X.X-jar-with-dependencies.jar:lib/GraPLHook4j-X.X.X-jar-with-dependencies.jar:" *.java
+java -cp ".:target/j2GraPL-X.X.X-jar-with-dependencies.jar:lib/GraPLHook4j-X.X.X-jar-with-dependencies.jar:" GraPLDemo
+```
+
 This exported file can then be visualized using tools such as [Cytoscape](https://cytoscape.org/).
+
+## Logging
+
+All logging can be configured under `src/main/resources/log4j2.properties`. By default, all logs can be found under 
+`/tmp/grapl`.
