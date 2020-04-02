@@ -121,7 +121,10 @@ javac -cp ".:target/j2GraPL-X.X.X-jar-with-dependencies.jar:lib/GraPLHook4j-X.X.
 java -cp ".:target/j2GraPL-X.X.X-jar-with-dependencies.jar:lib/GraPLHook4j-X.X.X-jar-with-dependencies.jar:" GraPLDemo
 ```
 
-This exported file can then be visualized using tools such as [Cytoscape](https://cytoscape.org/).
+This exported file can then be visualized using tools such as [Cytoscape](https://cytoscape.org/). Using Cytoscape and 
+the tree layout, the graph should look something like this:
+
+![Example.java Graph](https://github.com/DavidBakerEffendi/j2GraPL/blob/media/graphs/GraPLDemo.png?raw=true)
 
 ## Logging
 
