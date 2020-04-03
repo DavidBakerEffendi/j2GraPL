@@ -21,14 +21,16 @@ import org.apache.logging.log4j.Logger;
 import javax.tools.JavaCompiler;
 import javax.tools.StandardJavaFileManager;
 import javax.tools.ToolProvider;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
+import java.util.jar.JarEntry;
+import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -112,13 +114,58 @@ public class ResourceCompilationUtil {
      * @return a list of all .class files under the given directory
      * @throws IOException if the path is not a directory or does not exist
      */
-    public static List<String> fetchClassFiles(File path) throws IOException {
+    public static List<File> fetchClassFiles(File path) throws IOException {
         validateFileAsDirectory(path);
         try (Stream<Path> walk = Files.walk(Paths.get(path.getAbsolutePath()))) {
             return walk.map(Path::toString)
                     .filter(f -> f.endsWith(".class"))
+                    .map(File::new)
                     .collect(Collectors.toList());
         }
+    }
+
+    /**
+     * Returns a list of all the class files inside of a JAR file.
+     *
+     * @param jar the JarFile
+     * @return a list of all <code>.class</code> files under the given JAR file.
+     */
+    public static List<File> fetchClassFiles(JarFile jar) {
+        return jar.stream()
+                .map(JarEntry::toString)
+                .filter(f -> f.endsWith(".class"))
+                .map(JarEntry::new)
+                .map(je -> extractJarEntry(jar, je))
+                .filter(f -> !Objects.isNull(f))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Extracts the {@link JarFile} from a given {@link JarEntry} and writes it to a temporary file, which is returned
+     * as a {@link File}.
+     *
+     * @param jarFile the JAR to extract from
+     * @param entry   the entry to extract
+     * @return the temporary file if the extraction process was successful, <code>null</code> if otherwise.
+     */
+    public static File extractJarEntry(JarFile jarFile, JarEntry entry) {
+        File tmp = null;
+        try {
+            tmp = File.createTempFile(entry.toString().substring(entry.toString().lastIndexOf('/') + 1), null);
+            try (InputStream in = jarFile.getInputStream(entry);
+                 BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(tmp))
+            ) {
+                byte[] buffer = new byte[2048];
+                int nBytes = in.read(buffer);
+                while (nBytes > 0) {
+                    out.write(buffer, 0, nBytes);
+                    nBytes = in.read(buffer);
+                }
+            }
+        } catch (IOException e) {
+            logger.warn("Error while extracting '" + entry.getName() + "' from JAR.", e);
+        }
+        return tmp;
     }
 
 }

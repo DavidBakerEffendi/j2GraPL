@@ -70,7 +70,7 @@ public class BasicIntraproceduralTest {
         g.io(TEST_DIR).read().iterate();
     }
 
-    private void testBasic1Structure(Vertex methodRoot) {
+    public static void testBasic1Structure(GraphTraversalSource g, Vertex methodRoot) {
         assertTrue(buildStoreTraversal(g, EdgeLabels.AST, methodRoot).hasNext());
 
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, LocalVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
@@ -95,7 +95,7 @@ public class BasicIntraproceduralTest {
         final Vertex methodRoot = methodTraversal.next();
         assertEquals(3, buildStoreTraversal(g, EdgeLabels.AST, methodRoot).count().next());
 
-        testBasic1Structure(methodRoot);
+        testBasic1Structure(g, methodRoot);
     }
 
     @Test
@@ -222,7 +222,7 @@ public class BasicIntraproceduralTest {
         assertFalse(g.V(mainMethod).repeat(__.in(EdgeLabels.AST.toString())).emit()
                 .hasLabel(VertexLabels.NAMESPACE_BLOCK.toString()).hasNext());
 
-        testBasic1Structure(mainMethod);
+        testBasic1Structure(g, mainMethod);
     }
 
     @Test
@@ -257,8 +257,8 @@ public class BasicIntraproceduralTest {
 
         assertEquals(6, buildStoreTraversal(g, EdgeLabels.AST, intraNamespaceVertex).count().next());
 
-        testBasic1Structure(basicNamespaceVertex);
-        testBasic1Structure(basic6NamespaceVertex);
+        testBasic1Structure(g, basicNamespaceVertex);
+        testBasic1Structure(g, basic6NamespaceVertex);
     }
 
     @Test
@@ -267,7 +267,7 @@ public class BasicIntraproceduralTest {
         final GraphTraversal<Vertex, Vertex> intraNamespaceTraversal = g.V().has(VertexLabels.NAMESPACE_BLOCK.toString(), "fullName", "basic");
         assertTrue(intraNamespaceTraversal.hasNext());
         final Vertex intraNamespaceVertex = intraNamespaceTraversal.next();
-        testBasic1Structure(intraNamespaceVertex);
+        testBasic1Structure(g, intraNamespaceVertex);
     }
 
 }

@@ -28,6 +28,7 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.LinkedList;
+import java.util.jar.JarFile;
 import java.util.stream.Stream;
 
 public class Cannon {
@@ -45,7 +46,7 @@ public class Cannon {
     /**
      * Loads a single Java class file or directory of class files into the cannon.
      *
-     * @param file the Java source/class file or directory of source/class files.
+     * @param file the Java source/class file, directory of source/class files, or a JAR file.
      * @throws NullPointerException if the file is null
      * @throws IOException          In the case of a directory given, this would throw if .java files fail to compile
      */
@@ -54,13 +55,14 @@ public class Cannon {
         if (file.isDirectory()) {
             // Any .java files will automatically be compiled
             ResourceCompilationUtil.compileJavaFiles(file);
-            ResourceCompilationUtil.fetchClassFiles(file).forEach((f) -> loadedFiles.add(new File(f)));
+            loadedFiles.addAll(ResourceCompilationUtil.fetchClassFiles(file));
         } else if (file.isFile()) {
             if (file.getName().endsWith(".java")) {
                 ResourceCompilationUtil.compileJavaFile(file);
                 this.loadedFiles.add(new File(file.getAbsolutePath().replace(".java", ".class")));
             } else if (file.getName().endsWith(".jar")) {
-                // TODO: Load class files into the cannon
+                JarFile jar = new JarFile(file);
+                loadedFiles.addAll(ResourceCompilationUtil.fetchClassFiles(jar));
             } else if (file.getName().endsWith(".class")) {
                 this.loadedFiles.add(file);
             }
