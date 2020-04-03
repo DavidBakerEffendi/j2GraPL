@@ -29,7 +29,6 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.util.LinkedList;
 import java.util.jar.JarFile;
-import java.util.stream.Stream;
 
 public class Cannon {
 
@@ -75,26 +74,15 @@ public class Cannon {
      * Fires all loaded Java classes currently loaded.
      */
     public void fire() {
-        this.loadedFiles.stream().flatMap(f -> {
-            try {
-                this.fire(f);
-                return null;
-            } catch (IOException e) {
-                return Stream.of(e);
-            }
-        }).reduce((e1, e2) -> {
-            e1.addSuppressed(e2);
-            return e1;
-        }).ifPresent(logger::error);
+        this.loadedFiles.forEach(this::fire);
     }
 
     /**
      * Attempts to fire a file from the cannon.
      *
      * @param f the file to fire.
-     * @throws IOException if the ClassReader or visitors encounter an IOException.
      */
-    private void fire(final File f) throws IOException {
+    private void fire(final File f) {
         try (InputStream fis = new FileInputStream(f)) {
             ClassReader cr = new ClassReader(fis);
             // The class visitors are declared here and wrapped by one another in a pipeline
@@ -102,6 +90,8 @@ public class Cannon {
             ASTClassVisitor astVisitor = new ASTClassVisitor(hook, rootVisitor).order(0);
             // ^ append new visitors here
             cr.accept(astVisitor, 0);
+        } catch (IOException e) {
+            logger.error("IOException encountered while visiting '" + f.getName() + "'.", e);
         }
     }
 }
