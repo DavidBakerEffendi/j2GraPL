@@ -13,13 +13,18 @@ matrix:
   allow_failures:
     - jdk: openjdk-ea
 
+before_cache:
+  - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock
+  - rm -fr $HOME/.gradle/caches/*/plugin-resolution/
+
 cache:
   directories:
-    - $HOME/.m2
+    - $HOME/.gradle/caches/
+    - $HOME/.gradle/wrapper/
 
 script:
-  - gradle assemble
-  - gradle test
-  
+  - ./gradlew test
+  - ./gradlew jacocoTestReport
+
 after_success:
   - bash <(curl -s https://codecov.io/bash)
