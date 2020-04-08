@@ -56,6 +56,23 @@ publishing {
     }
 }
 
+task fatJar(type: Jar) {
+    classifier = 'all'
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    from {
+        configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
+    } {
+        exclude "META-INF/*.SF"
+        exclude "META-INF/*.DSA"
+        exclude "META-INF/*.RSA"
+    }
+    with jar
+}
+
+artifacts {
+    archives fatJar
+}
+
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
 }
