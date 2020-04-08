@@ -1,0 +1,61 @@
+plugins {
+    id 'java'
+    id 'maven-publish'
+    id 'jacoco'
+}
+
+repositories {
+    mavenLocal()
+    maven {
+        url = 'https://repo.maven.apache.org/maven2'
+    }
+    flatDir {
+        dirs 'lib'
+    }
+}
+
+dependencies {
+    implementation 'org.ow2.asm:asm:7.3.1'
+    implementation 'org.ow2.asm:asm-util:7.3.1'
+    implementation 'org.apache.logging.log4j:log4j-core:2.8.2'
+    implementation 'org.apache.logging.log4j:log4j-slf4j-impl:2.8.2'
+    testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.4.2'
+    testImplementation 'org.apache.tinkerpop:tinkergraph-gremlin:3.4.5'
+    testRuntimeOnly 'org.junit.jupiter:junit-jupiter-api:5.4.2'
+    implementation name: 'GraPLHook4j-0.0.1'
+}
+
+test {
+    useJUnitPlatform()
+}
+
+jacoco {
+    toolVersion = "0.8.5"
+}
+
+jacocoTestReport {
+    reports {
+        xml.enabled false
+        csv.enabled false
+    }
+}
+
+check.dependsOn jacocoTestCoverageVerification
+jacocoTestCoverageVerification.dependsOn jacocoTestReport
+
+group = 'za.ac.sun.grapl'
+version = '0.0.1'
+description = 'j2GraPL'
+sourceCompatibility = '8'
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from(components.java)
+        }
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
