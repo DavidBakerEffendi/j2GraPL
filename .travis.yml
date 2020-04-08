@@ -7,11 +7,6 @@ jdk:
   - openjdk9
   - openjdk10
   - openjdk11
-  - openjdk-ea
-
-matrix:
-  allow_failures:
-    - jdk: openjdk-ea
 
 before_cache:
   - rm -f  $HOME/.gradle/caches/modules-2/modules-2.lock

@@ -27,8 +27,8 @@ hosted on a Maven repository or similar.
 ```shell script
 git clone https://github.com/DavidBakerEffendi/j2GraPL.git
 cd j2GraPL
-gradle jar # For main artifact only
-gradle fatJar # For fat jar with dependencies
+./gradlew jar # For main artifact only
+./gradlew fatJar # For fat jar with dependencies
 ```
 This will build `target/j2GraPL-X.X.X[-all].jar` and which can then be imported into your local 
 project. One can choose the main artifact or fat jar but here is how one can import this into one's Maven or Gradle 
