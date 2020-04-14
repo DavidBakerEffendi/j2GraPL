@@ -22,7 +22,7 @@ import za.ac.sun.grapl.controllers.ASTController;
 
 public class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
-    private ASTController controller;
+    private final ASTController controller;
 
     public ASTClassVisitor(ClassVisitor cv) {
         super(ASM5, cv);
@@ -49,7 +49,7 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-        controller.initializeNewMethod(name, descriptor, access);
+        controller.pushMethod(name, descriptor, access);
         MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
         return new ASTMethodVisitor(mv);
     }

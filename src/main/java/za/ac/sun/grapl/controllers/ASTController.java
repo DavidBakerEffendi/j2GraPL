@@ -85,14 +85,8 @@ public class ASTController extends AbstractController {
     /**
      * Generates the method meta-data vertices describing the method being visited.
      */
-    public void initializeNewMethod(String methodName, String methodSignature, int access) {
-        labelBlockNo.clear();
-        localVars.clear();
-        varTypes.clear();
-        lblJumpAssocs.clear();
-        operandStack.clear();
-        blockHistory.clear();
-        jumpStateHistory.clear();
+    public void pushMethod(String methodName, String methodSignature, int access) {
+        this.clear();
         // Create METHOD
         final String shortName = methodName.substring(methodName.lastIndexOf('.') + 1);
         currentMethod = new MethodVertex(shortName, classPath.concat(".").concat(methodName), methodSignature, currentLineNo, order++);
@@ -155,7 +149,7 @@ public class ASTController extends AbstractController {
      * @param operation the store operation.
      * @param varName   the variable name.
      */
-    public void visitVarInsnStore(String operation, String varName) {
+    public void pushVarInsnStore(String operation, String varName) {
         currentJumpBodyEmpty = false;
         final String result = operandStack.pop();
         final String sfx = result.substring(1);
@@ -197,7 +191,7 @@ public class ASTController extends AbstractController {
      * @param operation the load operation.
      * @param varName   the variable name.
      */
-    public void visitVarInsnLoad(String operation, String varName) {
+    public void pushVarInsnLoad(String operation, String varName) {
         final String variableType = ASMParserUtil.getStackOperationType(operation);
         operandStack.push("V".concat(varName));
         varTypes.put(varName, variableType);
@@ -245,7 +239,7 @@ public class ASTController extends AbstractController {
      * @param jumpOp the jump operation.
      * @param label  the label to jump to.
      */
-    public void visitJumpInsnNullaryJumps(String jumpOp, Label label) {
+    public void pushNullaryJumps(String jumpOp, Label label) {
         logger.debug("Recognized nullary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
         long numGotoAssocs = lblJumpAssocs.get(label).stream().filter((t) -> t == JUMP).count();
 
@@ -277,7 +271,7 @@ public class ASTController extends AbstractController {
      * @param jumpOp the jump operation.
      * @param label  the label to jump to if the jump condition is satisfied.
      */
-    public void visitJumpInsnBinaryJumps(String jumpOp, Label label) {
+    public void pushBinaryJump(String jumpOp, Label label) {
         logger.debug("Recognized binary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
         final String arg2 = operandStack.pop();
         final String arg1 = operandStack.pop();
@@ -330,41 +324,38 @@ public class ASTController extends AbstractController {
      * @param jumpOp the jump operation.
      * @param label  the label to jump to if the jump condition is satisfied.
      */
-    public void visitJumpInsnUnaryJumps(String jumpOp, Label label) {
+    public void pushUnaryJump(String jumpOp, Label label) {
         logger.debug("Recognized unary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
         final String arg1 = operandStack.pop();
         logger.debug("Jump arguments = [".concat(arg1).concat("]"));
         enteringJumpBody = true;
     }
 
-    public void visitInsnClone(int opcode) {
+    public void pushConstInsnOperation(Object val) {
+        logger.debug("Pushing constant " + val);
+        operandStack.push("C".concat(val.toString()));
+    }
+
+    public void pushConstInsnOperation(int opcode) {
         final String line = ASMifier.OPCODES[opcode];
         if (ASMParserUtil.isConstant(line)) {
+            logger.debug("Pushing constant " + line);
             operandStack.push("C".concat(line.substring(line.indexOf('_') + 1).replace("M", "-")));
         } else if (ASMParserUtil.isOperator(line)) {
+            logger.debug("Pushing operator " + line);
             operandStack.push(line);
         }
     }
 
-    public void visitLdcInsnClone(Object val) {
-        String line = val.toString();
-        logger.debug(new StringJoiner(" ")
-                .add("Recognized constant, pushing").add(line)
-                .add("to the operand stack."));
-        operandStack.push("C".concat(line));
+    public void pushConstInsnOperation(int opcode, int operand) {
+        String line = ASMifier.OPCODES[opcode].concat(" ").concat(String.valueOf(operand));
+        logger.debug("Pushing constant " + line);
+        operandStack.push("C".concat(line.substring(line.indexOf(' ') + 1)));
     }
 
-    public void visitIincInsnClone(int var, int increment) {
+    public void pushVarInc(int var, int increment) {
         // TODO: This still has to be implemented
         currentJumpBodyEmpty = false;
-    }
-
-    public void visitIntInsnClone(int opcode, int operand) {
-        String line = ASMifier.OPCODES[opcode].concat(" ").concat(String.valueOf(operand));
-        logger.debug(new StringJoiner(" ")
-                .add("Recognized constant, pushing").add(line)
-                .add("to the operand stack."));
-        operandStack.push("C".concat(line.substring(line.indexOf(' ') + 1)));
     }
 
     private void pushJumpState(JumpState state, Label label) {
@@ -375,6 +366,16 @@ public class ASTController extends AbstractController {
     private void popJumpState() {
         jumpState = jumpStateHistory.pop().state;
         blockHistory.pop();
+    }
+
+    public void clear() {
+        labelBlockNo.clear();
+        localVars.clear();
+        varTypes.clear();
+        lblJumpAssocs.clear();
+        operandStack.clear();
+        blockHistory.clear();
+        jumpStateHistory.clear();
     }
 
     private enum JumpState {
