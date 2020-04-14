@@ -18,6 +18,7 @@ package za.ac.sun.grapl;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.ClassReader;
+import za.ac.sun.grapl.controllers.ASTController;
 import za.ac.sun.grapl.hooks.IHook;
 import za.ac.sun.grapl.util.ResourceCompilationUtil;
 import za.ac.sun.grapl.visitors.ast.ASTClassVisitor;
@@ -35,11 +36,11 @@ public class Cannon {
     final static Logger logger = LogManager.getLogger();
 
     private final LinkedList<File> loadedFiles;
-    private final IHook hook;
 
     public Cannon(final IHook hook) {
         this.loadedFiles = new LinkedList<>();
-        this.hook = hook;
+        // Set controller hooks
+        ASTController.getInstance().hook(hook);
     }
 
     /**
@@ -87,7 +88,7 @@ public class Cannon {
             ClassReader cr = new ClassReader(fis);
             // The class visitors are declared here and wrapped by one another in a pipeline
             DebugClassVisitor rootVisitor = new DebugClassVisitor();
-            ASTClassVisitor astVisitor = new ASTClassVisitor(hook, rootVisitor).order(0);
+            ASTClassVisitor astVisitor = new ASTClassVisitor(rootVisitor);
             // ^ append new visitors here
             cr.accept(astVisitor, 0);
         } catch (IOException e) {
