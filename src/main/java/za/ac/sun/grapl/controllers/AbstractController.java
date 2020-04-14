@@ -14,8 +14,9 @@ public abstract class AbstractController {
 
     public void checkHook() {
         if (Objects.isNull(hook)) {
-            logger.error("Hook not initialized! To set a hook, use " + getClass().getName() + "#setHook.");
-            System.exit(1);
+            String errMsg = "Hook not initialized! To set a hook, use " + getClass().getName() + "#setHook.";
+            logger.error(errMsg);
+            throw new NullPointerException(errMsg);
         }
     }
 
