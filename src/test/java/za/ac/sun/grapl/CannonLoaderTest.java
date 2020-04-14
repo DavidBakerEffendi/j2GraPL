@@ -8,9 +8,7 @@ import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.tinkergraph.structure.TinkerGraph;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import za.ac.sun.grapl.controllers.ASTController;
 import za.ac.sun.grapl.domain.enums.EdgeLabels;
 import za.ac.sun.grapl.domain.enums.VertexLabels;
 import za.ac.sun.grapl.hooks.TinkerGraphHook;
@@ -52,11 +50,6 @@ public class CannonLoaderTest {
         validDirectory = getTestResource("cannon_tests/dir_test");
         hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
         fileCannon = new Cannon(hook);
-    }
-
-    @BeforeEach
-    void setUp() {
-        ASTController.getInstance().resetOrder();
     }
 
     @AfterAll

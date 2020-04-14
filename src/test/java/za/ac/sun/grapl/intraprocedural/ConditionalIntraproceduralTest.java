@@ -12,7 +12,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import za.ac.sun.grapl.Cannon;
-import za.ac.sun.grapl.controllers.ASTController;
 import za.ac.sun.grapl.domain.enums.EdgeLabels;
 import za.ac.sun.grapl.domain.enums.Equality;
 import za.ac.sun.grapl.domain.models.vertices.BlockVertex;
@@ -54,7 +53,6 @@ public class ConditionalIntraproceduralTest {
 
     @BeforeEach
     public void setUp(TestInfo testInfo) throws IOException {
-        ASTController.getInstance().resetOrder();
         final TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
         final Cannon fileCannon = new Cannon(hook);
         // Select test resource based on integer in method name

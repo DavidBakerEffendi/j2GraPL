@@ -39,7 +39,7 @@ public class ASTController extends AbstractController {
     }
 
     public void resetOrder() {
-        order = 0;
+        order = super.hook().maxOrder();
     }
 
     public void projectFileAndNamespace(String namespace, String className) {

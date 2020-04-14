@@ -27,6 +27,7 @@ public class ASTClassVisitor extends ClassVisitor implements Opcodes {
     public ASTClassVisitor(ClassVisitor cv) {
         super(ASM5, cv);
         this.controller = ASTController.getInstance();
+        this.controller.resetOrder();
     }
 
     @Override

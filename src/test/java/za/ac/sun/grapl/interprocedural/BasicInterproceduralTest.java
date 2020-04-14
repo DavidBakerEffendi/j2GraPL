@@ -9,7 +9,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInfo;
 import za.ac.sun.grapl.Cannon;
-import za.ac.sun.grapl.controllers.ASTController;
 import za.ac.sun.grapl.hooks.TinkerGraphHook;
 import za.ac.sun.grapl.intraprocedural.ArithmeticTest;
 import za.ac.sun.grapl.util.ResourceCompilationUtil;
@@ -45,7 +44,6 @@ public class BasicInterproceduralTest {
 
     @BeforeEach
     public void setUp(TestInfo testInfo) throws IOException {
-        ASTController.getInstance().resetOrder();
         TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
         fileCannon = new Cannon(hook);
         // Select test resource based on integer in method name
