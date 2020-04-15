@@ -5,6 +5,10 @@ import org.objectweb.asm.util.ASMifier;
 import za.ac.sun.grapl.domain.enums.EvaluationStrategies;
 import za.ac.sun.grapl.domain.enums.JumpAssociations;
 import za.ac.sun.grapl.domain.models.vertices.*;
+import za.ac.sun.grapl.domain.stack.operand.ConstantItem;
+import za.ac.sun.grapl.domain.stack.OperandItem;
+import za.ac.sun.grapl.domain.stack.operand.OperatorItem;
+import za.ac.sun.grapl.domain.stack.operand.VariableItem;
 import za.ac.sun.grapl.util.ASMParserUtil;
 
 import java.util.*;
@@ -15,10 +19,9 @@ import static za.ac.sun.grapl.domain.enums.JumpAssociations.JUMP;
 public class ASTController extends AbstractController {
 
     private final Map<Label, Integer> labelBlockNo = new HashMap<>();
-    private final Map<String, String> localVars = new HashMap<>();
-    private final Map<String, String> varTypes = new HashMap<>();
     private final Map<Label, List<JumpAssociations>> lblJumpAssocs = new HashMap<>();
-    private final Stack<String> operandStack = new Stack<>();
+    private final Stack<OperandItem> operandStack = new Stack<>();
+    private final HashSet<VariableItem> variables = new HashSet<>();
     private final Stack<Integer> blockHistory = new Stack<>();
     private final Stack<JumpSnapshot> jumpStateHistory = new Stack<>();
     private int order;
@@ -149,20 +152,14 @@ public class ASTController extends AbstractController {
      * @param operation the store operation.
      * @param varName   the variable name.
      */
-    public void pushVarInsnStore(String operation, String varName) {
+    public void pushVarInsnStore(int varName, String operation) {
         currentJumpBodyEmpty = false;
-        final String result = operandStack.pop();
-        final String sfx = result.substring(1);
-        final char pfx = result.charAt(0);
-        final String operationType = ASMParserUtil.getStackOperationType(operation);
-        logger.debug(new StringJoiner(" ")
-                .add("Recognized store instruction, popping result of").add(result)
-                .add("from operand stack and assigning result to").add(varName).add("\b."));
+        final OperandItem stackItem = operandStack.pop();
+        final String varType = ASMParserUtil.getStackOperationType(operation);
+        final VariableItem variableItem = getOrPutVariable(varName, varType);
 
-        if (localVars.containsKey(varName)) localVars.replace(varName, result);
-        else localVars.put(varName, result);
-        if (varTypes.containsKey(varName)) varTypes.replace(varName, operationType);
-        else varTypes.put(varName, operationType);
+        final String operationType = ASMParserUtil.getStackOperationType(operation);
+        logger.debug("Storing result of " + stackItem + " to " + variableItem);
 
         final BlockVertex baseBlock = new BlockVertex(operation.substring(1), order++, 1, operationType, currentLineNo);
         if (!blockHistory.empty())
@@ -171,15 +168,15 @@ public class ASTController extends AbstractController {
             hook().assignToBlock(currentMethod, baseBlock, 0);
         blockHistory.push(baseBlock.order);
 
-        LocalVertex leftChild = new LocalVertex(varName, varName, varTypes.get(varName), currentLineNo, order++);
+        LocalVertex leftChild = new LocalVertex(variableItem.id, variableItem.id, variableItem.type, currentLineNo, order++);
         hook().assignToBlock(currentMethod, leftChild, baseBlock.order);
 
-        if (ASMParserUtil.isOperator(result)) {
-            handleOperator(baseBlock, result, ASMParserUtil.getOperatorType(result));
-        } else if (pfx == 'C') {
+        if (stackItem instanceof OperatorItem) {
+            handleOperator(baseBlock, (OperatorItem) stackItem);
+        } else if (stackItem instanceof ConstantItem) {
             hook().assignToBlock(
                     currentMethod,
-                    new LiteralVertex(sfx, order++, 1, operationType, currentLineNo),
+                    new LiteralVertex(stackItem.id, order++, 1, operationType, currentLineNo),
                     baseBlock.order);
         }
         blockHistory.pop();
@@ -188,26 +185,46 @@ public class ASTController extends AbstractController {
     /**
      * Handles visitVarInsn if the opcode is a load operation.
      *
-     * @param operation the load operation.
      * @param varName   the variable name.
+     * @param operation the load operation.
      */
-    public void pushVarInsnLoad(String operation, String varName) {
-        final String variableType = ASMParserUtil.getStackOperationType(operation);
-        operandStack.push("V".concat(varName));
-        varTypes.put(varName, variableType);
+    public void pushVarInsnLoad(int varName, String operation) {
+        final String varType = ASMParserUtil.getStackOperationType(operation);
+        final VariableItem variableItem = getOrPutVariable(varName, varType);
+        logger.debug("Pushing " + variableItem);
+        operandStack.push(variableItem);
+    }
+
+    private VariableItem getVariable(int varName) {
+        String varString = String.valueOf(varName);
+        return variables.stream()
+                .filter(variable -> varString.equals(variable.id))
+                .findFirst()
+                .orElseThrow(() -> new NullPointerException("Attempted to get undeclared variable!"));
+    }
+
+    private VariableItem getOrPutVariable(int varName, String type) {
+        String varString = String.valueOf(varName);
+        return variables.stream()
+                .filter(variable -> varString.equals(variable.id))
+                .findFirst()
+                .orElseGet(() -> {
+                    VariableItem temp = new VariableItem(varString, type);
+                    variables.add(temp);
+                    return temp;
+                });
     }
 
     /**
      * Will handle the case of an operator being nested under a parent block.
      *
      * @param prevBlock    the parent block of this operation.
-     * @param operator     the operator of the statement.
-     * @param operatorType the type of the operator.
+     * @param operatorItem the operator stack item.
      */
-    private void handleOperator(BlockVertex prevBlock, String operator, String operatorType) {
-        logger.debug(new StringBuilder().append("Next operator: ").append(operator));
+    private void handleOperator(BlockVertex prevBlock, OperatorItem operatorItem) {
+        logger.debug("Next operator: " + operatorItem);
 
-        BlockVertex currBlock = new BlockVertex(operator.substring(1), order++, 1, operatorType, currentLineNo);
+        BlockVertex currBlock = new BlockVertex(operatorItem.id, order++, 1, operatorItem.type, currentLineNo);
         logger.debug(new StringBuilder()
                 .append("Joining block (").append(prevBlock.name).append(", ").append(prevBlock.order)
                 .append(") -> (").append(currBlock.name).append(", ").append(currBlock.order).append(")"));
@@ -216,18 +233,19 @@ public class ASTController extends AbstractController {
         // TODO: Assume all operations that aren't automatically evaluated by compiler are binary
         int noOperands = 2;
         for (int i = 0; i < noOperands; i++) {
-            final String operand = operandStack.pop();
-            final String sfx = operand.substring(1);
-            final char pfx = operand.charAt(0);
-            logger.debug("Next operand: ".concat(operand));
+            final OperandItem stackItem = operandStack.pop();
+            logger.debug("Next operand: " + stackItem);
 
-            if (ASMParserUtil.isOperator(operand)) {
-                handleOperator(currBlock, operand, ASMParserUtil.getOperatorType(operand));
-            } else if (pfx == 'C') {
-                final LiteralVertex literalVertex = new LiteralVertex(sfx, order++, 1, operatorType, currentLineNo);
+            if (stackItem instanceof OperatorItem) {
+                // Handle operator
+                handleOperator(currBlock, (OperatorItem) stackItem);
+            } else if (stackItem instanceof ConstantItem) {
+                ConstantItem constantItem = (ConstantItem) stackItem;
+                final LiteralVertex literalVertex = new LiteralVertex(constantItem.id, order++, 1, constantItem.type, currentLineNo);
                 hook().assignToBlock(currentMethod, literalVertex, currBlock.order);
-            } else if (pfx == 'V') {
-                final LocalVertex localVertex = new LocalVertex(sfx, sfx, varTypes.get(sfx), currentLineNo, order++);
+            } else if (stackItem instanceof VariableItem) {
+                VariableItem variableItem = (VariableItem) stackItem;
+                final LocalVertex localVertex = new LocalVertex(variableItem.id, variableItem.id, variableItem.type, currentLineNo, order++);
                 hook().assignToBlock(currentMethod, localVertex, currBlock.order);
             }
         }
@@ -273,11 +291,12 @@ public class ASTController extends AbstractController {
      */
     public void pushBinaryJump(String jumpOp, Label label) {
         logger.debug("Recognized binary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
-        final String arg2 = operandStack.pop();
-        final String arg1 = operandStack.pop();
-        logger.debug("Jump arguments = [".concat(arg1).concat(", ").concat(arg2).concat("]"));
-        final char[] pfx = new char[]{arg1.charAt(0), arg2.charAt(0)};
-        final String[] sfx = new String[]{arg1.substring(1), arg2.substring(1)};
+        final OperandItem opItem2 = operandStack.pop();
+        final OperandItem opItem1 = operandStack.pop();
+
+        final OperandItem[] ops = new OperandItem[] {opItem1, opItem2};
+
+        logger.debug("Jump arguments = [".concat(opItem1.toString()).concat(", ").concat(opItem2.toString()).concat("]"));
         final String jumpType = ASMParserUtil.getBinaryJumpType(jumpOp);
 
         BlockVertex condRoot = new BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo);
@@ -288,11 +307,11 @@ public class ASTController extends AbstractController {
             hook().assignToBlock(currentMethod, condRoot, blockHistory.peek());
         hook().assignToBlock(currentMethod, condBlock, condRoot.order);
 
-        for (int i = 0; i < pfx.length; i++) {
-            if (pfx[i] == 'C')
-                hook().assignToBlock(currentMethod, new LiteralVertex(sfx[i], order++, 1, jumpType, currentLineNo), condBlock.order);
-            else if (pfx[i] == 'V')
-                hook().assignToBlock(currentMethod, new LocalVertex(sfx[i], sfx[i], varTypes.get(sfx[i]), currentLineNo, order++), condBlock.order);
+        for (OperandItem op : ops) {
+            if (op instanceof ConstantItem)
+                hook().assignToBlock(currentMethod, new LiteralVertex(op.id, order++, 1, jumpType, currentLineNo), condBlock.order);
+            else if (op instanceof VariableItem)
+                hook().assignToBlock(currentMethod, new LocalVertex(op.id, op.id, op.type, currentLineNo, order++), condBlock.order);
         }
         pushJumpState(JumpState.IF_ROOT, label);
         blockHistory.push(condRoot.order);
@@ -326,31 +345,53 @@ public class ASTController extends AbstractController {
      */
     public void pushUnaryJump(String jumpOp, Label label) {
         logger.debug("Recognized unary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
-        final String arg1 = operandStack.pop();
-        logger.debug("Jump arguments = [".concat(arg1).concat("]"));
+        final OperandItem arg1 = operandStack.pop();
+        logger.debug("Jump arguments = [" + arg1.toString() + "]");
         enteringJumpBody = true;
     }
 
     public void pushConstInsnOperation(Object val) {
-        logger.debug("Pushing constant " + val);
-        operandStack.push("C".concat(val.toString()));
+        String canonicalType = val.getClass().getCanonicalName().replaceAll("\\.", "/");
+        String className = canonicalType.substring(canonicalType.lastIndexOf("/") + 1);
+        ConstantItem stackItem;
+        String type;
+        if ("Integer".equals(className) || "Long".equals(className) || "Float".equals(className) || "Double".equals(className)) {
+            type = className.toUpperCase();
+        } else {
+            type = canonicalType;
+        }
+        stackItem = new ConstantItem(val.toString(), type);
+        logger.debug("Pushing " + stackItem.toString());
+        operandStack.push(stackItem);
     }
 
     public void pushConstInsnOperation(int opcode) {
         final String line = ASMifier.OPCODES[opcode];
+        final String type;
+        OperandItem item = null;
+
+        if (line.charAt(0) == 'L') type = "LONG";
+        else type = ASMParserUtil.getReadableType(line.charAt(0));
+
         if (ASMParserUtil.isConstant(line)) {
-            logger.debug("Pushing constant " + line);
-            operandStack.push("C".concat(line.substring(line.indexOf('_') + 1).replace("M", "-")));
+            String val = line.substring(line.indexOf('_') + 1).replace("M", "-");
+            item = new ConstantItem(val, type);
         } else if (ASMParserUtil.isOperator(line)) {
-            logger.debug("Pushing operator " + line);
-            operandStack.push(line);
+            item = new OperatorItem(line.substring(1), type);
+        }
+
+        if (Objects.nonNull(item)) {
+            logger.debug("Pushing " + item);
+            operandStack.push(item);
         }
     }
 
     public void pushConstInsnOperation(int opcode, int operand) {
         String line = ASMifier.OPCODES[opcode].concat(" ").concat(String.valueOf(operand));
-        logger.debug("Pushing constant " + line);
-        operandStack.push("C".concat(line.substring(line.indexOf(' ') + 1)));
+        String type = ASMParserUtil.getReadableType(ASMifier.OPCODES[opcode].charAt(0));
+        ConstantItem item = new ConstantItem(String.valueOf(operand), type);
+        logger.debug("Pushing " + item);
+        operandStack.push(item);
     }
 
     public void pushVarInc(int var, int increment) {
@@ -368,14 +409,20 @@ public class ASTController extends AbstractController {
         blockHistory.pop();
     }
 
+    @Override
+    public String toString() {
+        return "DEBUG INFO: " + this.getClass().getCanonicalName() + "\n"
+                + "Stack: " + operandStack.toString() + "\n"
+                + "Variables: " + variables.toString();
+    }
+
     public void clear() {
         labelBlockNo.clear();
-        localVars.clear();
-        varTypes.clear();
         lblJumpAssocs.clear();
-        operandStack.clear();
         blockHistory.clear();
         jumpStateHistory.clear();
+        operandStack.clear();
+        variables.clear();
     }
 
     private enum JumpState {

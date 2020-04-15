@@ -127,6 +127,10 @@ public class ASMParserUtil implements Opcodes {
         return determineModifiers(access, null);
     }
 
+    public static String getReadableType(char rawType) {
+        return getReadableType(String.valueOf(rawType));
+    }
+
     /**
      * Returns the "readable" name of a given raw name from ASM. For example I -> Integer and
      * java/util/String -> String.

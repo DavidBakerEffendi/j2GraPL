@@ -15,6 +15,8 @@
  */
 package za.ac.sun.grapl.visitors.ast;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -23,6 +25,8 @@ import za.ac.sun.grapl.controllers.ASTController;
 import za.ac.sun.grapl.util.ASMParserUtil;
 
 public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
+
+    final static Logger logger = LogManager.getLogger();
 
     private final ASTController controller;
 
@@ -51,11 +55,10 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     @Override
     public void visitVarInsn(int opcode, int var) {
         super.visitVarInsn(opcode, var);
-        final String varName = String.valueOf(var);
         final String operation = ASMifier.OPCODES[opcode];
 
-        if (ASMParserUtil.isLoad(operation)) controller.pushVarInsnLoad(operation, varName);
-        else if (ASMParserUtil.isStore(operation)) controller.pushVarInsnStore(operation, varName);
+        if (ASMParserUtil.isLoad(operation)) controller.pushVarInsnLoad(var, operation);
+        else if (ASMParserUtil.isStore(operation)) controller.pushVarInsnStore(var, operation);
     }
 
     @Override
@@ -110,6 +113,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     @Override
     public void visitEnd() {
         super.visitEnd();
+        logger.debug(controller.toString());
     }
 
 }
