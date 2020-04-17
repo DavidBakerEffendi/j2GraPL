@@ -1,6 +1,6 @@
 package za.ac.sun.grapl.domain.enums;
 
-public enum IfCmpPosition {
+public enum JumpState {
     METHOD_BODY,
     IF_ROOT,
     IF_BODY,

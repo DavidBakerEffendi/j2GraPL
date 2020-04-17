@@ -22,7 +22,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.4.2'
     testImplementation 'org.apache.tinkerpop:tinkergraph-gremlin:3.4.5'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-api:5.4.2'
-    implementation name: 'GraPLHook4j-0.0.2'
+    implementation name: 'GraPLHook4j-0.0.3'
 }
 
 test {

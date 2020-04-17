@@ -3,20 +3,18 @@ package za.ac.sun.grapl.controllers;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.util.ASMifier;
 import za.ac.sun.grapl.domain.enums.EvaluationStrategies;
-import za.ac.sun.grapl.domain.enums.IfCmpPosition;
+import za.ac.sun.grapl.domain.enums.JumpState;
 import za.ac.sun.grapl.domain.models.vertices.*;
 import za.ac.sun.grapl.domain.stack.BlockItem;
 import za.ac.sun.grapl.domain.stack.OperandItem;
-import za.ac.sun.grapl.domain.stack.block.GotoBlock;
-import za.ac.sun.grapl.domain.stack.block.IfCmpBlock;
-import za.ac.sun.grapl.domain.stack.block.JumpBlock;
-import za.ac.sun.grapl.domain.stack.block.StoreBlock;
+import za.ac.sun.grapl.domain.stack.block.*;
 import za.ac.sun.grapl.domain.stack.operand.ConstantItem;
 import za.ac.sun.grapl.domain.stack.operand.OperatorItem;
 import za.ac.sun.grapl.domain.stack.operand.VariableItem;
 import za.ac.sun.grapl.util.ASMParserUtil;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class ASTController extends AbstractController {
 
@@ -116,12 +114,33 @@ public class ASTController extends AbstractController {
                 .forEach(m -> hook().createAndAddToMethod(currentMethod, new ModifierVertex(m, order++)));
     }
 
-    public void lineNumberClone(int line, Label start) {
+    public void associateLineNumberWithLabel(int line, Label start) {
         this.currentLineNo = line;
         this.currentLabel = start;
 
+        if (!bHistory.isEmpty() && bHistory.peek() instanceof NestedBodyBlock) {
+            if (!super.hook().isBlock(bHistory.peek().order)) {
+                final NestedBodyBlock newBlock = ((NestedBodyBlock) bHistory.pop()).setLabel(start);
+                BlockVertex bodyVertex = new BlockVertex(newBlock.position.name(), newBlock.order, 1, "VOID", line);
+                if (!bHistory.empty())
+                    hook().assignToBlock(currentMethod, bodyVertex, bHistory.peek().order);
+                else
+                    hook().assignToBlock(currentMethod, bodyVertex, 0);
+                bHistory.push(newBlock);
+            }
+        }
+
         if (isJumpDestination(start)) {
             // TODO: Reconstruct rules
+            handleJumpDestination();
+        }
+    }
+
+    private void handleJumpDestination() {
+        List<JumpBlock> associatedJumps = getAssociatedJumps(currentLabel);
+        if (associatedJumps.stream().anyMatch(j -> j instanceof IfCmpBlock && j.position == JumpState.IF_ROOT)) {
+            bHistory.pop();
+            bHistory.pop();
         }
     }
 
@@ -135,12 +154,13 @@ public class ASTController extends AbstractController {
         final OperandItem operandItem = operandStack.pop();
         final String varType = ASMParserUtil.getStackOperationType(operation);
         final VariableItem variableItem = getOrPutVariable(varName, varType);
-        final String operationType = ASMParserUtil.getStackOperationType(operation);
-        final BlockVertex baseBlock = new BlockVertex("STORE", order++, 1, operationType, currentLineNo);
+        final BlockVertex baseBlock = new BlockVertex("STORE", order++, 1, varType, currentLineNo);
 
-        if (!bHistory.empty())
+        if (!bHistory.empty()) {
+            System.out.println(bHistory.peek());
+            System.out.println(bHistory);
             hook().assignToBlock(currentMethod, baseBlock, bHistory.peek().order);
-        else
+        } else
             hook().assignToBlock(currentMethod, baseBlock, 0);
 
         final StoreBlock storeBlock = new StoreBlock(order, currentLabel);
@@ -157,7 +177,7 @@ public class ASTController extends AbstractController {
         } else if (operandItem instanceof ConstantItem) {
             hook().assignToBlock(
                     currentMethod,
-                    new LiteralVertex(operandItem.id, order++, 1, operationType, currentLineNo),
+                    new LiteralVertex(operandItem.id, order++, 1, varType, currentLineNo),
                     baseBlock.order);
         }
 
@@ -232,10 +252,19 @@ public class ASTController extends AbstractController {
         JumpBlock currentBlock = new GotoBlock(order, currentLabel, label, lastJump.position);
         logger.debug("Pushing " + currentBlock);
 
-        pushJumpBlock(currentBlock);
+        allJumps.add(currentBlock);
 
-        if (lastJump.position == IfCmpPosition.IF_BODY) {
+        BlockItem blockItem = null;
+        while (!bHistory.isEmpty() && !(bHistory.peek() instanceof JumpBlock)) {
+            blockItem = bHistory.pop();
+            System.out.println("Popped " + blockItem);
+        }
+
+        if (Objects.nonNull(blockItem)) {
             // TODO: Make rules
+            if (bHistory.peek() instanceof JumpBlock && ((JumpBlock) bHistory.peek()).label != label) {
+                bHistory.push(new NestedBodyBlock(order++, label, JumpState.ELSE_BODY));
+            }
         }
     }
 
@@ -267,8 +296,9 @@ public class ASTController extends AbstractController {
                 hook().assignToBlock(currentMethod, new LocalVertex(op.id, op.id, op.type, currentLineNo, order++), condBlock.order);
         });
 
-        pushJumpBlock(new IfCmpBlock(condRoot.order, currentLabel, label, IfCmpPosition.IF_ROOT));
+        pushJumpBlock(new IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT));
         // TODO: Find a way to tell next method to enter if-body or else-body
+        bHistory.push(new NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY));
     }
 
     /**
@@ -343,6 +373,12 @@ public class ASTController extends AbstractController {
         return null;
     }
 
+    private List<JumpBlock> getAssociatedJumps(Label destination) {
+        return allJumps.parallelStream()
+                .filter(j -> j.destination == destination)
+                .collect(Collectors.toList());
+    }
+
     private boolean isJumpDestination(Label label) {
         return allJumps.parallelStream()
                 .map(j -> j.destination == label)
@@ -353,7 +389,8 @@ public class ASTController extends AbstractController {
 
     @Override
     public String toString() {
-        return "DEBUG INFO: " + this.getClass().getCanonicalName() + "\n"
+        return "\n" + this.getClass().getCanonicalName() + "#"
+                + currentMethod.name + currentMethod.signature + "\n"
                 + "Stack: " + operandStack + "\n"
                 + "Variables: " + variables + "\n"
                 + "Block history: " + bHistory + "\n";

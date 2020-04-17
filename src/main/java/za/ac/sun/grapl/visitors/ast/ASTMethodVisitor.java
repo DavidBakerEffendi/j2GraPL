@@ -80,7 +80,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     public void visitJumpInsn(int opcode, Label label) {
         super.visitJumpInsn(opcode, label);
         final String jumpOp = ASMifier.OPCODES[opcode];
-        controller.addJumpLabelAssoc(label, jumpOp);
+        System.out.println(jumpOp);
 
         if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) controller.pushNullaryJumps(jumpOp, label);
         else if (ASMParserUtil.UNARY_JUMPS.contains(jumpOp)) controller.pushUnaryJump(jumpOp, label);
@@ -107,7 +107,7 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     @Override
     public void visitLineNumber(int line, Label start) {
         super.visitLineNumber(line, start);
-        controller.lineNumberClone(line, start);
+        controller.associateLineNumberWithLabel(line, start);
     }
 
     @Override
