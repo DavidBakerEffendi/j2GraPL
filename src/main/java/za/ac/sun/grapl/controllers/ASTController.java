@@ -3,10 +3,16 @@ package za.ac.sun.grapl.controllers;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.util.ASMifier;
 import za.ac.sun.grapl.domain.enums.EvaluationStrategies;
+import za.ac.sun.grapl.domain.enums.IfCmpPosition;
 import za.ac.sun.grapl.domain.enums.JumpAssociations;
 import za.ac.sun.grapl.domain.models.vertices.*;
-import za.ac.sun.grapl.domain.stack.operand.ConstantItem;
+import za.ac.sun.grapl.domain.stack.BlockItem;
 import za.ac.sun.grapl.domain.stack.OperandItem;
+import za.ac.sun.grapl.domain.stack.block.GotoBlock;
+import za.ac.sun.grapl.domain.stack.block.IfCmpBlock;
+import za.ac.sun.grapl.domain.stack.block.JumpBlock;
+import za.ac.sun.grapl.domain.stack.block.StoreBlock;
+import za.ac.sun.grapl.domain.stack.operand.ConstantItem;
 import za.ac.sun.grapl.domain.stack.operand.OperatorItem;
 import za.ac.sun.grapl.domain.stack.operand.VariableItem;
 import za.ac.sun.grapl.util.ASMParserUtil;
@@ -18,20 +24,25 @@ import static za.ac.sun.grapl.domain.enums.JumpAssociations.JUMP;
 
 public class ASTController extends AbstractController {
 
-    private final Map<Label, Integer> labelBlockNo = new HashMap<>();
     private final Map<Label, List<JumpAssociations>> lblJumpAssocs = new HashMap<>();
     private final Stack<OperandItem> operandStack = new Stack<>();
     private final HashSet<VariableItem> variables = new HashSet<>();
+
     private final Stack<Integer> blockHistory = new Stack<>();
     private final Stack<JumpSnapshot> jumpStateHistory = new Stack<>();
+
+    private final Stack<BlockItem> bHistory = new Stack<>();
+    private final HashSet<JumpBlock> allJumps = new HashSet<>();
+
     private int order;
+    private Label currentLabel;
     private String classPath;
     private FileVertex currentClass;
     private MethodVertex currentMethod;
     private boolean enteringJumpBody = false;
     private boolean currentJumpBodyEmpty = false;
     private int currentLineNo = -1;
-    private JumpState jumpState = JumpState.METHOD_BODY;
+    private IfCmpPosition jumpState = IfCmpPosition.METHOD_BODY;
 
     private ASTController() {
         order = 0;
@@ -118,21 +129,21 @@ public class ASTController extends AbstractController {
 
     public void lineNumberClone(int line, Label start) {
         this.currentLineNo = line;
-        this.labelBlockNo.put(start, line);
+        this.currentLabel = start;
 
-        if (lblJumpAssocs.containsKey(start)) {
+        if (isJumpDestination(start)) {
             List<JumpAssociations> assocs = lblJumpAssocs.get(start);
             while (jumpStateHistory.size() >= 2 && assocs.contains(IF_CMP)
                     && jumpStateHistory.peek().label != start && !blockHistory.isEmpty()
-                    && jumpStateHistory.peek().state == JumpState.IF_ROOT) {
+                    && jumpStateHistory.peek().state == IfCmpPosition.IF_ROOT) {
                 popJumpState();
                 popJumpState();
             }
-            if ((assocs.contains(IF_CMP)) && jumpStateHistory.peek().state == JumpState.IF_ROOT) {
-                pushJumpState(JumpState.ELSE_BODY, start);
+            if ((assocs.contains(IF_CMP)) && jumpStateHistory.peek().state == IfCmpPosition.IF_ROOT) {
+                pushJumpState(IfCmpPosition.ELSE_BODY, start);
                 enteringJumpBody = true;
-            } else if ((assocs.contains(IF_CMP) && jumpStateHistory.peek().state == JumpState.IF_BODY) ||
-                    (assocs.contains(JUMP) && jumpStateHistory.peek().state == JumpState.ELSE_BODY)) {
+            } else if ((assocs.contains(IF_CMP) && jumpStateHistory.peek().state == IfCmpPosition.IF_BODY) ||
+                    (assocs.contains(JUMP) && jumpStateHistory.peek().state == IfCmpPosition.ELSE_BODY)) {
                 popJumpState();
                 popJumpState();
             }
@@ -154,32 +165,38 @@ public class ASTController extends AbstractController {
      */
     public void pushVarInsnStore(int varName, String operation) {
         currentJumpBodyEmpty = false;
-        final OperandItem stackItem = operandStack.pop();
+        final OperandItem operandItem = operandStack.pop();
         final String varType = ASMParserUtil.getStackOperationType(operation);
         final VariableItem variableItem = getOrPutVariable(varName, varType);
-
         final String operationType = ASMParserUtil.getStackOperationType(operation);
-        logger.debug("Storing result of " + stackItem + " to " + variableItem);
+        final BlockVertex baseBlock = new BlockVertex("STORE", order++, 1, operationType, currentLineNo);
 
-        final BlockVertex baseBlock = new BlockVertex(operation.substring(1), order++, 1, operationType, currentLineNo);
         if (!blockHistory.empty())
             hook().assignToBlock(currentMethod, baseBlock, blockHistory.peek());
         else
             hook().assignToBlock(currentMethod, baseBlock, 0);
+
+        final StoreBlock storeBlock = new StoreBlock(order, currentLabel);
+        storeBlock.setL(variableItem);
+        storeBlock.setR(operandItem);
+        logger.debug("Pushing " + storeBlock);
+
         blockHistory.push(baseBlock.order);
+        bHistory.push(storeBlock);
 
         LocalVertex leftChild = new LocalVertex(variableItem.id, variableItem.id, variableItem.type, currentLineNo, order++);
         hook().assignToBlock(currentMethod, leftChild, baseBlock.order);
-
-        if (stackItem instanceof OperatorItem) {
-            handleOperator(baseBlock, (OperatorItem) stackItem);
-        } else if (stackItem instanceof ConstantItem) {
+        if (operandItem instanceof OperatorItem) {
+            handleOperator(baseBlock, (OperatorItem) operandItem);
+        } else if (operandItem instanceof ConstantItem) {
             hook().assignToBlock(
                     currentMethod,
-                    new LiteralVertex(stackItem.id, order++, 1, operationType, currentLineNo),
+                    new LiteralVertex(operandItem.id, order++, 1, operationType, currentLineNo),
                     baseBlock.order);
         }
+
         blockHistory.pop();
+        bHistory.pop();
     }
 
     /**
@@ -189,22 +206,13 @@ public class ASTController extends AbstractController {
      * @param operation the load operation.
      */
     public void pushVarInsnLoad(int varName, String operation) {
-        final String varType = ASMParserUtil.getStackOperationType(operation);
-        final VariableItem variableItem = getOrPutVariable(varName, varType);
+        final VariableItem variableItem = getOrPutVariable(varName, ASMParserUtil.getStackOperationType(operation));
         logger.debug("Pushing " + variableItem);
         operandStack.push(variableItem);
     }
 
-    private VariableItem getVariable(int varName) {
-        String varString = String.valueOf(varName);
-        return variables.stream()
-                .filter(variable -> varString.equals(variable.id))
-                .findFirst()
-                .orElseThrow(() -> new NullPointerException("Attempted to get undeclared variable!"));
-    }
-
     private VariableItem getOrPutVariable(int varName, String type) {
-        String varString = String.valueOf(varName);
+        final String varString = String.valueOf(varName);
         return variables.stream()
                 .filter(variable -> varString.equals(variable.id))
                 .findFirst()
@@ -237,7 +245,6 @@ public class ASTController extends AbstractController {
             logger.debug("Next operand: " + stackItem);
 
             if (stackItem instanceof OperatorItem) {
-                // Handle operator
                 handleOperator(currBlock, (OperatorItem) stackItem);
             } else if (stackItem instanceof ConstantItem) {
                 ConstantItem constantItem = (ConstantItem) stackItem;
@@ -258,10 +265,12 @@ public class ASTController extends AbstractController {
      * @param label  the label to jump to.
      */
     public void pushNullaryJumps(String jumpOp, Label label) {
-        logger.debug("Recognized nullary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
+        logger.debug("Recognized nullary jump " + jumpOp + " with label " + label.toString());
         long numGotoAssocs = lblJumpAssocs.get(label).stream().filter((t) -> t == JUMP).count();
 
-        if (jumpState == JumpState.IF_BODY) {
+        pushJumpBlock(new GotoBlock(order, currentLabel, label, jumpState));
+
+        if (jumpState == IfCmpPosition.IF_BODY) {
             if (lblJumpAssocs.get(label).contains(IF_CMP) && jumpStateHistory.peek().label == label) {
                 popJumpState();
                 popJumpState();
@@ -271,14 +280,14 @@ public class ASTController extends AbstractController {
                 popJumpState();
             }
             jumpStateHistory.pop(); // So that there aren't duplicate IF_ROOTs - this may be a result of a bug
-            pushJumpState(JumpState.IF_ROOT, tempLabel);
+            pushJumpState(IfCmpPosition.IF_ROOT, tempLabel);
         } else if (numGotoAssocs >= 2) {
             for (int i = 0; i < numGotoAssocs; i++) {
                 popJumpState();
             }
             Label tempLabel = jumpStateHistory.peek().label;
             popJumpState();
-            pushJumpState(JumpState.IF_ROOT, tempLabel);
+            pushJumpState(IfCmpPosition.IF_ROOT, tempLabel);
         }
         enteringJumpBody = true;
     }
@@ -290,15 +299,9 @@ public class ASTController extends AbstractController {
      * @param label  the label to jump to if the jump condition is satisfied.
      */
     public void pushBinaryJump(String jumpOp, Label label) {
-        logger.debug("Recognized binary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
-        final OperandItem opItem2 = operandStack.pop();
-        final OperandItem opItem1 = operandStack.pop();
-
-        final OperandItem[] ops = new OperandItem[] {opItem1, opItem2};
-
-        logger.debug("Jump arguments = [".concat(opItem1.toString()).concat(", ").concat(opItem2.toString()).concat("]"));
+        logger.debug("Recognized binary jump " + jumpOp + " with label " + label.toString());
         final String jumpType = ASMParserUtil.getBinaryJumpType(jumpOp);
-
+        // Build if-root and if-cond
         BlockVertex condRoot = new BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo);
         BlockVertex condBlock = new BlockVertex(ASMParserUtil.parseAndFlipEquality(jumpOp).toString(), order++, 2, jumpType, currentLineNo);
         if (blockHistory.isEmpty())
@@ -306,17 +309,24 @@ public class ASTController extends AbstractController {
         else
             hook().assignToBlock(currentMethod, condRoot, blockHistory.peek());
         hook().assignToBlock(currentMethod, condBlock, condRoot.order);
-
-        for (OperandItem op : ops) {
+        // Add if-cond operands
+        final List<OperandItem> ops = Arrays.asList(operandStack.pop(), operandStack.pop());
+        Collections.reverse(ops);
+        logger.debug("Jump arguments = [" + ops.get(0) + ", " + ops.get(1) + "]");
+        ops.forEach(op -> {
             if (op instanceof ConstantItem)
                 hook().assignToBlock(currentMethod, new LiteralVertex(op.id, order++, 1, jumpType, currentLineNo), condBlock.order);
             else if (op instanceof VariableItem)
                 hook().assignToBlock(currentMethod, new LocalVertex(op.id, op.id, op.type, currentLineNo, order++), condBlock.order);
-        }
-        pushJumpState(JumpState.IF_ROOT, label);
+        });
+
+        pushJumpState(IfCmpPosition.IF_ROOT, label);
+
+        pushJumpBlock(new IfCmpBlock(condRoot.order, currentLabel, label, IfCmpPosition.IF_ROOT));
+
         blockHistory.push(condRoot.order);
         // Let "body" methods know that they need to enter body
-        pushJumpState(JumpState.IF_BODY, label);
+        pushJumpState(IfCmpPosition.IF_BODY, label);
         enteringJumpBody = true;
         // Trigger "empty body" which will only be checked before another GOTO is encountered
         currentJumpBodyEmpty = true;
@@ -344,24 +354,23 @@ public class ASTController extends AbstractController {
      * @param label  the label to jump to if the jump condition is satisfied.
      */
     public void pushUnaryJump(String jumpOp, Label label) {
-        logger.debug("Recognized unary jump ".concat(jumpOp).concat(" with label ".concat(label.toString())));
+        logger.debug("Recognized unary jump " + jumpOp + " with label " + label.toString());
         final OperandItem arg1 = operandStack.pop();
-        logger.debug("Jump arguments = [" + arg1.toString() + "]");
+        logger.debug("Jump arguments = [" + arg1 + "]");
         enteringJumpBody = true;
     }
 
     public void pushConstInsnOperation(Object val) {
         String canonicalType = val.getClass().getCanonicalName().replaceAll("\\.", "/");
         String className = canonicalType.substring(canonicalType.lastIndexOf("/") + 1);
-        ConstantItem stackItem;
         String type;
         if ("Integer".equals(className) || "Long".equals(className) || "Float".equals(className) || "Double".equals(className)) {
             type = className.toUpperCase();
         } else {
             type = canonicalType;
         }
-        stackItem = new ConstantItem(val.toString(), type);
-        logger.debug("Pushing " + stackItem.toString());
+        ConstantItem stackItem = new ConstantItem(val.toString(), type);
+        logger.debug("Pushing " + stackItem);
         operandStack.push(stackItem);
     }
 
@@ -387,7 +396,6 @@ public class ASTController extends AbstractController {
     }
 
     public void pushConstInsnOperation(int opcode, int operand) {
-        String line = ASMifier.OPCODES[opcode].concat(" ").concat(String.valueOf(operand));
         String type = ASMParserUtil.getReadableType(ASMifier.OPCODES[opcode].charAt(0));
         ConstantItem item = new ConstantItem(String.valueOf(operand), type);
         logger.debug("Pushing " + item);
@@ -399,7 +407,7 @@ public class ASTController extends AbstractController {
         currentJumpBodyEmpty = false;
     }
 
-    private void pushJumpState(JumpState state, Label label) {
+    private void pushJumpState(IfCmpPosition state, Label label) {
         jumpState = state;
         jumpStateHistory.push(new JumpSnapshot(state, label));
     }
@@ -409,27 +417,43 @@ public class ASTController extends AbstractController {
         blockHistory.pop();
     }
 
+    private void pushJumpBlock(JumpBlock item) {
+        bHistory.push(item);
+        allJumps.add(item);
+    }
+
+    private BlockItem getLastJump() {
+        ListIterator<BlockItem> listIterator = bHistory.listIterator(bHistory.size());
+        while (listIterator.hasPrevious()) {
+            BlockItem prev = listIterator.previous();
+            if (prev instanceof IfCmpBlock || prev instanceof GotoBlock) return prev;
+        }
+        return null;
+    }
+
+    private boolean isJumpDestination(Label label) {
+        return allJumps.parallelStream()
+                .map(j -> j.destination == label)
+                .filter(b -> b)
+                .findFirst()
+                .orElse(false);
+    }
+
     @Override
     public String toString() {
         return "DEBUG INFO: " + this.getClass().getCanonicalName() + "\n"
-                + "Stack: " + operandStack.toString() + "\n"
-                + "Variables: " + variables.toString();
+                + "Stack: " + operandStack + "\n"
+                + "Variables: " + variables + "\n"
+                + "Block history: " + bHistory + "\n";
     }
 
     public void clear() {
-        labelBlockNo.clear();
         lblJumpAssocs.clear();
         blockHistory.clear();
         jumpStateHistory.clear();
         operandStack.clear();
         variables.clear();
-    }
-
-    private enum JumpState {
-        METHOD_BODY,
-        IF_ROOT,
-        IF_BODY,
-        ELSE_BODY
+        bHistory.clear();
     }
 
     private static class Singleton {
@@ -438,10 +462,10 @@ public class ASTController extends AbstractController {
 
     private static class JumpSnapshot {
 
-        public final JumpState state;
+        public final IfCmpPosition state;
         public final Label label;
 
-        public JumpSnapshot(JumpState state, Label label) {
+        public JumpSnapshot(IfCmpPosition state, Label label) {
             this.state = state;
             this.label = label;
         }
