@@ -34,7 +34,7 @@ import java.util.jar.JarFile;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class ResourceCompilationUtil {
+public final class ResourceCompilationUtil {
 
     final static Logger logger = LogManager.getLogger();
 
@@ -44,7 +44,7 @@ public class ResourceCompilationUtil {
      * @param f the file to validate
      * @throws IOException if the file is not a valid directory or does not exist.
      */
-    private static void validateFileAsDirectory(File f) throws IOException {
+    private static void validateFileAsDirectory(final File f) throws IOException {
         // Validate path
         if (!f.isDirectory()) throw new IOException("The path must point to a valid directory!");
         if (!f.exists()) throw new IOException("The path does not exist!");
@@ -55,7 +55,7 @@ public class ResourceCompilationUtil {
      *
      * @param file the source file to compile
      */
-    public static void compileJavaFile(File file) {
+    public static void compileJavaFile(final File file) {
         final JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
         final StandardJavaFileManager fileManager = javac.getStandardFileManager(null, null, null);
         javac.getTask(null, fileManager, null, Collections.singletonList("-g"), null,
@@ -68,19 +68,18 @@ public class ResourceCompilationUtil {
      * @param path the path to the directory
      * @throws IOException if the path is not a directory or does not exist
      */
-    public static void compileJavaFiles(File path) throws IOException {
+    public static void compileJavaFiles(final File path) throws IOException {
         validateFileAsDirectory(path);
         // Dynamically compile Java test resources
         final JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
         final StandardJavaFileManager fileManager = javac.getStandardFileManager(null, null, null);
         final LinkedList<File> fileList = new LinkedList<>();
 
-        try (Stream<Path> walk = Files.walk(Paths.get(path.getAbsolutePath()))) {
-            List<String> result = walk
-                    .map(Path::toString)
+        try (final Stream<Path> walk = Files.walk(Paths.get(path.getAbsolutePath()))) {
+            walk.map(Path::toString)
                     .filter(f -> f.endsWith(".java"))
-                    .collect(Collectors.toList());
-            result.forEach((f) -> fileList.add(new File(f)));
+                    .collect(Collectors.toList())
+                    .forEach((f) -> fileList.add(new File(f)));
         }
 
         javac.getTask(null, fileManager, null, Collections.singletonList("-g"), null,
@@ -93,17 +92,16 @@ public class ResourceCompilationUtil {
      * @param path the path to the directory
      * @throws IOException if the path is not a directory or does not exist
      */
-    public static void deleteClassFiles(File path) throws IOException {
+    public static void deleteClassFiles(final File path) throws IOException {
         validateFileAsDirectory(path);
 
-        try (Stream<Path> walk = Files.walk(Paths.get(path.getAbsolutePath()))) {
-            List<String> result = walk
-                    .map(Path::toString)
+        try (final Stream<Path> walk = Files.walk(Paths.get(path.getAbsolutePath()))) {
+            walk.map(Path::toString)
                     .filter(f -> f.endsWith(".class"))
-                    .collect(Collectors.toList());
-            result.forEach((f) -> {
-                if (!new File(f).delete()) logger.error("Unable to delete: " + f);
-            });
+                    .collect(Collectors.toList())
+                    .forEach((f) -> {
+                        if (!new File(f).delete()) logger.error("Unable to delete: " + f);
+                    });
         }
     }
 
@@ -114,9 +112,9 @@ public class ResourceCompilationUtil {
      * @return a list of all .class files under the given directory
      * @throws IOException if the path is not a directory or does not exist
      */
-    public static List<File> fetchClassFiles(File path) throws IOException {
+    public static List<File> fetchClassFiles(final File path) throws IOException {
         validateFileAsDirectory(path);
-        try (Stream<Path> walk = Files.walk(Paths.get(path.getAbsolutePath()))) {
+        try (final Stream<Path> walk = Files.walk(Paths.get(path.getAbsolutePath()))) {
             return walk.map(Path::toString)
                     .filter(f -> f.endsWith(".class"))
                     .map(File::new)
@@ -130,7 +128,7 @@ public class ResourceCompilationUtil {
      * @param jar the JarFile
      * @return a list of all <code>.class</code> files under the given JAR file.
      */
-    public static List<File> fetchClassFiles(JarFile jar) {
+    public static List<File> fetchClassFiles(final JarFile jar) {
         return jar.stream()
                 .map(JarEntry::toString)
                 .filter(f -> f.endsWith(".class"))
@@ -148,14 +146,14 @@ public class ResourceCompilationUtil {
      * @param entry   the entry to extract
      * @return the temporary file if the extraction process was successful, <code>null</code> if otherwise.
      */
-    public static File extractJarEntry(JarFile jarFile, JarEntry entry) {
+    public static File extractJarEntry(final JarFile jarFile, final JarEntry entry) {
         File tmp = null;
         try {
             tmp = File.createTempFile(entry.toString().substring(entry.toString().lastIndexOf('/') + 1), null);
             try (InputStream in = jarFile.getInputStream(entry);
                  BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(tmp))
             ) {
-                byte[] buffer = new byte[2048];
+                final byte[] buffer = new byte[2048];
                 int nBytes = in.read(buffer);
                 while (nBytes > 0) {
                     out.write(buffer, 0, nBytes);

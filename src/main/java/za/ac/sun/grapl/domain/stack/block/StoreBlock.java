@@ -4,7 +4,7 @@ import org.objectweb.asm.Label;
 import za.ac.sun.grapl.domain.stack.BlockItem;
 import za.ac.sun.grapl.domain.stack.OperandItem;
 
-public class StoreBlock extends BlockItem {
+public final class StoreBlock extends BlockItem {
 
     private OperandItem l;
     private OperandItem r;

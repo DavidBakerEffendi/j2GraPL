@@ -2,9 +2,9 @@ package za.ac.sun.grapl.domain.stack.operand;
 
 import za.ac.sun.grapl.domain.stack.OperandItem;
 
-public class ConstantItem extends OperandItem {
+public final class ConstantItem extends OperandItem {
 
-    public ConstantItem(String id, String type) {
+    public ConstantItem(final String id, final String type) {
         super(id, type);
     }
 

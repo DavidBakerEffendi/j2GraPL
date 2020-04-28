@@ -24,7 +24,7 @@ import org.objectweb.asm.util.ASMifier;
 import za.ac.sun.grapl.controllers.ASTController;
 import za.ac.sun.grapl.util.ASMParserUtil;
 
-public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
+public final class ASTMethodVisitor extends MethodVisitor implements Opcodes {
 
     final static Logger logger = LogManager.getLogger();
 

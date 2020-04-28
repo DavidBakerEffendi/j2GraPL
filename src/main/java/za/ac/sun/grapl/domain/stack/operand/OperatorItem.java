@@ -2,9 +2,9 @@ package za.ac.sun.grapl.domain.stack.operand;
 
 import za.ac.sun.grapl.domain.stack.OperandItem;
 
-public class OperatorItem extends OperandItem {
+public final class OperatorItem extends OperandItem {
 
-    public OperatorItem(String id, String type) {
+    public OperatorItem(final String id, final String type) {
         super(id, type);
     }
 

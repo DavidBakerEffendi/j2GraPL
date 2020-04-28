@@ -31,7 +31,7 @@ import java.io.InputStream;
 import java.util.LinkedList;
 import java.util.jar.JarFile;
 
-public class Cannon {
+public final class Cannon {
 
     final static Logger logger = LogManager.getLogger();
 
@@ -61,7 +61,7 @@ public class Cannon {
                 ResourceCompilationUtil.compileJavaFile(file);
                 this.loadedFiles.add(new File(file.getAbsolutePath().replace(".java", ".class")));
             } else if (file.getName().endsWith(".jar")) {
-                JarFile jar = new JarFile(file);
+                final JarFile jar = new JarFile(file);
                 loadedFiles.addAll(ResourceCompilationUtil.fetchClassFiles(jar));
             } else if (file.getName().endsWith(".class")) {
                 this.loadedFiles.add(file);
@@ -85,10 +85,10 @@ public class Cannon {
      */
     private void fire(final File f) {
         try (InputStream fis = new FileInputStream(f)) {
-            ClassReader cr = new ClassReader(fis);
+            final ClassReader cr = new ClassReader(fis);
             // The class visitors are declared here and wrapped by one another in a pipeline
-            DebugClassVisitor rootVisitor = new DebugClassVisitor();
-            ASTClassVisitor astVisitor = new ASTClassVisitor(rootVisitor);
+            final DebugClassVisitor rootVisitor = new DebugClassVisitor();
+            final ASTClassVisitor astVisitor = new ASTClassVisitor(rootVisitor);
             // ^ append new visitors here
             cr.accept(astVisitor, 0);
         } catch (IOException e) {

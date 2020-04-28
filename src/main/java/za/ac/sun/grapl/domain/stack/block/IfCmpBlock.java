@@ -3,9 +3,9 @@ package za.ac.sun.grapl.domain.stack.block;
 import org.objectweb.asm.Label;
 import za.ac.sun.grapl.domain.enums.JumpState;
 
-public class IfCmpBlock extends JumpBlock {
+public final class IfCmpBlock extends JumpBlock {
 
-    public IfCmpBlock(int order, Label label, Label destination, JumpState position) {
+    public IfCmpBlock(final int order, final Label label, final Label destination, final JumpState position) {
         super(order, label, destination, position);
     }
 
