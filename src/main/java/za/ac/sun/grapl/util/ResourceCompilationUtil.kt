@@ -13,30 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package za.ac.sun.grapl.util;
+package za.ac.sun.grapl.util
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
+import java.io.BufferedOutputStream
+import java.io.File
+import java.io.FileOutputStream
+import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
+import java.util.*
+import java.util.function.Consumer
+import java.util.jar.JarEntry
+import java.util.jar.JarFile
+import java.util.stream.Collectors
+import javax.tools.ToolProvider
 
-import javax.tools.JavaCompiler;
-import javax.tools.StandardJavaFileManager;
-import javax.tools.ToolProvider;
-import java.io.*;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Collections;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Objects;
-import java.util.jar.JarEntry;
-import java.util.jar.JarFile;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
-
-public final class ResourceCompilationUtil {
-
-    final static Logger logger = LogManager.getLogger();
+object ResourceCompilationUtil {
+    val logger: Logger = LogManager.getLogger()
 
     /**
      * Validates the given file as a directory that exists.
@@ -44,10 +40,11 @@ public final class ResourceCompilationUtil {
      * @param f the file to validate
      * @throws IOException if the file is not a valid directory or does not exist.
      */
-    private static void validateFileAsDirectory(final File f) throws IOException {
+    @Throws(IOException::class)
+    private fun validateFileAsDirectory(f: File) {
         // Validate path
-        if (!f.isDirectory()) throw new IOException("The path must point to a valid directory!");
-        if (!f.exists()) throw new IOException("The path does not exist!");
+        if (!f.isDirectory) throw IOException("The path must point to a valid directory!")
+        if (!f.exists()) throw IOException("The path does not exist!")
     }
 
     /**
@@ -55,11 +52,12 @@ public final class ResourceCompilationUtil {
      *
      * @param file the source file to compile
      */
-    public static void compileJavaFile(final File file) {
-        final JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
-        final StandardJavaFileManager fileManager = javac.getStandardFileManager(null, null, null);
-        javac.getTask(null, fileManager, null, Collections.singletonList("-g"), null,
-                fileManager.getJavaFileObjects(file)).call();
+    @JvmStatic
+    fun compileJavaFile(file: File?) {
+        val javac = ToolProvider.getSystemJavaCompiler()
+        val fileManager = javac.getStandardFileManager(null, null, null)
+        javac.getTask(null, fileManager, null, listOf("-g"), null,
+                fileManager.getJavaFileObjects(file)).call()
     }
 
     /**
@@ -68,22 +66,22 @@ public final class ResourceCompilationUtil {
      * @param path the path to the directory
      * @throws IOException if the path is not a directory or does not exist
      */
-    public static void compileJavaFiles(final File path) throws IOException {
-        validateFileAsDirectory(path);
+    @JvmStatic
+    @Throws(IOException::class)
+    fun compileJavaFiles(path: File) {
+        validateFileAsDirectory(path)
         // Dynamically compile Java test resources
-        final JavaCompiler javac = ToolProvider.getSystemJavaCompiler();
-        final StandardJavaFileManager fileManager = javac.getStandardFileManager(null, null, null);
-        final LinkedList<File> fileList = new LinkedList<>();
-
-        try (final Stream<Path> walk = Files.walk(Paths.get(path.getAbsolutePath()))) {
-            walk.map(Path::toString)
-                    .filter(f -> f.endsWith(".java"))
+        val javac = ToolProvider.getSystemJavaCompiler()
+        val fileManager = javac.getStandardFileManager(null, null, null)
+        val fileList = LinkedList<File>()
+        Files.walk(Paths.get(path.absolutePath)).use { walk ->
+            walk.map { obj: Path -> obj.toString() }
+                    .filter { f: String -> f.endsWith(".java") }
                     .collect(Collectors.toList())
-                    .forEach((f) -> fileList.add(new File(f)));
+                    .forEach(Consumer { f: String -> fileList.add(File(f)) })
         }
-
-        javac.getTask(null, fileManager, null, Collections.singletonList("-g"), null,
-                fileManager.getJavaFileObjectsFromFiles(fileList)).call();
+        javac.getTask(null, fileManager, null, listOf("-g"), null,
+                fileManager.getJavaFileObjectsFromFiles(fileList)).call()
     }
 
     /**
@@ -92,16 +90,15 @@ public final class ResourceCompilationUtil {
      * @param path the path to the directory
      * @throws IOException if the path is not a directory or does not exist
      */
-    public static void deleteClassFiles(final File path) throws IOException {
-        validateFileAsDirectory(path);
-
-        try (final Stream<Path> walk = Files.walk(Paths.get(path.getAbsolutePath()))) {
-            walk.map(Path::toString)
-                    .filter(f -> f.endsWith(".class"))
+    @JvmStatic
+    @Throws(IOException::class)
+    fun deleteClassFiles(path: File) {
+        validateFileAsDirectory(path)
+        Files.walk(Paths.get(path.absolutePath)).use { walk ->
+            walk.map { obj: Path -> obj.toString() }
+                    .filter { f: String -> f.endsWith(".class") }
                     .collect(Collectors.toList())
-                    .forEach((f) -> {
-                        if (!new File(f).delete()) logger.error("Unable to delete: " + f);
-                    });
+                    .forEach(Consumer { f: String -> if (!File(f).delete()) logger.error("Unable to delete: $f") })
         }
     }
 
@@ -112,13 +109,15 @@ public final class ResourceCompilationUtil {
      * @return a list of all .class files under the given directory
      * @throws IOException if the path is not a directory or does not exist
      */
-    public static List<File> fetchClassFiles(final File path) throws IOException {
-        validateFileAsDirectory(path);
-        try (final Stream<Path> walk = Files.walk(Paths.get(path.getAbsolutePath()))) {
-            return walk.map(Path::toString)
-                    .filter(f -> f.endsWith(".class"))
-                    .map(File::new)
-                    .collect(Collectors.toList());
+    @Throws(IOException::class)
+    @JvmStatic
+    fun fetchClassFiles(path: File): List<File> {
+        validateFileAsDirectory(path)
+        Files.walk(Paths.get(path.absolutePath)).use { walk ->
+            return walk.map { obj: Path -> obj.toString() }
+                    .filter { f: String -> f.endsWith(".class") }
+                    .map { pathname: String -> File(pathname) }
+                    .collect(Collectors.toList())
         }
     }
 
@@ -126,44 +125,44 @@ public final class ResourceCompilationUtil {
      * Returns a list of all the class files inside of a JAR file.
      *
      * @param jar the JarFile
-     * @return a list of all <code>.class</code> files under the given JAR file.
+     * @return a list of all `.class` files under the given JAR file.
      */
-    public static List<File> fetchClassFiles(final JarFile jar) {
+    @JvmStatic
+    fun fetchClassFiles(jar: JarFile): List<File?> {
         return jar.stream()
-                .map(JarEntry::toString)
-                .filter(f -> f.endsWith(".class"))
-                .map(JarEntry::new)
-                .map(je -> extractJarEntry(jar, je))
-                .filter(f -> !Objects.isNull(f))
-                .collect(Collectors.toList());
+                .map { obj: JarEntry -> obj.toString() }
+                .filter { f: String -> f.endsWith(".class") }
+                .map { name: String? -> JarEntry(name) }
+                .map { je: JarEntry -> extractJarEntry(jar, je) }
+                .filter { f: File? -> !Objects.isNull(f) }
+                .collect(Collectors.toList())
     }
 
     /**
-     * Extracts the {@link JarFile} from a given {@link JarEntry} and writes it to a temporary file, which is returned
-     * as a {@link File}.
+     * Extracts the [JarFile] from a given [JarEntry] and writes it to a temporary file, which is returned
+     * as a [File].
      *
      * @param jarFile the JAR to extract from
      * @param entry   the entry to extract
-     * @return the temporary file if the extraction process was successful, <code>null</code> if otherwise.
+     * @return the temporary file if the extraction process was successful, `null` if otherwise.
      */
-    public static File extractJarEntry(final JarFile jarFile, final JarEntry entry) {
-        File tmp = null;
+    private fun extractJarEntry(jarFile: JarFile, entry: JarEntry): File? {
         try {
-            tmp = File.createTempFile(entry.toString().substring(entry.toString().lastIndexOf('/') + 1), null);
-            try (InputStream in = jarFile.getInputStream(entry);
-                 BufferedOutputStream out = new BufferedOutputStream(new FileOutputStream(tmp))
-            ) {
-                final byte[] buffer = new byte[2048];
-                int nBytes = in.read(buffer);
-                while (nBytes > 0) {
-                    out.write(buffer, 0, nBytes);
-                    nBytes = in.read(buffer);
+            val tmp = File.createTempFile(entry.toString().substring(entry.toString().lastIndexOf('/') + 1), null)
+            jarFile.getInputStream(entry).use { `in` ->
+                BufferedOutputStream(FileOutputStream(tmp)).use { out ->
+                    val buffer = ByteArray(2048)
+                    var nBytes = `in`.read(buffer)
+                    while (nBytes > 0) {
+                        out.write(buffer, 0, nBytes)
+                        nBytes = `in`.read(buffer)
+                    }
                 }
             }
-        } catch (IOException e) {
-            logger.warn("Error while extracting '" + entry.getName() + "' from JAR.", e);
+            return tmp
+        } catch (e: IOException) {
+            logger.warn("Error while extracting '" + entry.name + "' from JAR.", e)
+            return null
         }
-        return tmp;
     }
-
 }

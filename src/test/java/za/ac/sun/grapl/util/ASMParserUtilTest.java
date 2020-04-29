@@ -164,7 +164,6 @@ public class ASMParserUtilTest {
         assertTrue(ASMParserUtil.isJumpStatement("IFNONNULL"));
         assertTrue(ASMParserUtil.isJumpStatement("LOOKUPSWITCH"));
         assertFalse(ASMParserUtil.isJumpStatement("IF"));
-        assertFalse(ASMParserUtil.isJumpStatement(null));
     }
 
     @Test
@@ -204,8 +203,7 @@ public class ASMParserUtilTest {
     public void testParseJumpAssociation() {
         assertEquals(JumpAssociations.JUMP, ASMParserUtil.parseJumpAssociation("GOTO"));
         assertEquals(JumpAssociations.IF_CMP, ASMParserUtil.parseJumpAssociation("IF_ACMPEQ"));
-        assertEquals(null, ASMParserUtil.parseJumpAssociation("IF_LCMPEQ"));
-        assertEquals(null, ASMParserUtil.parseJumpAssociation(null));
+        assertNull(ASMParserUtil.parseJumpAssociation("IF_LCMPEQ"));
     }
 
 }

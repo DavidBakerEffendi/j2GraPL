@@ -88,7 +88,7 @@ class ASTController private constructor() : AbstractController() {
     /**
      * Generates the method meta-data vertices describing the method being visited.
      */
-    fun pushMethod(methodName: String, methodSignature: String?, access: Int) {
+    fun pushMethod(methodName: String, methodSignature: String, access: Int) {
         this.clear()
         // Create METHOD
         val shortName = methodName.substring(methodName.lastIndexOf('.') + 1)
@@ -97,7 +97,7 @@ class ASTController private constructor() : AbstractController() {
         hook().joinFileVertexTo(currentClass, currentMethod)
         // Create METHOD_PARAM_IN
         ASMParserUtil.obtainParameters(methodSignature)
-                .forEach(Consumer { p: String? ->
+                .forEach(Consumer { p: String ->
                     hook().createAndAddToMethod(
                             currentMethod,
                             MethodParameterInVertex(
@@ -165,7 +165,7 @@ class ASTController private constructor() : AbstractController() {
      * @param operation the store operation.
      * @param varName   the variable name.
      */
-    fun pushVarInsnStore(varName: Int, operation: String?) {
+    fun pushVarInsnStore(varName: Int, operation: String) {
         val operandItem = operandStack.pop()
         val varType = ASMParserUtil.getStackOperationType(operation)
         val variableItem = getOrPutVariable(varName, varType)
@@ -195,7 +195,7 @@ class ASTController private constructor() : AbstractController() {
      * @param varName   the variable name.
      * @param operation the load operation.
      */
-    fun pushVarInsnLoad(varName: Int, operation: String?) {
+    fun pushVarInsnLoad(varName: Int, operation: String) {
         val variableItem = getOrPutVariable(varName, ASMParserUtil.getStackOperationType(operation))
         logger.debug("Pushing $variableItem")
         operandStack.push(variableItem)
