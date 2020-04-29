@@ -242,13 +242,10 @@ public class ASTController extends AbstractController {
                 bHistory.push(newBlock);
             }
         }
-
-
     }
 
     private void handleJumpDestination(final Label jumpDestination) {
         final List<JumpBlock> associatedJumps = getAssociatedJumps(jumpDestination);
-        final Stack<JumpBlock> jumpHistory = getJumpHistory();
         final long numIfCmpAssocs = associatedJumps.stream().filter(g -> g instanceof IfCmpBlock).count();
         final long numGotoAssocs = associatedJumps.stream().filter(g -> g instanceof GotoBlock).count();
         logger.debug("Encountered jump destination #IfCmp:" + numIfCmpAssocs + " #Goto: " + numGotoAssocs);
@@ -264,6 +261,7 @@ public class ASTController extends AbstractController {
 
         if (bHistory.size() >= 2) {
             final JumpBlock peekedBlock = (JumpBlock) bHistory.get(bHistory.size() - 2);
+            final JumpBlock lastAssociatedJump = associatedJumps.get(associatedJumps.size() - 1);
             if (peekedBlock.destination == jumpDestination) {
                 bHistory.pop();
                 if (peekedBlock.position == JumpState.IF_ROOT
@@ -274,6 +272,13 @@ public class ASTController extends AbstractController {
                     bHistory.push(new NestedBodyBlock(order++, currentLabel, JumpState.ELSE_BODY));
                 } else {
                     // Exiting if-root
+                    bHistory.pop();
+                }
+            } else if (lastAssociatedJump instanceof GotoBlock) {
+                final GotoBlock gotoBlock = (GotoBlock) lastAssociatedJump;
+                // This pops the current state off of an edge-body, and thus, off of the if-root
+                if (gotoBlock.destination == jumpDestination) {
+                    bHistory.pop();
                     bHistory.pop();
                 }
             }
@@ -288,7 +293,7 @@ public class ASTController extends AbstractController {
      * @param label  the label to jump to.
      */
     public void pushNullaryJumps(final String jumpOp, final Label label) {
-        final List<JumpBlock> associatedJumps = getAssociatedJumps(label);
+        final Stack<JumpBlock> jumpHistory = getJumpHistory();
         final JumpBlock lastJump = getLastJump();
         assert Objects.nonNull(lastJump);
         final GotoBlock currentBlock = new GotoBlock(order, currentLabel, label, lastJump.position);
@@ -303,6 +308,17 @@ public class ASTController extends AbstractController {
         }
 
         if (Objects.nonNull(blockItem)) {
+            // Read the last ifs and find which one is paired with this goto. Pop until I find the IfCmp paired
+            while (!jumpHistory.isEmpty()) {
+                // This brings the pointer to the correct level in the case of if-root without else-body
+                final JumpBlock topBlock = jumpHistory.pop();
+                if (topBlock instanceof IfCmpBlock && pairedBlocks.get(topBlock) != null) {
+                    if (pairedBlocks.get(topBlock).equals(currentBlock)) break;
+                }
+                bHistory.pop();
+                bHistory.pop();
+            }
+
             if (bHistory.peek() instanceof JumpBlock && ((JumpBlock) bHistory.peek()).label != label) {
                 bHistory.push(new NestedBodyBlock(order++, label, JumpState.ELSE_BODY));
             }

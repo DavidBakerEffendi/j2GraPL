@@ -20,6 +20,7 @@ import za.ac.sun.grapl.domain.enums.*;
 
 import java.util.*;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
 public final class ASMParserUtil implements Opcodes {
 
@@ -454,6 +455,14 @@ public final class ASMParserUtil implements Opcodes {
             return JumpAssociations.JUMP;
         }
         return null;
+    }
+
+    public static <K, V> Stream<K> keys(Map<K, V> map, V value) {
+        return map
+                .entrySet()
+                .stream()
+                .filter(entry -> value.equals(entry.getValue()))
+                .map(Map.Entry::getKey);
     }
 
 }

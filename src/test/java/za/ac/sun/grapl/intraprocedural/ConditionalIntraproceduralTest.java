@@ -152,7 +152,7 @@ public class ConditionalIntraproceduralTest {
         final Vertex elseBody = elseBodyTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, elseBody, BlockVertex.LABEL, "name", "MUL").hasNext());
         // Check the method operation still remains under method
-        final GraphTraversal<Vertex, Vertex> methodStoreRootBody = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE").has("order", "40");
+        final GraphTraversal<Vertex, Vertex> methodStoreRootBody = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE").has("order", "41");
         assertTrue(methodStoreRootBody.hasNext());
         final Vertex methodStoreRoot = methodStoreRootBody.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodStoreRoot, BlockVertex.LABEL, "name", "ADD").hasNext());
@@ -209,7 +209,7 @@ public class ConditionalIntraproceduralTest {
         // Check method-level operation
         final GraphTraversal<Vertex, Vertex> methodStoreRootTraversal =
                 getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE")
-                        .has("order", "45");
+                        .has("order", "46");
         assertTrue(methodStoreRootTraversal.hasNext());
         final Vertex methodStoreRoot = methodStoreRootTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodStoreRoot, BlockVertex.LABEL, "name", "ADD").hasNext());
