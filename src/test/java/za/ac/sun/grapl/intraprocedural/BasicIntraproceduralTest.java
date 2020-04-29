@@ -45,9 +45,9 @@ public class BasicIntraproceduralTest {
         ResourceCompilationUtil.deleteClassFiles(PATH);
         File f = new File(TEST_DIR);
         if (f.exists()) {
-            if (!f.delete()) {
-                logger.warn("Could not clear " + BasicIntraproceduralTest.class.getName() + "'s test resources.");
-            }
+//            if (!f.delete()) {
+//                logger.warn("Could not clear " + BasicIntraproceduralTest.class.getName() + "'s test resources.");
+//            }
         }
     }
 

@@ -40,7 +40,7 @@ public final class Cannon {
     public Cannon(final IHook hook) {
         this.loadedFiles = new LinkedList<>();
         // Set controller hooks
-        ASTController.getInstance().hook(hook);
+        ASTController.Companion.getInstance().hook(hook);
     }
 
     /**

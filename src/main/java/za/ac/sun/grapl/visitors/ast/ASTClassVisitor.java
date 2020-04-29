@@ -26,7 +26,7 @@ public final class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
     public ASTClassVisitor(final ClassVisitor cv) {
         super(ASM5, cv);
-        this.controller = ASTController.getInstance();
+        this.controller = ASTController.Companion.getInstance();
         this.controller.resetOrder();
     }
 

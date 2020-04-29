@@ -8,8 +8,8 @@ public class ControllerTest {
 
     @Test
     public void testNullHook() {
-        ASTController.getInstance().hook(null);
-        assertThrows(NullPointerException.class, () -> ASTController.getInstance().checkHook());
+        ASTController.Companion.getInstance().hook(null);
+        assertThrows(NullPointerException.class, () -> ASTController.Companion.getInstance().checkHook());
     }
 
 }

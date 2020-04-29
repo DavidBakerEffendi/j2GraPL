@@ -272,7 +272,7 @@ public class ConditionalIntraproceduralTest {
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, ifRoot, LocalVertex.LABEL, "name", "2").hasNext());
         // Check method-level operation
         final GraphTraversal<Vertex, Vertex> methodStoreRootTraversal =
-                getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE").has("order", "51");
+                getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE").has("order", "53");
         assertTrue(methodStoreRootTraversal.hasNext());
         final Vertex methodStoreRoot = methodStoreRootTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodStoreRoot, BlockVertex.LABEL, "name", "ADD").hasNext());
@@ -335,7 +335,7 @@ public class ConditionalIntraproceduralTest {
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, ifRoot, LocalVertex.LABEL, "name", "2").hasNext());
         // Check method-level operation
         final GraphTraversal<Vertex, Vertex> methodStoreRootTraversal =
-                getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE").has("order", "51");
+                getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE").has("order", "53");
         assertTrue(methodStoreRootTraversal.hasNext());
         final Vertex methodStoreRoot = methodStoreRootTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodStoreRoot, BlockVertex.LABEL, "name", "ADD").hasNext());

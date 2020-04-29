@@ -32,7 +32,7 @@ public final class ASTMethodVisitor extends MethodVisitor implements Opcodes {
 
     public ASTMethodVisitor(final MethodVisitor mv) {
         super(ASM5, mv);
-        this.controller = ASTController.getInstance();
+        this.controller = ASTController.Companion.getInstance();
     }
 
     @Override
