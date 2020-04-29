@@ -115,7 +115,7 @@ public class CannonLoaderTest {
 
     @Test
     public void loadNullFileTest() {
-        assertThrows(NullPointerException.class, () -> fileCannon.load(null));
+        assertThrows(IllegalArgumentException.class, () -> fileCannon.load(null));
     }
 
     @Test

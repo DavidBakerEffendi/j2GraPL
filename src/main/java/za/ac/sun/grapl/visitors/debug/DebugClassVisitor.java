@@ -26,10 +26,9 @@ import za.ac.sun.grapl.util.ASMParserUtil;
 import java.util.EnumSet;
 import java.util.StringJoiner;
 
-public class DebugClassVisitor extends ClassVisitor implements Opcodes {
+public final class DebugClassVisitor extends ClassVisitor implements Opcodes {
 
     final static Logger logger = LogManager.getLogger();
-    String className;
 
     public DebugClassVisitor() {
         super(ASM5);
@@ -40,7 +39,6 @@ public class DebugClassVisitor extends ClassVisitor implements Opcodes {
         final EnumSet<ModifierTypes> modifierTypes = ASMParserUtil.determineModifiers(access, name);
         logger.debug("");
         logger.debug(new StringJoiner(" ").add(modifierTypes.toString()).add(name).add("extends").add(superName).add("{"));
-        this.className = name;
         super.visit(version, access, name, signature, superName, interfaces);
     }
 
@@ -56,7 +54,7 @@ public class DebugClassVisitor extends ClassVisitor implements Opcodes {
         final EnumSet<ModifierTypes> modifierTypes = ASMParserUtil.determineModifiers(access, name);
         logger.debug("");
         logger.debug(new StringJoiner(" ").add("\t").add(modifierTypes.toString()).add(name).add(descriptor).add("{"));
-        MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+        final MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
         return new DebugMethodVisitor(mv);
     }
 

@@ -15,6 +15,8 @@
  */
 package za.ac.sun.grapl.visitors.ast;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
@@ -22,13 +24,15 @@ import org.objectweb.asm.util.ASMifier;
 import za.ac.sun.grapl.controllers.ASTController;
 import za.ac.sun.grapl.util.ASMParserUtil;
 
-public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
+public final class ASTMethodVisitor extends MethodVisitor implements Opcodes {
+
+    final static Logger logger = LogManager.getLogger();
 
     private final ASTController controller;
 
     public ASTMethodVisitor(final MethodVisitor mv) {
         super(ASM5, mv);
-        this.controller = ASTController.getInstance();
+        this.controller = ASTController.Companion.getInstance();
     }
 
     @Override
@@ -51,11 +55,10 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     @Override
     public void visitVarInsn(int opcode, int var) {
         super.visitVarInsn(opcode, var);
-        final String varName = String.valueOf(var);
         final String operation = ASMifier.OPCODES[opcode];
 
-        if (ASMParserUtil.isLoad(operation)) controller.pushVarInsnLoad(operation, varName);
-        else if (ASMParserUtil.isStore(operation)) controller.pushVarInsnStore(operation, varName);
+        if (ASMParserUtil.isLoad(operation)) controller.pushVarInsnLoad(var, operation);
+        else if (ASMParserUtil.isStore(operation)) controller.pushVarInsnStore(var, operation);
     }
 
     @Override
@@ -77,7 +80,6 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     public void visitJumpInsn(int opcode, Label label) {
         super.visitJumpInsn(opcode, label);
         final String jumpOp = ASMifier.OPCODES[opcode];
-        controller.addJumpLabelAssoc(label, jumpOp);
 
         if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) controller.pushNullaryJumps(jumpOp, label);
         else if (ASMParserUtil.UNARY_JUMPS.contains(jumpOp)) controller.pushUnaryJump(jumpOp, label);
@@ -104,12 +106,13 @@ public class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     @Override
     public void visitLineNumber(int line, Label start) {
         super.visitLineNumber(line, start);
-        controller.lineNumberClone(line, start);
+        controller.associateLineNumberWithLabel(line, start);
     }
 
     @Override
     public void visitEnd() {
         super.visitEnd();
+        logger.debug(controller.toString());
     }
 
 }

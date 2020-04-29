@@ -20,13 +20,13 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import za.ac.sun.grapl.controllers.ASTController;
 
-public class ASTClassVisitor extends ClassVisitor implements Opcodes {
+public final class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
     private final ASTController controller;
 
-    public ASTClassVisitor(ClassVisitor cv) {
+    public ASTClassVisitor(final ClassVisitor cv) {
         super(ASM5, cv);
-        this.controller = ASTController.getInstance();
+        this.controller = ASTController.Companion.getInstance();
         this.controller.resetOrder();
     }
 

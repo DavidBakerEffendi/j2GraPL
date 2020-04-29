@@ -25,7 +25,7 @@ import org.objectweb.asm.util.ASMifier;
 
 import java.util.StringJoiner;
 
-class DebugMethodVisitor extends MethodVisitor implements Opcodes {
+public final class DebugMethodVisitor extends MethodVisitor implements Opcodes {
 
     final static Logger logger = LogManager.getLogger();
 

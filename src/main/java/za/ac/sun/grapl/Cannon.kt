@@ -1,0 +1,105 @@
+/*
+ * Copyright 2020 David Baker Effendi
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package za.ac.sun.grapl
+
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
+import org.objectweb.asm.ClassReader
+import za.ac.sun.grapl.controllers.ASTController.Companion.instance
+import za.ac.sun.grapl.hooks.IHook
+import za.ac.sun.grapl.util.ResourceCompilationUtil.compileJavaFile
+import za.ac.sun.grapl.util.ResourceCompilationUtil.compileJavaFiles
+import za.ac.sun.grapl.util.ResourceCompilationUtil.fetchClassFiles
+import za.ac.sun.grapl.visitors.ast.ASTClassVisitor
+import za.ac.sun.grapl.visitors.debug.DebugClassVisitor
+import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
+import java.util.*
+import java.util.function.Consumer
+import java.util.jar.JarFile
+
+class Cannon(hook: IHook) {
+    private val loadedFiles: LinkedList<File> = LinkedList()
+
+    /**
+     * Loads a single Java class file or directory of class files into the cannon.
+     *
+     * @param file the Java source/class file, directory of source/class files, or a JAR file.
+     * @throws NullPointerException if the file is null
+     * @throws IOException          In the case of a directory given, this would throw if .java files fail to compile
+     */
+    @Throws(NullPointerException::class, IOException::class)
+    fun load(file: File) {
+        if (file.isDirectory) {
+            // Any .java files will automatically be compiled
+            compileJavaFiles(file)
+            loadedFiles.addAll(fetchClassFiles(file))
+        } else if (file.isFile) {
+            when {
+                file.name.endsWith(".java") -> {
+                    compileJavaFile(file)
+                    loadedFiles.add(File(file.absolutePath.replace(".java", ".class")))
+                }
+                file.name.endsWith(".jar") -> {
+                    val jar = JarFile(file)
+                    loadedFiles.addAll(fetchClassFiles(jar))
+                }
+                file.name.endsWith(".class") -> {
+                    loadedFiles.add(file)
+                }
+            }
+        } else if (!file.exists()) {
+            throw NullPointerException("File '" + file.name + "' does not exist!")
+        }
+    }
+
+    /**
+     * Fires all loaded Java classes currently loaded.
+     */
+    fun fire() {
+        loadedFiles.forEach(Consumer { f: File -> this.fire(f) })
+    }
+
+    /**
+     * Attempts to fire a file from the cannon.
+     *
+     * @param f the file to fire.
+     */
+    private fun fire(f: File) {
+        try {
+            FileInputStream(f).use { fis ->
+                val cr = ClassReader(fis)
+                // The class visitors are declared here and wrapped by one another in a pipeline
+                val rootVisitor = DebugClassVisitor()
+                val astVisitor = ASTClassVisitor(rootVisitor)
+                // ^ append new visitors here
+                cr.accept(astVisitor, 0)
+            }
+        } catch (e: IOException) {
+            logger.error("IOException encountered while visiting '" + f.name + "'.", e)
+        }
+    }
+
+    companion object {
+        val logger: Logger = LogManager.getLogger()
+    }
+
+    init {
+        // Set controller hooks
+        instance.hook = hook
+    }
+}
