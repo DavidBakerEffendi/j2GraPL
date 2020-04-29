@@ -44,11 +44,10 @@ class ASTController private constructor() : AbstractController() {
     private var currentLineNo = -1
 
     fun resetOrder() {
-        order = super.hook().maxOrder()
+        order = super.hook.maxOrder()
     }
 
     fun projectFileAndNamespace(namespace: String, className: String) {
-        super.checkHook()
         classPath = if (namespace.isEmpty()) className else "$namespace.$className"
 
         // Build NAMESPACE_BLOCK if packages are present
@@ -61,7 +60,7 @@ class ASTController private constructor() : AbstractController() {
         currentClass = FileVertex(className, order++)
         // Join FILE and NAMESPACE_BLOCK if namespace is present
         if (!Objects.isNull(nbv)) {
-            super.hook().joinFileVertexTo(currentClass, nbv)
+            super.hook.joinFileVertexTo(currentClass, nbv)
         }
     }
 
@@ -79,7 +78,7 @@ class ASTController private constructor() : AbstractController() {
         for (i in 1 until namespaceList.size) {
             namespaceBuilder.append("." + namespaceList[i])
             currNamespaceBlock = NamespaceBlockVertex(namespaceList[i], namespaceBuilder.toString(), order++)
-            super.hook().joinNamespaceBlocks(prevNamespaceBlock, currNamespaceBlock)
+            super.hook.joinNamespaceBlocks(prevNamespaceBlock, currNamespaceBlock)
             prevNamespaceBlock = currNamespaceBlock
         }
         return currNamespaceBlock
@@ -94,11 +93,11 @@ class ASTController private constructor() : AbstractController() {
         val shortName = methodName.substring(methodName.lastIndexOf('.') + 1)
         currentMethod = MethodVertex(shortName, "$classPath.$methodName", methodSignature, currentLineNo, order++)
         // Join FILE and METHOD
-        hook().joinFileVertexTo(currentClass, currentMethod)
+        hook.joinFileVertexTo(currentClass, currentMethod)
         // Create METHOD_PARAM_IN
         ASMParserUtil.obtainParameters(methodSignature)
                 .forEach(Consumer { p: String ->
-                    hook().createAndAddToMethod(
+                    hook.createAndAddToMethod(
                             currentMethod,
                             MethodParameterInVertex(
                                     methodSignature,
@@ -109,13 +108,13 @@ class ASTController private constructor() : AbstractController() {
         // Create METHOD_RETURN
         val returnType = ASMParserUtil.obtainMethodReturnType(methodSignature)
         val eval = ASMParserUtil.determineEvaluationStrategy(returnType, true)
-        hook().createAndAddToMethod(
+        hook.createAndAddToMethod(
                 currentMethod,
                 MethodReturnVertex(ASMParserUtil.getReadableType(returnType), returnType, eval, currentLineNo, order++)
         )
         // Create MODIFIER
         ASMParserUtil.determineModifiers(access, methodName)
-                .forEach(Consumer { m: ModifierTypes? -> hook().createAndAddToMethod(currentMethod, ModifierVertex(m, order++)) })
+                .forEach(Consumer { m: ModifierTypes? -> hook.createAndAddToMethod(currentMethod, ModifierVertex(m, order++)) })
     }
 
     fun pushConstInsnOperation(`val`: Any) {
@@ -171,17 +170,17 @@ class ASTController private constructor() : AbstractController() {
         val variableItem = getOrPutVariable(varName, varType)
         val baseBlock = BlockVertex("STORE", order++, 1, varType, currentLineNo)
         val storeBlock = StoreBlock(order, currentLabel)
-        if (!bHistory.empty()) hook().assignToBlock(currentMethod, baseBlock, bHistory.peek().order) else hook().assignToBlock(currentMethod, baseBlock, 0)
+        if (!bHistory.empty()) hook.assignToBlock(currentMethod, baseBlock, bHistory.peek().order) else hook.assignToBlock(currentMethod, baseBlock, 0)
         storeBlock.l = variableItem
         storeBlock.r = operandItem
         logger.debug("Pushing $storeBlock")
         bHistory.push(storeBlock)
         val leftChild = LocalVertex(variableItem.id, variableItem.id, variableItem.type, currentLineNo, order++)
-        hook().assignToBlock(currentMethod, leftChild, baseBlock.order)
+        hook.assignToBlock(currentMethod, leftChild, baseBlock.order)
         if (operandItem is OperatorItem) {
             handleOperator(baseBlock, operandItem)
         } else if (operandItem is ConstantItem) {
-            hook().assignToBlock(
+            hook.assignToBlock(
                     currentMethod,
                     LiteralVertex(operandItem.id, order++, 1, varType, currentLineNo),
                     baseBlock.order)
@@ -220,10 +219,10 @@ class ASTController private constructor() : AbstractController() {
             handleJumpDestination(start)
         }
         if (!bHistory.isEmpty() && bHistory.peek() is NestedBodyBlock) {
-            if (!super.hook().isBlock(bHistory.peek().order)) {
+            if (!super.hook.isBlock(bHistory.peek().order)) {
                 val newBlock = (bHistory.pop() as NestedBodyBlock).setLabel(start)
                 val bodyVertex = BlockVertex(newBlock.position.name, newBlock.order, 1, "VOID", line)
-                if (!bHistory.empty()) hook().assignToBlock(currentMethod, bodyVertex, bHistory.peek().order) else hook().assignToBlock(currentMethod, bodyVertex, 0)
+                if (!bHistory.empty()) hook.assignToBlock(currentMethod, bodyVertex, bHistory.peek().order) else hook.assignToBlock(currentMethod, bodyVertex, 0)
                 bHistory.push(newBlock)
             }
         }
@@ -269,7 +268,7 @@ class ASTController private constructor() : AbstractController() {
      * @param jumpOp the jump operation.
      * @param label  the label to jump to.
      */
-    fun pushNullaryJumps(jumpOp: String?, label: Label) {
+    fun pushNullaryJumps(jumpOp: String, label: Label) {
         val jumpHistory = JumpStackUtil.getJumpHistory(bHistory)
         val lastJump = JumpStackUtil.getLastJump(bHistory)
         assert(Objects.nonNull(lastJump))
@@ -310,12 +309,20 @@ class ASTController private constructor() : AbstractController() {
         // Build if-root and if-cond
         val condRoot = BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
         val condBlock = BlockVertex(ASMParserUtil.parseAndFlipEquality(jumpOp).toString(), order++, 2, jumpType, currentLineNo)
-        if (bHistory.isEmpty()) hook().assignToBlock(currentMethod, condRoot, 0) else hook().assignToBlock(currentMethod, condRoot, bHistory.peek().order)
-        hook().assignToBlock(currentMethod, condBlock, condRoot.order)
+        if (bHistory.isEmpty()) hook.assignToBlock(currentMethod, condRoot, 0) else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
+        hook.assignToBlock(currentMethod, condBlock, condRoot.order)
         // Add if-cond operands
-        val ops = listOf(operandStack.pop(), operandStack.pop()).asReversed()
+        val ops = listOfNotNull(operandStack.pop(), operandStack.pop()).asReversed()
         logger.debug("Jump arguments = [" + ops[0] + ", " + ops[1] + "]")
-        ops.forEach(Consumer { op: OperandItem? -> if (op is ConstantItem) hook().assignToBlock(currentMethod, LiteralVertex(op.id, order++, 1, jumpType, currentLineNo), condBlock.order) else if (op is VariableItem) hook().assignToBlock(currentMethod, LocalVertex(op.id, op.id, op.type, currentLineNo, order++), condBlock.order) })
+        ops.forEach(Consumer { op: OperandItem ->
+            when (op) {
+                is ConstantItem ->
+                    hook.assignToBlock(currentMethod, LiteralVertex(op.id, order++, 1, jumpType, currentLineNo), condBlock.order)
+                is VariableItem ->
+                    hook.assignToBlock(currentMethod, LocalVertex(op.id, op.id, op.type, currentLineNo, order++), condBlock.order)
+            }
+
+        })
         pushJumpBlock(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
         bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
     }
@@ -358,7 +365,7 @@ class ASTController private constructor() : AbstractController() {
     private fun handleOperator(prevBlock: BlockVertex, operatorItem: OperatorItem) {
         logger.debug("Next operator: $operatorItem")
         val currBlock = BlockVertex(operatorItem.id, order++, 1, operatorItem.type, currentLineNo)
-        hook().assignToBlock(currentMethod, currBlock, prevBlock.order)
+        hook.assignToBlock(currentMethod, currBlock, prevBlock.order)
 
         // TODO: Assume all operations that aren't automatically evaluated by compiler are binary
         val noOperands = 2
@@ -371,11 +378,11 @@ class ASTController private constructor() : AbstractController() {
                 }
                 is ConstantItem -> {
                     val literalVertex = LiteralVertex(stackItem.id, order++, 1, stackItem.type, currentLineNo)
-                    hook().assignToBlock(currentMethod, literalVertex, currBlock.order)
+                    hook.assignToBlock(currentMethod, literalVertex, currBlock.order)
                 }
                 is VariableItem -> {
                     val localVertex = LocalVertex(stackItem.id, stackItem.id, stackItem.type, currentLineNo, order++)
-                    hook().assignToBlock(currentMethod, localVertex, currBlock.order)
+                    hook.assignToBlock(currentMethod, localVertex, currBlock.order)
                 }
             }
         }

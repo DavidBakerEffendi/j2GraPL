@@ -40,7 +40,8 @@ jacocoTestReport {
     reports {
         xml.enabled true
         xml.destination file("${buildDir}/reports/jacoco/report.xml")
-        html.enabled false
+        html.enabled true
+        html.destination file("${buildDir}/reports/jacoco")
         csv.enabled false
     }
 }
@@ -62,7 +63,7 @@ publishing {
 }
 
 task fatJar(type: Jar) {
-    classifier = 'all'
+    archiveClassifier.set('all')
     duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     from {
         configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }

@@ -1,11 +1,5 @@
-package za.ac.sun.grapl.domain.enums;
+package za.ac.sun.grapl.domain.enums
 
-public enum Equality {
-    EQ,
-    NE,
-    LT,
-    GE,
-    GT,
-    LE,
-    UNKNOWN
+enum class Equality {
+    EQ, NE, LT, GE, GT, LE, UNKNOWN
 }

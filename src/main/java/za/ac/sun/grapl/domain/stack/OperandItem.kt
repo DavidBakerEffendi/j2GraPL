@@ -1,28 +1,17 @@
-package za.ac.sun.grapl.domain.stack;
+package za.ac.sun.grapl.domain.stack
 
-import java.util.Objects;
+import java.util.*
 
-public abstract class OperandItem {
-
-    public final String id;
-    public final String type;
-
-    public OperandItem(String id, String type) {
-        this.id = id;
-        this.type = type;
+abstract class OperandItem(val id: String, val type: String) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other == null || javaClass != other.javaClass) return false
+        val that = other as OperandItem
+        return id == that.id
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        OperandItem that = (OperandItem) o;
-        return id.equals(that.id);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(id);
+    override fun hashCode(): Int {
+        return Objects.hash(id)
     }
 
 }

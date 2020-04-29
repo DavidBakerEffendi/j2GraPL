@@ -25,17 +25,27 @@ import java.util.*
 import java.util.stream.IntStream
 
 object ASMParserUtil : Opcodes {
-    var PRIMITIVES: Map<Char, String>? = null
-    var OPERANDS: Set<String>? = null
+    private val PRIMITIVES: Map<Char, String> = mapOf(
+            'Z' to "BOOLEAN",
+            'C' to "CHARACTER",
+            'B' to "BYTE",
+            'S' to "SHORT",
+            'I' to "INTEGER",
+            'F' to "FLOAT",
+            'J' to "LONG",
+            'D' to "DOUBLE",
+            'V' to "VOID"
+    )
+    private val OPERANDS: Set<String> = setOf("ADD", "SUB", "MUL", "DIV", "REM", "OR", "XOR", "AND", "SHR", "SHL", "USHR")
 
     @JvmField
-    var NULLARY_JUMPS: Set<String>? = null
+    val NULLARY_JUMPS: Set<String> = setOf("GOTO", "TABLESWITCH", "LOOKUPSWITCH")
 
     @JvmField
-    var UNARY_JUMPS: Set<String>? = null
+    val UNARY_JUMPS: Set<String> = setOf("IFEQ", "IFNE", "IFLT", "IFGE", "IFGT", "IFLE", "IFNULL", "IFNONNULL")
 
     @JvmField
-    var BINARY_JUMPS: Set<String>? = null
+    val BINARY_JUMPS: Set<String> = setOf("IF_ICMPEQ", "IF_ICMPNE", "IF_ICMPLT", "IF_ICMPGE", "IF_ICMPGT", "IF_ICMPLE", "IF_ACMPEQ", "IF_ACMPNE")
 
     /**
      * Given a method signature, returns a list of all the parameters separated into a list.
@@ -178,7 +188,7 @@ object ASMParserUtil : Opcodes {
         if (type == 'A') return "OBJECT"
         if (type == 'L') return "LONG"
         if (type == 'J') return "UNKNOWN"
-        return if (type == '[') "UNKNOWN" else PRIMITIVES!![type] ?: "UNKNOWN"
+        return if (type == '[') "UNKNOWN" else PRIMITIVES[type] ?: "UNKNOWN"
     }
 
     /**
@@ -188,7 +198,7 @@ object ASMParserUtil : Opcodes {
      * @return true if the character is associated with a primitive, false if otherwise.
      */
     private fun isPrimitive(c: Char): Boolean {
-        return PRIMITIVES!!.containsKey(c)
+        return PRIMITIVES.containsKey(c)
     }
 
     /**
@@ -222,7 +232,7 @@ object ASMParserUtil : Opcodes {
         val sigArr = signature.toCharArray()
         IntStream.range(0, sigArr.size).mapToObj { i: Int -> sigArr[i] }.forEach { c: Char ->
             if (isPrimitive(c)) {
-                sb.append(PRIMITIVES!![c])
+                sb.append(PRIMITIVES[c])
             } else {
                 sb.append(c)
             }
@@ -239,7 +249,7 @@ object ASMParserUtil : Opcodes {
     @JvmStatic
     fun getOperatorType(operation: String?): String {
         if (operation == null) return "UNKNOWN"
-        return if (!OPERANDS!!.contains(operation.substring(1))) "UNKNOWN" else stackType(operation[0])
+        return if (!OPERANDS.contains(operation.substring(1))) "UNKNOWN" else stackType(operation[0])
     }
 
     /**
@@ -292,7 +302,7 @@ object ASMParserUtil : Opcodes {
                 line.contains("AND") || line.contains("OR") || line.contains("XOR")) {
             if (type != 'I' && type != 'L') return false
         }
-        return OPERANDS!!.contains(line.substring(1))
+        return OPERANDS.contains(line.substring(1))
     }
 
     /**
@@ -318,8 +328,8 @@ object ASMParserUtil : Opcodes {
      * @return the  [za.ac.sun.grapl.domain.enums.Operators] enum associated with the given operator string.
      */
     @JvmStatic
-    fun parseOperator(line: String?): Operators {
-        return Operators.valueOf(line!!)
+    fun parseOperator(line: String): Operators {
+        return Operators.valueOf(line)
     }
 
     /**
@@ -330,7 +340,7 @@ object ASMParserUtil : Opcodes {
      */
     @JvmStatic
     fun isJumpStatement(line: String): Boolean {
-        return NULLARY_JUMPS!!.contains(line) || UNARY_JUMPS!!.contains(line) || BINARY_JUMPS!!.contains(line)
+        return NULLARY_JUMPS.contains(line) || UNARY_JUMPS.contains(line) || BINARY_JUMPS.contains(line)
     }
 
     /**
@@ -360,11 +370,11 @@ object ASMParserUtil : Opcodes {
      */
     @JvmStatic
     fun parseEquality(jumpStatement: String): Equality {
-        if (UNARY_JUMPS!!.contains(jumpStatement)) {
+        if (UNARY_JUMPS.contains(jumpStatement)) {
             val eq = jumpStatement.substring(2)
             if ("NULL" == eq) return Equality.EQ else if ("NONNULL" == eq) return Equality.NE
             return Equality.valueOf(eq)
-        } else if (BINARY_JUMPS!!.contains(jumpStatement)) {
+        } else if (BINARY_JUMPS.contains(jumpStatement)) {
             val eq = jumpStatement.substring(7)
             return Equality.valueOf(eq)
         }
@@ -379,7 +389,7 @@ object ASMParserUtil : Opcodes {
      */
     @JvmStatic
     fun getBinaryJumpType(line: String?): String {
-        if (line == null || !BINARY_JUMPS!!.contains(line)) return "UNKNOWN"
+        if (line == null || !BINARY_JUMPS.contains(line)) return "UNKNOWN"
         return if (line[3] == 'I') "INTEGER" else if (line[3] == 'A') "OBJECT" else "UNKNOWN"
     }
 
@@ -391,32 +401,12 @@ object ASMParserUtil : Opcodes {
      */
     @JvmStatic
     fun parseJumpAssociation(jumpOp: String): JumpAssociations? {
-        if (BINARY_JUMPS!!.contains(jumpOp)) {
+        if (BINARY_JUMPS.contains(jumpOp)) {
             return JumpAssociations.IF_CMP
-        } else if (NULLARY_JUMPS!!.contains(jumpOp)) {
+        } else if (NULLARY_JUMPS.contains(jumpOp)) {
             return JumpAssociations.JUMP
         }
         return null
     }
 
-    init {
-        PRIMITIVES = mapOf(
-                'Z' to "BOOLEAN",
-                'C' to "CHARACTER",
-                'B' to "BYTE",
-                'S' to "SHORT",
-                'I' to "INTEGER",
-                'F' to "FLOAT",
-                'J' to "LONG",
-                'D' to "DOUBLE",
-                'V' to "VOID"
-        )
-        OPERANDS = setOf("ADD", "SUB", "MUL", "DIV", "REM", "OR", "XOR", "AND", "SHR", "SHL", "USHR")
-        // Nullary jumps jump without removing items off the stack
-        NULLARY_JUMPS = setOf("GOTO", "TABLESWITCH", "LOOKUPSWITCH")
-        // Unary jumps pop one parameter off the stack
-        UNARY_JUMPS = setOf("IFEQ", "IFNE", "IFLT", "IFGE", "IFGT", "IFLE", "IFNULL", "IFNONNULL")
-        // Binary jumps pop two parameters off the stack
-        BINARY_JUMPS = setOf("IF_ICMPEQ", "IF_ICMPNE", "IF_ICMPLT", "IF_ICMPGE", "IF_ICMPGT", "IF_ICMPLE", "IF_ACMPEQ", "IF_ACMPNE")
-    }
 }

@@ -128,7 +128,7 @@ object ResourceCompilationUtil {
      * @return a list of all `.class` files under the given JAR file.
      */
     @JvmStatic
-    fun fetchClassFiles(jar: JarFile): List<File?> {
+    fun fetchClassFiles(jar: JarFile): MutableList<File> {
         return jar.stream()
                 .map { obj: JarEntry -> obj.toString() }
                 .filter { f: String -> f.endsWith(".class") }

@@ -1,34 +1,5 @@
-package za.ac.sun.grapl.domain.enums;
+package za.ac.sun.grapl.domain.enums
 
-public enum Operators {
-    IADD,
-    LADD,
-    FADD,
-    DADD,
-    ISUB,
-    LSUB,
-    FSUB,
-    DSUB,
-    IMUL,
-    LMUL,
-    FMUL,
-    DMUL,
-    IDIV,
-    LDIV,
-    FDIV,
-    DDIV,
-    IOR,
-    LOR,
-    IXOR,
-    LXOR,
-    IAND,
-    LAND,
-    ISHR,
-    LSHR,
-    ISHL,
-    LSHL,
-    IREM,
-    LREM,
-    IUSHR,
-    LUSHR
+enum class Operators {
+    IADD, LADD, FADD, DADD, ISUB, LSUB, FSUB, DSUB, IMUL, LMUL, FMUL, DMUL, IDIV, LDIV, FDIV, DDIV, IOR, LOR, IXOR, LXOR, IAND, LAND, ISHR, LSHR, ISHL, LSHL, IREM, LREM, IUSHR, LUSHR
 }

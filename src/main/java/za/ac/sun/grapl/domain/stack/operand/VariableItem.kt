@@ -1,16 +1,9 @@
-package za.ac.sun.grapl.domain.stack.operand;
+package za.ac.sun.grapl.domain.stack.operand
 
-import za.ac.sun.grapl.domain.stack.OperandItem;
+import za.ac.sun.grapl.domain.stack.OperandItem
 
-public final class VariableItem extends OperandItem {
-
-    public VariableItem(final String id, final String type) {
-        super(id, type);
+class VariableItem(id: String?, type: String?) : OperandItem(id!!, type!!) {
+    override fun toString(): String {
+        return "VAR {id: $id, type: $type}"
     }
-
-    @Override
-    public String toString() {
-        return "VAR {id: " + id + ", type: " + type + "}";
-    }
-
 }
