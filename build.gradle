@@ -7,13 +7,10 @@ plugins {
 
 repositories {
     mavenLocal()
-    maven {
-        url = 'https://repo.maven.apache.org/maven2'
-    }
+    mavenCentral()
     flatDir {
         dirs 'lib'
     }
-    mavenCentral()
 }
 
 dependencies {
