@@ -1,5 +1,5 @@
 codecov:
-  require_ci_to_pass: no
+  require_ci_to_pass: false
 
 coverage:
   precision: 2
@@ -9,7 +9,7 @@ coverage:
     patch: false
     project: {
       default: {
-        threshold: 0.5
+        threshold: 1
       }
     }
 
