@@ -1,209 +1,224 @@
-package za.ac.sun.grapl.util;
+package za.ac.sun.grapl.util
 
-import org.junit.jupiter.api.Test;
-import org.objectweb.asm.Opcodes;
-import za.ac.sun.grapl.domain.enums.*;
+import org.junit.jupiter.api.Assertions
+import org.junit.jupiter.api.Test
+import org.objectweb.asm.Opcodes
+import za.ac.sun.grapl.domain.enums.Equality
+import za.ac.sun.grapl.domain.enums.EvaluationStrategies
+import za.ac.sun.grapl.domain.enums.JumpAssociations
+import za.ac.sun.grapl.domain.enums.ModifierTypes
+import za.ac.sun.grapl.domain.enums.Operators
+import za.ac.sun.grapl.util.ASMParserUtil.determineEvaluationStrategy
+import za.ac.sun.grapl.util.ASMParserUtil.determineModifiers
+import za.ac.sun.grapl.util.ASMParserUtil.getBinaryJumpType
+import za.ac.sun.grapl.util.ASMParserUtil.getOperatorType
+import za.ac.sun.grapl.util.ASMParserUtil.getReadableType
+import za.ac.sun.grapl.util.ASMParserUtil.getStackOperationType
+import za.ac.sun.grapl.util.ASMParserUtil.isConstant
+import za.ac.sun.grapl.util.ASMParserUtil.isJumpStatement
+import za.ac.sun.grapl.util.ASMParserUtil.isLoad
+import za.ac.sun.grapl.util.ASMParserUtil.isOperator
+import za.ac.sun.grapl.util.ASMParserUtil.isStore
+import za.ac.sun.grapl.util.ASMParserUtil.obtainMethodReturnType
+import za.ac.sun.grapl.util.ASMParserUtil.obtainParameters
+import za.ac.sun.grapl.util.ASMParserUtil.parseAndFlipEquality
+import za.ac.sun.grapl.util.ASMParserUtil.parseEquality
+import za.ac.sun.grapl.util.ASMParserUtil.parseJumpAssociation
+import za.ac.sun.grapl.util.ASMParserUtil.parseOperator
+import java.util.*
 
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumSet;
-
-import static org.junit.jupiter.api.Assertions.*;
-
-public class ASMParserUtilTest {
-
+class ASMParserUtilTest {
     @Test
-    public void testObtainingParameters() {
-        assertEquals(Collections.singletonList("I"), ASMParserUtil.obtainParameters("(I)V"));
-        assertEquals(Arrays.asList("I", "B"), ASMParserUtil.obtainParameters("(IB)V"));
-        assertEquals(Collections.emptyList(), ASMParserUtil.obtainParameters("()Ljava/util/String;"));
-        assertEquals(Collections.singletonList("Ljava/util/String"), ASMParserUtil.obtainParameters("(Ljava/util/String;)V"));
-        assertEquals(Arrays.asList("Ljava/util/String", "J"), ASMParserUtil.obtainParameters("(Ljava/util/String;J)B"));
-        assertEquals(Arrays.asList("[Ljava/util/String", "[B"), ASMParserUtil.obtainParameters("([Ljava/util/String;[B)I"));
+    fun testObtainingParameters() {
+        Assertions.assertEquals(listOf("I"), obtainParameters("(I)V"))
+        Assertions.assertEquals(listOf("I", "B"), obtainParameters("(IB)V"))
+        Assertions.assertEquals(emptyList<Any>(), obtainParameters("()Ljava/util/String;"))
+        Assertions.assertEquals(listOf("Ljava/util/String"), obtainParameters("(Ljava/util/String;)V"))
+        Assertions.assertEquals(listOf("Ljava/util/String", "J"), obtainParameters("(Ljava/util/String;J)B"))
+        Assertions.assertEquals(listOf("[Ljava/util/String", "[B"), obtainParameters("([Ljava/util/String;[B)I"))
     }
 
     @Test
-    public void testObtainMethodReturnType() {
-        assertEquals("V", ASMParserUtil.obtainMethodReturnType("()V"));
-        assertEquals("Ljava/util/String", ASMParserUtil.obtainMethodReturnType("(IIB)Ljava/util/String;"));
-        assertEquals("[[B", ASMParserUtil.obtainMethodReturnType("()[[B"));
-        assertEquals("[Ljava/util/Double", ASMParserUtil.obtainMethodReturnType("(IIB)[Ljava/util/Double;"));
+    fun testObtainMethodReturnType() {
+        Assertions.assertEquals("V", obtainMethodReturnType("()V"))
+        Assertions.assertEquals("Ljava/util/String", obtainMethodReturnType("(IIB)Ljava/util/String;"))
+        Assertions.assertEquals("[[B", obtainMethodReturnType("()[[B"))
+        Assertions.assertEquals("[Ljava/util/Double", obtainMethodReturnType("(IIB)[Ljava/util/Double;"))
     }
 
     @Test
-    public void testDetermineEvaluationStrategy() {
-        assertEquals(ASMParserUtil.determineEvaluationStrategy("I", true), EvaluationStrategies.BY_VALUE);
-        assertEquals(ASMParserUtil.determineEvaluationStrategy("B", false), EvaluationStrategies.BY_VALUE);
-        assertEquals(ASMParserUtil.determineEvaluationStrategy("[I", true), EvaluationStrategies.BY_SHARING);
-        assertEquals(ASMParserUtil.determineEvaluationStrategy("Ljava/util/String", true), EvaluationStrategies.BY_SHARING);
-        assertEquals(ASMParserUtil.determineEvaluationStrategy("[I", false), EvaluationStrategies.BY_REFERENCE);
-        assertEquals(ASMParserUtil.determineEvaluationStrategy("Ljava/util/String", false), EvaluationStrategies.BY_REFERENCE);
+    fun testDetermineEvaluationStrategy() {
+        Assertions.assertEquals(determineEvaluationStrategy("I", true), EvaluationStrategies.BY_VALUE)
+        Assertions.assertEquals(determineEvaluationStrategy("B", false), EvaluationStrategies.BY_VALUE)
+        Assertions.assertEquals(determineEvaluationStrategy("[I", true), EvaluationStrategies.BY_SHARING)
+        Assertions.assertEquals(determineEvaluationStrategy("Ljava/util/String", true), EvaluationStrategies.BY_SHARING)
+        Assertions.assertEquals(determineEvaluationStrategy("[I", false), EvaluationStrategies.BY_REFERENCE)
+        Assertions.assertEquals(determineEvaluationStrategy("Ljava/util/String", false), EvaluationStrategies.BY_REFERENCE)
     }
 
     @Test
-    public void testDetermineModifiers() {
-        assertEquals(EnumSet.of(ModifierTypes.CONSTRUCTOR, ModifierTypes.ABSTRACT, ModifierTypes.VIRTUAL),
-                ASMParserUtil.determineModifiers(Opcodes.ACC_ABSTRACT, "<init>"));
-        assertEquals(EnumSet.of(ModifierTypes.STATIC, ModifierTypes.PUBLIC),
-                ASMParserUtil.determineModifiers(Opcodes.ACC_STATIC + Opcodes.ACC_PUBLIC, "test"));
-        assertEquals(EnumSet.of(ModifierTypes.VIRTUAL, ModifierTypes.PROTECTED),
-                ASMParserUtil.determineModifiers(Opcodes.ACC_PROTECTED, "test"));
-        assertEquals(EnumSet.of(ModifierTypes.NATIVE),
-                ASMParserUtil.determineModifiers(Opcodes.ACC_NATIVE + Opcodes.ACC_FINAL));
+    fun testDetermineModifiers() {
+        Assertions.assertEquals(EnumSet.of(ModifierTypes.CONSTRUCTOR, ModifierTypes.ABSTRACT, ModifierTypes.VIRTUAL),
+                determineModifiers(Opcodes.ACC_ABSTRACT, "<init>"))
+        Assertions.assertEquals(EnumSet.of(ModifierTypes.STATIC, ModifierTypes.PUBLIC),
+                determineModifiers(Opcodes.ACC_STATIC + Opcodes.ACC_PUBLIC, "test"))
+        Assertions.assertEquals(EnumSet.of(ModifierTypes.VIRTUAL, ModifierTypes.PROTECTED),
+                determineModifiers(Opcodes.ACC_PROTECTED, "test"))
+        Assertions.assertEquals(EnumSet.of(ModifierTypes.NATIVE),
+                determineModifiers(Opcodes.ACC_NATIVE + Opcodes.ACC_FINAL))
     }
 
     @Test
-    public void testShortNameReturn() {
-        assertEquals("INTEGER", ASMParserUtil.getReadableType("I"));
-        assertEquals("BOOLEAN", ASMParserUtil.getReadableType("Z"));
-        assertEquals("[INTEGER", ASMParserUtil.getReadableType("[I"));
-        assertEquals("String", ASMParserUtil.getReadableType("Ljava/util/String"));
-        assertEquals("[Double", ASMParserUtil.getReadableType("[Ljava/util/Double"));
-        assertEquals("[[LONG", ASMParserUtil.getReadableType("[[J"));
+    fun testShortNameReturn() {
+        Assertions.assertEquals("INTEGER", getReadableType("I"))
+        Assertions.assertEquals("BOOLEAN", getReadableType("Z"))
+        Assertions.assertEquals("[INTEGER", getReadableType("[I"))
+        Assertions.assertEquals("String", getReadableType("Ljava/util/String"))
+        Assertions.assertEquals("[Double", getReadableType("[Ljava/util/Double"))
+        Assertions.assertEquals("[[LONG", getReadableType("[[J"))
     }
 
     @Test
-    public void testIsOperator() {
-        assertTrue(ASMParserUtil.isOperator("IADD"));
-        assertFalse(ASMParserUtil.isOperator("IAD"));
-        assertFalse(ASMParserUtil.isOperator("DSUBB"));
-        assertFalse(ASMParserUtil.isOperator("JDIV"));
-        assertTrue(ASMParserUtil.isOperator("FREM"));
-        assertTrue(ASMParserUtil.isOperator("LMUL"));
-        assertFalse(ASMParserUtil.isOperator("DUSHR"));
-        assertTrue(ASMParserUtil.isOperator("IUSHR"));
-        assertTrue(ASMParserUtil.isOperator("LUSHR"));
-        assertTrue(ASMParserUtil.isOperator("IOR"));
-        assertTrue(ASMParserUtil.isOperator("LOR"));
-        assertTrue(ASMParserUtil.isOperator("IXOR"));
-        assertTrue(ASMParserUtil.isOperator("LXOR"));
-        assertTrue(ASMParserUtil.isOperator("LAND"));
-        assertTrue(ASMParserUtil.isOperator("LSHR"));
-        assertTrue(ASMParserUtil.isOperator("ISHR"));
-        assertTrue(ASMParserUtil.isOperator("ISHL"));
-        assertTrue(ASMParserUtil.isOperator("LSHL"));
-        assertFalse(ASMParserUtil.isOperator(null));
+    fun testIsOperator() {
+        Assertions.assertTrue(isOperator("IADD"))
+        Assertions.assertFalse(isOperator("IAD"))
+        Assertions.assertFalse(isOperator("DSUBB"))
+        Assertions.assertFalse(isOperator("JDIV"))
+        Assertions.assertTrue(isOperator("FREM"))
+        Assertions.assertTrue(isOperator("LMUL"))
+        Assertions.assertFalse(isOperator("DUSHR"))
+        Assertions.assertTrue(isOperator("IUSHR"))
+        Assertions.assertTrue(isOperator("LUSHR"))
+        Assertions.assertTrue(isOperator("IOR"))
+        Assertions.assertTrue(isOperator("LOR"))
+        Assertions.assertTrue(isOperator("IXOR"))
+        Assertions.assertTrue(isOperator("LXOR"))
+        Assertions.assertTrue(isOperator("LAND"))
+        Assertions.assertTrue(isOperator("LSHR"))
+        Assertions.assertTrue(isOperator("ISHR"))
+        Assertions.assertTrue(isOperator("ISHL"))
+        Assertions.assertTrue(isOperator("LSHL"))
+        Assertions.assertFalse(isOperator(null))
     }
 
     @Test
-    public void testIsStore() {
-        assertTrue(ASMParserUtil.isStore("ISTORE"));
-        assertFalse(ASMParserUtil.isStore("ILOAD"));
-        assertFalse(ASMParserUtil.isStore("DSTOR"));
-        assertFalse(ASMParserUtil.isStore("JSTORE"));
-        assertTrue(ASMParserUtil.isStore("FSTORE"));
-        assertTrue(ASMParserUtil.isStore("LSTORE"));
-        assertTrue(ASMParserUtil.isStore("ASTORE"));
-        assertFalse(ASMParserUtil.isStore(null));
+    fun testIsStore() {
+        Assertions.assertTrue(isStore("ISTORE"))
+        Assertions.assertFalse(isStore("ILOAD"))
+        Assertions.assertFalse(isStore("DSTOR"))
+        Assertions.assertFalse(isStore("JSTORE"))
+        Assertions.assertTrue(isStore("FSTORE"))
+        Assertions.assertTrue(isStore("LSTORE"))
+        Assertions.assertTrue(isStore("ASTORE"))
+        Assertions.assertFalse(isStore(null))
     }
 
     @Test
-    public void testIsLoad() {
-        assertTrue(ASMParserUtil.isLoad("ILOAD"));
-        assertFalse(ASMParserUtil.isLoad("ISTORE"));
-        assertFalse(ASMParserUtil.isLoad("DLOA"));
-        assertFalse(ASMParserUtil.isLoad("JLOAD"));
-        assertTrue(ASMParserUtil.isLoad("FLOAD"));
-        assertTrue(ASMParserUtil.isLoad("LLOAD"));
-        assertTrue(ASMParserUtil.isLoad("ALOAD"));
-        assertFalse(ASMParserUtil.isLoad(null));
+    fun testIsLoad() {
+        Assertions.assertTrue(isLoad("ILOAD"))
+        Assertions.assertFalse(isLoad("ISTORE"))
+        Assertions.assertFalse(isLoad("DLOA"))
+        Assertions.assertFalse(isLoad("JLOAD"))
+        Assertions.assertTrue(isLoad("FLOAD"))
+        Assertions.assertTrue(isLoad("LLOAD"))
+        Assertions.assertTrue(isLoad("ALOAD"))
+        Assertions.assertFalse(isLoad(null))
     }
 
     @Test
-    public void testIsConstant() {
-        assertTrue(ASMParserUtil.isConstant("ACONST_NULL"));
-        assertTrue(ASMParserUtil.isConstant("ICONST_0"));
-        assertTrue(ASMParserUtil.isConstant("FCONST_2"));
-        assertTrue(ASMParserUtil.isConstant("DCONST_1"));
-        assertTrue(ASMParserUtil.isConstant("LCONST_1"));
-        assertFalse(ASMParserUtil.isConstant("JCONST_3"));
-        assertFalse(ASMParserUtil.isConstant("JCONST_392831093289210"));
-        assertFalse(ASMParserUtil.isConstant("JCO"));
-        assertFalse(ASMParserUtil.isConstant(null));
+    fun testIsConstant() {
+        Assertions.assertTrue(isConstant("ACONST_NULL"))
+        Assertions.assertTrue(isConstant("ICONST_0"))
+        Assertions.assertTrue(isConstant("FCONST_2"))
+        Assertions.assertTrue(isConstant("DCONST_1"))
+        Assertions.assertTrue(isConstant("LCONST_1"))
+        Assertions.assertFalse(isConstant("JCONST_3"))
+        Assertions.assertFalse(isConstant("JCONST_392831093289210"))
+        Assertions.assertFalse(isConstant("JCO"))
+        Assertions.assertFalse(isConstant(null))
     }
 
     @Test
-    public void testStackOperationType() {
-        assertEquals("INTEGER", ASMParserUtil.getStackOperationType("ILOAD"));
-        assertEquals("OBJECT", ASMParserUtil.getStackOperationType("ASTORE"));
-        assertEquals("LONG", ASMParserUtil.getStackOperationType("LLOAD"));
-        assertEquals("UNKNOWN", ASMParserUtil.getStackOperationType("[LOAD"));
-        assertEquals("UNKNOWN", ASMParserUtil.getStackOperationType("JSTORE"));
-        assertEquals("UNKNOWN", ASMParserUtil.getStackOperationType("IITEST"));
-        assertEquals("UNKNOWN", ASMParserUtil.getStackOperationType("LSTOREL"));
+    fun testStackOperationType() {
+        Assertions.assertEquals("INTEGER", getStackOperationType("ILOAD"))
+        Assertions.assertEquals("OBJECT", getStackOperationType("ASTORE"))
+        Assertions.assertEquals("LONG", getStackOperationType("LLOAD"))
+        Assertions.assertEquals("UNKNOWN", getStackOperationType("[LOAD"))
+        Assertions.assertEquals("UNKNOWN", getStackOperationType("JSTORE"))
+        Assertions.assertEquals("UNKNOWN", getStackOperationType("IITEST"))
+        Assertions.assertEquals("UNKNOWN", getStackOperationType("LSTOREL"))
     }
 
     @Test
-    public void testOperatorType() {
-        assertEquals("INTEGER", ASMParserUtil.getOperatorType("IADD"));
-        assertEquals("OBJECT", ASMParserUtil.getOperatorType("ASUB"));
-        assertEquals("LONG", ASMParserUtil.getOperatorType("LADD"));
-        assertEquals("UNKNOWN", ASMParserUtil.getOperatorType("[DIV"));
-        assertEquals("UNKNOWN", ASMParserUtil.getOperatorType("JM"));
-        assertEquals("UNKNOWN", ASMParserUtil.getOperatorType("IITESTLL"));
-        assertEquals("UNKNOWN", ASMParserUtil.getOperatorType("LDIVL"));
-        assertEquals("LONG", ASMParserUtil.getOperatorType("LOR"));
-        assertEquals("INTEGER", ASMParserUtil.getOperatorType("IAND"));
-        assertEquals("INTEGER", ASMParserUtil.getOperatorType("IUSHR"));
-        assertEquals("UNKNOWN", ASMParserUtil.getOperatorType(null));
+    fun testOperatorType() {
+        Assertions.assertEquals("INTEGER", getOperatorType("IADD"))
+        Assertions.assertEquals("OBJECT", getOperatorType("ASUB"))
+        Assertions.assertEquals("LONG", getOperatorType("LADD"))
+        Assertions.assertEquals("UNKNOWN", getOperatorType("[DIV"))
+        Assertions.assertEquals("UNKNOWN", getOperatorType("JM"))
+        Assertions.assertEquals("UNKNOWN", getOperatorType("IITESTLL"))
+        Assertions.assertEquals("UNKNOWN", getOperatorType("LDIVL"))
+        Assertions.assertEquals("LONG", getOperatorType("LOR"))
+        Assertions.assertEquals("INTEGER", getOperatorType("IAND"))
+        Assertions.assertEquals("INTEGER", getOperatorType("IUSHR"))
+        Assertions.assertEquals("UNKNOWN", getOperatorType(null))
     }
 
     @Test
-    public void testParseOperator() {
-        assertEquals(Operators.IADD, ASMParserUtil.parseOperator("IADD"));
-        assertEquals(Operators.LADD, ASMParserUtil.parseOperator("LADD"));
-        assertEquals(Operators.DADD, ASMParserUtil.parseOperator("DADD"));
-        assertEquals(Operators.FADD, ASMParserUtil.parseOperator("FADD"));
-        assertEquals(Operators.LOR, ASMParserUtil.parseOperator("LOR"));
+    fun testParseOperator() {
+        Assertions.assertEquals(Operators.IADD, parseOperator("IADD"))
+        Assertions.assertEquals(Operators.LADD, parseOperator("LADD"))
+        Assertions.assertEquals(Operators.DADD, parseOperator("DADD"))
+        Assertions.assertEquals(Operators.FADD, parseOperator("FADD"))
+        Assertions.assertEquals(Operators.LOR, parseOperator("LOR"))
     }
 
     @Test
-    public void testIsJumpStatement() {
-        assertTrue(ASMParserUtil.isJumpStatement("IF_ICMPEQ"));
-        assertTrue(ASMParserUtil.isJumpStatement("IFNE"));
-        assertTrue(ASMParserUtil.isJumpStatement("IFNONNULL"));
-        assertTrue(ASMParserUtil.isJumpStatement("LOOKUPSWITCH"));
-        assertFalse(ASMParserUtil.isJumpStatement("IF"));
+    fun testIsJumpStatement() {
+        Assertions.assertTrue(isJumpStatement("IF_ICMPEQ"))
+        Assertions.assertTrue(isJumpStatement("IFNE"))
+        Assertions.assertTrue(isJumpStatement("IFNONNULL"))
+        Assertions.assertTrue(isJumpStatement("LOOKUPSWITCH"))
+        Assertions.assertFalse(isJumpStatement("IF"))
     }
 
     @Test
-    public void testParseEquality() {
-        assertEquals(Equality.EQ, ASMParserUtil.parseEquality("IF_ICMPEQ"));
-        assertEquals(Equality.EQ, ASMParserUtil.parseEquality("IFNULL"));
-        assertEquals(Equality.LE, ASMParserUtil.parseEquality("IFLE"));
-        assertEquals(Equality.NE, ASMParserUtil.parseEquality("IFNONNULL"));
-        assertEquals(Equality.LE, ASMParserUtil.parseEquality("IF_ICMPLE"));
-        assertEquals(Equality.UNKNOWN, ASMParserUtil.parseEquality("GOTO"));
-        assertEquals(Equality.UNKNOWN, ASMParserUtil.parseEquality("IF_JCMPLE"));
+    fun testParseEquality() {
+        Assertions.assertEquals(Equality.EQ, parseEquality("IF_ICMPEQ"))
+        Assertions.assertEquals(Equality.EQ, parseEquality("IFNULL"))
+        Assertions.assertEquals(Equality.LE, parseEquality("IFLE"))
+        Assertions.assertEquals(Equality.NE, parseEquality("IFNONNULL"))
+        Assertions.assertEquals(Equality.LE, parseEquality("IF_ICMPLE"))
+        Assertions.assertEquals(Equality.UNKNOWN, parseEquality("GOTO"))
+        Assertions.assertEquals(Equality.UNKNOWN, parseEquality("IF_JCMPLE"))
     }
 
     @Test
-    public void testParseAndFlipEquality() {
-        assertEquals(Equality.NE, ASMParserUtil.parseAndFlipEquality("IF_ICMPEQ"));
-        assertEquals(Equality.NE, ASMParserUtil.parseAndFlipEquality("IFNULL"));
-        assertEquals(Equality.GT, ASMParserUtil.parseAndFlipEquality("IFLE"));
-        assertEquals(Equality.EQ, ASMParserUtil.parseAndFlipEquality("IFNONNULL"));
-        assertEquals(Equality.GT, ASMParserUtil.parseAndFlipEquality("IF_ICMPLE"));
-        assertEquals(Equality.GE, ASMParserUtil.parseAndFlipEquality("IFLT"));
-        assertEquals(Equality.LE, ASMParserUtil.parseAndFlipEquality("IF_ICMPGT"));
-        assertEquals(Equality.GT, ASMParserUtil.parseAndFlipEquality("IF_ICMPLE"));
-        assertEquals(Equality.UNKNOWN, ASMParserUtil.parseAndFlipEquality("GOTO"));
-        assertEquals(Equality.UNKNOWN, ASMParserUtil.parseAndFlipEquality("IF_JCMPLE"));
+    fun testParseAndFlipEquality() {
+        Assertions.assertEquals(Equality.NE, parseAndFlipEquality("IF_ICMPEQ"))
+        Assertions.assertEquals(Equality.NE, parseAndFlipEquality("IFNULL"))
+        Assertions.assertEquals(Equality.GT, parseAndFlipEquality("IFLE"))
+        Assertions.assertEquals(Equality.EQ, parseAndFlipEquality("IFNONNULL"))
+        Assertions.assertEquals(Equality.GT, parseAndFlipEquality("IF_ICMPLE"))
+        Assertions.assertEquals(Equality.GE, parseAndFlipEquality("IFLT"))
+        Assertions.assertEquals(Equality.LE, parseAndFlipEquality("IF_ICMPGT"))
+        Assertions.assertEquals(Equality.GT, parseAndFlipEquality("IF_ICMPLE"))
+        Assertions.assertEquals(Equality.UNKNOWN, parseAndFlipEquality("GOTO"))
+        Assertions.assertEquals(Equality.UNKNOWN, parseAndFlipEquality("IF_JCMPLE"))
     }
 
     @Test
-    public void testGetBinaryJumpType() {
-        assertEquals("INTEGER", ASMParserUtil.getBinaryJumpType("IF_ICMPEQ"));
-        assertEquals("OBJECT", ASMParserUtil.getBinaryJumpType("IF_ACMPEQ"));
-        assertEquals("UNKNOWN", ASMParserUtil.getBinaryJumpType("IF_LCMPEQ"));
-        assertEquals("UNKNOWN", ASMParserUtil.getBinaryJumpType(null));
+    fun testGetBinaryJumpType() {
+        Assertions.assertEquals("INTEGER", getBinaryJumpType("IF_ICMPEQ"))
+        Assertions.assertEquals("OBJECT", getBinaryJumpType("IF_ACMPEQ"))
+        Assertions.assertEquals("UNKNOWN", getBinaryJumpType("IF_LCMPEQ"))
+        Assertions.assertEquals("UNKNOWN", getBinaryJumpType(null))
     }
 
     @Test
-    public void testParseJumpAssociation() {
-        assertEquals(JumpAssociations.JUMP, ASMParserUtil.parseJumpAssociation("GOTO"));
-        assertEquals(JumpAssociations.IF_CMP, ASMParserUtil.parseJumpAssociation("IF_ACMPEQ"));
-        assertNull(ASMParserUtil.parseJumpAssociation("IF_LCMPEQ"));
+    fun testParseJumpAssociation() {
+        Assertions.assertEquals(JumpAssociations.JUMP, parseJumpAssociation("GOTO"))
+        Assertions.assertEquals(JumpAssociations.IF_CMP, parseJumpAssociation("IF_ACMPEQ"))
+        Assertions.assertNull(parseJumpAssociation("IF_LCMPEQ"))
     }
-
 }
