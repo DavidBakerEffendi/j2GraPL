@@ -42,6 +42,7 @@ class ASTController private constructor() : AbstractController() {
     private var currentClass: FileVertex? = null
     private var currentMethod: MethodVertex? = null
     private var currentLineNo = -1
+    private lateinit var methodInfo: MethodInfo
 
     fun resetOrder() {
         order = super.hook.maxOrder()
@@ -87,11 +88,21 @@ class ASTController private constructor() : AbstractController() {
     /**
      * Generates the method meta-data vertices describing the method being visited.
      */
-    fun pushMethod(methodName: String, methodSignature: String, access: Int) {
+    fun pushNewMethod(methodName: String, methodSignature: String, access: Int) {
         this.clear()
+        this.methodInfo = MethodInfo(methodName, methodSignature, access)
+    }
+
+    /**
+     * Using the given method info and line number, will project method data on the graph.
+     */
+    private fun createMethod(methodInfo: MethodInfo, lineNumber: Int) {
+        val methodName = methodInfo.methodName
+        val methodSignature = methodInfo.methodSignature
+        val access = methodInfo.access
         // Create METHOD
         val shortName = methodName.substring(methodName.lastIndexOf('.') + 1)
-        currentMethod = MethodVertex(shortName, "$classPath.$methodName", methodSignature, currentLineNo, order++)
+        currentMethod = MethodVertex(shortName, "$classPath.$methodName", methodSignature, lineNumber, order++)
         // Join FILE and METHOD
         hook.joinFileVertexTo(currentClass, currentMethod)
         // Create METHOD_PARAM_IN
@@ -103,14 +114,14 @@ class ASTController private constructor() : AbstractController() {
                                     methodSignature,
                                     ASMParserUtil.getReadableType(p),
                                     ASMParserUtil.determineEvaluationStrategy(p, false),
-                                    p, currentLineNo, order++))
+                                    p, lineNumber, order++))
                 })
         // Create METHOD_RETURN
         val returnType = ASMParserUtil.obtainMethodReturnType(methodSignature)
         val eval = ASMParserUtil.determineEvaluationStrategy(returnType, true)
         hook.createAndAddToMethod(
                 currentMethod,
-                MethodReturnVertex(ASMParserUtil.getReadableType(returnType), returnType, eval, currentLineNo, order++)
+                MethodReturnVertex(ASMParserUtil.getReadableType(returnType), returnType, eval, lineNumber, order++)
         )
         // Create MODIFIER
         ASMParserUtil.determineModifiers(access, methodName)
@@ -213,8 +224,12 @@ class ASTController private constructor() : AbstractController() {
     }
 
     fun associateLineNumberWithLabel(line: Int, start: Label) {
+        if (currentLineNo == -1) {
+            createMethod(methodInfo, line - 1)
+        }
         currentLineNo = line
         currentLabel = start
+
         if (JumpStackUtil.isJumpDestination(allJumps, start)) {
             handleJumpDestination(start)
         }
@@ -403,6 +418,7 @@ class ASTController private constructor() : AbstractController() {
         operandStack.clear()
         variables.clear()
         bHistory.clear()
+        currentLineNo = -1;
     }
 
     private object Singleton {
@@ -415,3 +431,5 @@ class ASTController private constructor() : AbstractController() {
     }
 
 }
+
+data class MethodInfo(val methodName: String, val methodSignature: String, val access: Int, var lineNumber: Int? = -1)
