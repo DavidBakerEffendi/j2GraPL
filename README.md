@@ -129,8 +129,8 @@ public class GraPLDemo {
 To compile both of these, we can use the `build/libs/j2GraPL-X.X.X-all.jar` with 
 `lib/GraPLHook4j-X.X.X-jar-with-dependencies.jar`. This can be combined as:
 ```bash
-javac -cp ".:build/libs/j2GraPL-X.X.X-all.jar:lib/GraPLHook4j-X.X.X-jar-with-dependencies.jar:" *.java
-java -cp ".:build/libs/j2GraPL-X.X.X-all.jar:lib/GraPLHook4j-X.X.X-jar-with-dependencies.jar:" GraPLDemo
+javac -cp ".:build/libs/j2GraPL-X.X.X-all.jar:lib/GraPLHook4j-X.X.X-all.jar:" *.java
+java -cp ".:build/libs/j2GraPL-X.X.X-all.jar:lib/GraPLHook4j-X.X.X-all.jar:" GraPLDemo
 ```
 
 This exported file can then be visualized using tools such as [Cytoscape](https://cytoscape.org/). Using Cytoscape and 
