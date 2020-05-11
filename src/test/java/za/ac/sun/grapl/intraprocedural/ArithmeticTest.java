@@ -53,7 +53,7 @@ public class ArithmeticTest {
 
     @BeforeEach
     public void setUp(TestInfo testInfo) throws IOException {
-        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
+        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder().build();
         Cannon fileCannon = new Cannon(hook);
         // Select test resource based on integer in method name
         final String currentTestNumber = testInfo
@@ -64,7 +64,7 @@ public class ArithmeticTest {
         File f = new File(resourceDir);
         fileCannon.load(f);
         fileCannon.fire();
-        hook.exportCurrentGraph();
+        hook.exportCurrentGraph(TEST_DIR);
 
         g = TinkerGraph.open().traversal();
         g.io(TEST_DIR).read().iterate();

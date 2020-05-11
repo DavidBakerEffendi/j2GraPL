@@ -53,7 +53,7 @@ public class BasicIntraproceduralTest {
 
     @BeforeEach
     public void setUp(TestInfo testInfo) throws IOException {
-        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
+        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder().build();
         Cannon fileCannon = new Cannon(hook);
         // Select test resource based on integer in method name
         currentTestNumber = testInfo
@@ -64,7 +64,7 @@ public class BasicIntraproceduralTest {
         File f = new File(resourceDir);
         fileCannon.load(f);
         fileCannon.fire();
-        hook.exportCurrentGraph();
+        hook.exportCurrentGraph(TEST_DIR);
 
         g = TinkerGraph.open().traversal();
         g.io(TEST_DIR).read().iterate();
@@ -227,14 +227,14 @@ public class BasicIntraproceduralTest {
 
     @Test
     public void basic6Test() throws IOException {
-        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(false).build();
+        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder().build();
         Cannon fileCannon = new Cannon(hook);
         String resourceDir = PATH.getAbsolutePath().concat("/basic6/Basic6.java");
         // Load test resource and project + export graph
         File f = new File(resourceDir);
         fileCannon.load(f);
         fileCannon.fire();
-        hook.exportCurrentGraph();
+        hook.exportCurrentGraph(TEST_DIR);
 
         g = TinkerGraph.open().traversal();
         g.io(TEST_DIR).read().iterate();
