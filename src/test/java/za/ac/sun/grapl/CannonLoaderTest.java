@@ -48,7 +48,7 @@ public class CannonLoaderTest {
         validClassFile = getTestResource("cannon_tests/Test2.class");
         validJarFile = getTestResource("cannon_tests/Test3.jar");
         validDirectory = getTestResource("cannon_tests/dir_test");
-        hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
+        hook = new TinkerGraphHook.TinkerGraphHookBuilder().build();
         fileCannon = new Cannon(hook);
     }
 
@@ -66,21 +66,21 @@ public class CannonLoaderTest {
     public void validSourceFileTest() throws IOException {
         fileCannon.load(validSourceFile);
         fileCannon.fire();
-        hook.exportCurrentGraph();
+        hook.exportCurrentGraph(TEST_DIR);
     }
 
     @Test
     public void validClassFileTest() throws IOException {
         fileCannon.load(validClassFile);
         fileCannon.fire();
-        hook.exportCurrentGraph();
+        hook.exportCurrentGraph(TEST_DIR);
     }
 
     @Test
     public void validDirectoryTest() throws IOException {
         fileCannon.load(validDirectory);
         fileCannon.fire();
-        hook.exportCurrentGraph();
+        hook.exportCurrentGraph(TEST_DIR);
     }
 
     @Test
@@ -88,7 +88,7 @@ public class CannonLoaderTest {
         GraphTraversalSource g = TinkerGraph.open().traversal();
         fileCannon.load(validJarFile);
         fileCannon.fire();
-        hook.exportCurrentGraph();
+        hook.exportCurrentGraph(TEST_DIR);
         g.io(TEST_DIR).read().iterate();
 
         // This is za.ac.sun.grapl.intraprocedural.Basic6's test in a JAR

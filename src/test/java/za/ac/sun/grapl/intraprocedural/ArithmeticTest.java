@@ -53,7 +53,7 @@ public class ArithmeticTest {
 
     @BeforeEach
     public void setUp(TestInfo testInfo) throws IOException {
-        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder(TEST_DIR).createNewGraph(true).build();
+        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder().build();
         Cannon fileCannon = new Cannon(hook);
         // Select test resource based on integer in method name
         final String currentTestNumber = testInfo
@@ -64,7 +64,7 @@ public class ArithmeticTest {
         File f = new File(resourceDir);
         fileCannon.load(f);
         fileCannon.fire();
-        hook.exportCurrentGraph();
+        hook.exportCurrentGraph(TEST_DIR);
 
         g = TinkerGraph.open().traversal();
         g.io(TEST_DIR).read().iterate();
@@ -160,7 +160,7 @@ public class ArithmeticTest {
     @Test
     public void arithmetic4Test() {
         assertTrue(buildStoreTraversal(g, EdgeLabels.AST, methodRoot).hasNext());
-        assertEquals(4, buildStoreTraversal(g, EdgeLabels.AST, methodRoot).count().next());
+        assertEquals(6, buildStoreTraversal(g, EdgeLabels.AST, methodRoot).count().next());
 
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, LocalVertex.LABEL, "name", "2").has("typeFullName", "INTEGER").hasNext());
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, LiteralVertex.LABEL, "name", "2").has("typeFullName", "INTEGER").hasNext());
@@ -168,7 +168,29 @@ public class ArithmeticTest {
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, LocalVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, LiteralVertex.LABEL, "name", "-1").has("typeFullName", "INTEGER").hasNext());
 
-        // TODO: This needs to be fixed for ISSUE #19
+        final GraphTraversal<Vertex, Vertex> incA = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "ADD").has("typeFullName", "INTEGER").has("order", "21");
+        assertTrue(incA.hasNext());
+        final Vertex incAVertex = incA.next();
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, incAVertex, LocalVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, incAVertex, LiteralVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
+
+        final GraphTraversal<Vertex, Vertex> subB = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "SUB").has("typeFullName", "INTEGER").has("order", "29");
+        assertTrue(subB.hasNext());
+        final Vertex subBVertex = subB.next();
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, subBVertex, LocalVertex.LABEL, "name", "2").has("typeFullName", "INTEGER").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, subBVertex, LiteralVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
+
+        final GraphTraversal<Vertex, Vertex> storeC = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE").has("typeFullName", "INTEGER").has("order", "24");
+        assertTrue(storeC.hasNext());
+        final Vertex storeCVertex = storeC.next();
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, storeCVertex, LocalVertex.LABEL, "name", "3").has("typeFullName", "INTEGER").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, storeCVertex, LocalVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
+
+        final GraphTraversal<Vertex, Vertex> storeD = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE").has("typeFullName", "INTEGER").has("order", "32");
+        assertTrue(storeD.hasNext());
+        final Vertex storeDVertex = storeD.next();
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, storeDVertex, LocalVertex.LABEL, "name", "4").has("typeFullName", "INTEGER").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, storeDVertex, LocalVertex.LABEL, "name", "2").has("typeFullName", "INTEGER").hasNext());
     }
 
     @Test
@@ -242,6 +264,42 @@ public class ArithmeticTest {
         final Vertex xorVertex = xorTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, xorVertex, LocalVertex.LABEL, "name", "2").has("typeFullName", "INTEGER").hasNext());
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, xorVertex, LocalVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
+    }
+
+    @Test
+    public void arithmetic7Test() {
+        assertTrue(buildStoreTraversal(g, EdgeLabels.AST, methodRoot).hasNext());
+        assertEquals(6, buildStoreTraversal(g, EdgeLabels.AST, methodRoot).count().next());
+
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, LocalVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, LiteralVertex.LABEL, "name", "0").has("typeFullName", "INTEGER").hasNext());
+
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, LocalVertex.LABEL, "name", "2").has("typeFullName", "INTEGER").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, LiteralVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
+
+        final GraphTraversal<Vertex, Vertex> incOne = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "ADD").has("typeFullName", "INTEGER").has("order", "21");
+        assertTrue(incOne.hasNext());
+        final Vertex incOneVertex = incOne.next();
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, incOneVertex, LocalVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, incOneVertex, LiteralVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
+
+        final GraphTraversal<Vertex, Vertex> decOne = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "SUB").has("typeFullName", "INTEGER").has("order", "26");
+        assertTrue(decOne.hasNext());
+        final Vertex decOneVertex = decOne.next();
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, decOneVertex, LocalVertex.LABEL, "name", "2").has("typeFullName", "INTEGER").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, decOneVertex, LiteralVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
+
+        final GraphTraversal<Vertex, Vertex> incTwo = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "ADD").has("typeFullName", "INTEGER").has("order", "31");
+        assertTrue(incTwo.hasNext());
+        final Vertex incTwoVertex = incTwo.next();
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, incTwoVertex, LocalVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, incTwoVertex, LiteralVertex.LABEL, "name", "2").has("typeFullName", "INTEGER").hasNext());
+
+        final GraphTraversal<Vertex, Vertex> decThree = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "SUB").has("typeFullName", "INTEGER").has("order", "36");
+        assertTrue(decThree.hasNext());
+        final Vertex decThreeVertex = decThree.next();
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, decThreeVertex, LocalVertex.LABEL, "name", "2").has("typeFullName", "INTEGER").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, decThreeVertex, LiteralVertex.LABEL, "name", "3").has("typeFullName", "INTEGER").hasNext());
     }
 
 }

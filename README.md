@@ -16,7 +16,7 @@ j2GraPL is currently under development. It has the following capabilities:
     - Arithmetic
     - If-else bodies
 * Can project to all graph databases currently supported by [GraPLHook4j](https://github.com/DavidBakerEffendi/GraPLHook4j).
-* Currently accepts source code, class files (or directories containing either), or a JAR file.
+* Currently, accepts source code, class files (or directories containing either), and JAR files.
 
 ## Building from Source
 
@@ -30,9 +30,8 @@ cd j2GraPL
 ./gradlew jar # For main artifact only
 ./gradlew fatJar # For fat jar with dependencies
 ```
-This will build `target/j2GraPL-X.X.X[-all].jar` and which can then be imported into your local 
-project. One can choose the main artifact or fat jar but here is how one can import this into one's Maven or Gradle 
-project respectively. E.g.
+This will build `target/j2GraPL-X.X.X[-all].jar` which is imported into your local project. One can choose to use the 
+main artifact or fat jar but here is how one can import this into one's Maven or Gradle project respectively. E.g.
 ```mxml
 <dependency>
   <groupId>za.ac.sun.grapl</groupId>
@@ -59,7 +58,7 @@ dependencies {
 
 ### Packages
 
-The following packages are used by j2GraPL:
+The following packages used by j2GraPL:
 
 * `org.ow2.asm:asm:7.3.1`
 * `org.ow2.asm:asm-util:7.3.1`
@@ -67,12 +66,12 @@ The following packages are used by j2GraPL:
 * `org.apache.logging.log4j:log4j-slf4j-impl:2.8.2`
 * `za.ac.sun.grapl:GraPLHook4j` (under `lib`)
 
-It is not recommended to use the fat jar in your project if using a build tool such as Ant, Maven, Gradle, etc. Rather
+It is not recommended using the fat jar in your project if using a build tool such as Ant, Maven, Gradle, etc. Rather,
 use the main artifact and add the dependencies manually (in your `pom.xml`, `build.gradle`, etc.). 
 
 ### Java Support
 
-The following versions of Java are officially supported:
+The officially supported versions of Java are the following:
 * OpenJDK 8
 * OpenJDK 9
 * OpenJDK 10
@@ -80,8 +79,8 @@ The following versions of Java are officially supported:
 
 ## Quickstart
 
-We use this directory as the base for the following short tutorial - no build tools required. First, we need a Java program to analyze. Here is an
-example of a file we can create:
+We use this directory as the base for the following short tutorial - no build tools required. First, we need a Java 
+program to analyze. Here is an example of a file we can create:
 ```java
 public class Example {
 
@@ -133,7 +132,7 @@ javac -cp ".:build/libs/j2GraPL-X.X.X-all.jar:lib/GraPLHook4j-X.X.X-all.jar:" *.
 java -cp ".:build/libs/j2GraPL-X.X.X-all.jar:lib/GraPLHook4j-X.X.X-all.jar:" GraPLDemo
 ```
 
-This exported file can then be visualized using tools such as [Cytoscape](https://cytoscape.org/). Using Cytoscape and 
+This exported file can be visualized using tools such as [Cytoscape](https://cytoscape.org/). Using Cytoscape and 
 the tree layout, the graph should look something like this:
 
 ![Example.java Graph](https://github.com/DavidBakerEffendi/j2GraPL/blob/media/graphs/GraPLDemo.png?raw=true)
