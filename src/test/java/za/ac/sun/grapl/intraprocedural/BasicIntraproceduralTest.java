@@ -227,7 +227,7 @@ public class BasicIntraproceduralTest {
 
     @Test
     public void basic6Test() throws IOException {
-        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder().build();
+        TinkerGraphHook hook = new TinkerGraphHook.TinkerGraphHookBuilder().useExistingGraph(TEST_DIR).build();
         Cannon fileCannon = new Cannon(hook);
         String resourceDir = PATH.getAbsolutePath().concat("/basic6/Basic6.java");
         // Load test resource and project + export graph

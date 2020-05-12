@@ -29,6 +29,7 @@ import java.util.*
 import java.util.function.Consumer
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
+import kotlin.math.absoluteValue
 
 class ASTController private constructor() : AbstractController() {
     private val operandStack = Stack<OperandItem?>()
@@ -44,10 +45,20 @@ class ASTController private constructor() : AbstractController() {
     private var currentLineNo = -1
     private lateinit var methodInfo: MethodInfo
 
+    /**
+     * Sets the current order counter to the max order found in the currently connected graph database.
+     */
     fun resetOrder() {
         order = super.hook.maxOrder()
     }
 
+    /**
+     * Given a package name signature and the current class, will and resolve common package chains with the
+     * class name as a {@link FileVertex} at the end.
+     *
+     * @param namespace the full package declaration.
+     * @param className the name of the class.
+     */
     fun projectFileAndNamespace(namespace: String, className: String) {
         classPath = if (namespace.isEmpty()) className else "$namespace.$className"
 
@@ -165,8 +176,20 @@ class ASTController private constructor() : AbstractController() {
         operandStack.push(item)
     }
 
+    /**
+     * Handles visitIincInsn and artificially coordinates an arithmetic operation with STORE call. This is only called
+     * for integers - other types go through the usual CONST/STORE/OPERATOR hooks.
+     *
+     * @param var the variable being incremented.
+     * @param increment the amount by which `var` is being incremented.
+     */
     fun pushVarInc(`var`: Int, increment: Int) {
-        // TODO: This still has to be implemented
+        val opType = "INTEGER"
+        val op = if (increment > 0) OperatorItem("ADD", opType) else OperatorItem("SUB", opType)
+        val varItem = VariableItem(`var`.toString(), opType)
+        val constItem = ConstantItem(increment.absoluteValue.toString(), opType)
+        operandStack.addAll(listOf(varItem, constItem, op))
+        pushVarInsnStore(`var`, "I${op.id}")
     }
 
     /**
@@ -188,13 +211,22 @@ class ASTController private constructor() : AbstractController() {
         bHistory.push(storeBlock)
         val leftChild = LocalVertex(variableItem.id, variableItem.id, variableItem.type, currentLineNo, order++)
         hook.assignToBlock(currentMethod, leftChild, baseBlock.order)
-        if (operandItem is OperatorItem) {
-            handleOperator(baseBlock, operandItem)
-        } else if (operandItem is ConstantItem) {
-            hook.assignToBlock(
-                    currentMethod,
-                    LiteralVertex(operandItem.id, order++, 1, varType, currentLineNo),
-                    baseBlock.order)
+        when (operandItem) {
+            is OperatorItem -> {
+                handleOperator(baseBlock, operandItem)
+            }
+            is ConstantItem -> {
+                hook.assignToBlock(
+                        currentMethod,
+                        LiteralVertex(operandItem.id, order++, 1, varType, currentLineNo),
+                        baseBlock.order)
+            }
+            is VariableItem -> {
+                hook.assignToBlock(
+                        currentMethod,
+                        LocalVertex(operandItem.id, operandItem.id, operandItem.type, currentLineNo, order++),
+                        baseBlock.order)
+            }
         }
         bHistory.pop()
     }
