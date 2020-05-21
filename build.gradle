@@ -21,7 +21,7 @@ dependencies {
     testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.4.2'
     testImplementation 'org.apache.tinkerpop:tinkergraph-gremlin:3.4.5'
     testRuntimeOnly 'org.junit.jupiter:junit-jupiter-api:5.4.2'
-    implementation name: 'GraPLHook4j-0.0.5'
+    implementation name: 'GraPLHook4j-X.X.X'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"
 }
 
@@ -47,7 +47,7 @@ check.dependsOn jacocoTestCoverageVerification
 jacocoTestCoverageVerification.dependsOn jacocoTestReport
 
 group = 'za.ac.sun.grapl'
-version = '0.0.1'
+version = 'X.X.X'
 description = 'j2GraPL'
 sourceCompatibility = '8'
 
