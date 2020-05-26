@@ -24,7 +24,7 @@ import za.ac.sun.grapl.util.ResourceCompilationUtil.compileJavaFile
 import za.ac.sun.grapl.util.ResourceCompilationUtil.compileJavaFiles
 import za.ac.sun.grapl.util.ResourceCompilationUtil.fetchClassFiles
 import za.ac.sun.grapl.visitors.ast.ASTClassVisitor
-import za.ac.sun.grapl.visitors.debug.DebugClassVisitor
+import za.ac.sun.grapl.visitors.init.InitialClassVisitor
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
@@ -84,8 +84,10 @@ class Cannon(hook: IHook) {
             FileInputStream(f).use { fis ->
                 val cr = ClassReader(fis)
                 // The class visitors are declared here and wrapped by one another in a pipeline
-                val rootVisitor = DebugClassVisitor()
-                val astVisitor = ASTClassVisitor(rootVisitor)
+                val rootVisitor = InitialClassVisitor()
+                cr.accept(rootVisitor, 0)
+                // Once initial data has been gathered
+                val astVisitor = ASTClassVisitor(instance)
                 // ^ append new visitors here
                 cr.accept(astVisitor, 0)
             }

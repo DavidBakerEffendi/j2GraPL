@@ -4,6 +4,7 @@ import org.objectweb.asm.Label
 import org.objectweb.asm.util.ASMifier
 import za.ac.sun.grapl.domain.enums.JumpState
 import za.ac.sun.grapl.domain.enums.ModifierTypes
+import za.ac.sun.grapl.domain.meta.MethodInfo
 import za.ac.sun.grapl.domain.models.vertices.BlockVertex
 import za.ac.sun.grapl.domain.models.vertices.FileVertex
 import za.ac.sun.grapl.domain.models.vertices.LiteralVertex
@@ -368,7 +369,6 @@ class ASTController private constructor() : AbstractController() {
                 is VariableItem ->
                     hook.assignToBlock(currentMethod, LocalVertex(op.id, op.id, op.type, currentLineNo, order++), condBlock.order)
             }
-
         })
         pushJumpBlock(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
         bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
@@ -437,12 +437,10 @@ class ASTController private constructor() : AbstractController() {
 
     override fun toString(): String {
         return """
-            
             ${this.javaClass.canonicalName}#${currentMethod!!.name}${currentMethod!!.signature}
             Stack: $operandStack
             Variables: $variables
             Block history: $bHistory
-            
             """.trimIndent()
     }
 
@@ -463,5 +461,3 @@ class ASTController private constructor() : AbstractController() {
     }
 
 }
-
-data class MethodInfo(val methodName: String, val methodSignature: String, val access: Int, var lineNumber: Int? = -1)

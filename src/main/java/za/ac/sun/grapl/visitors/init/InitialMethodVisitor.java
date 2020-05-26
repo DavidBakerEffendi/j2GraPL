@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package za.ac.sun.grapl.visitors.debug;
+package za.ac.sun.grapl.visitors.init;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -25,11 +25,11 @@ import org.objectweb.asm.util.ASMifier;
 
 import java.util.StringJoiner;
 
-public final class DebugMethodVisitor extends MethodVisitor implements Opcodes {
+public final class InitialMethodVisitor extends MethodVisitor implements Opcodes {
 
     final static Logger logger = LogManager.getLogger();
 
-    public DebugMethodVisitor(final MethodVisitor mv) {
+    public InitialMethodVisitor(final MethodVisitor mv) {
         super(ASM5, mv);
     }
 
