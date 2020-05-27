@@ -21,6 +21,8 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import za.ac.sun.grapl.domain.enums.ModifierTypes;
+import za.ac.sun.grapl.domain.meta.ClassInfo;
+import za.ac.sun.grapl.domain.meta.MethodInfo;
 import za.ac.sun.grapl.util.ASMParserUtil;
 
 import java.util.EnumSet;
@@ -28,18 +30,41 @@ import java.util.StringJoiner;
 
 public final class InitialClassVisitor extends ClassVisitor implements Opcodes {
 
-    final static Logger logger = LogManager.getLogger();
+    private final static Logger logger = LogManager.getLogger();
+    private final ClassInfo classInfo;
 
-    public InitialClassVisitor() {
+    public InitialClassVisitor(ClassInfo classInfo) {
         super(ASM5);
+        this.classInfo = classInfo;
     }
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-        final EnumSet<ModifierTypes> modifierTypes = ASMParserUtil.determineModifiers(access, name);
-        logger.debug("");
-        logger.debug(new StringJoiner(" ").add(modifierTypes.toString()).add(name).add("extends").add(superName).add("{"));
         super.visit(version, access, name, signature, superName, interfaces);
+        String className;
+        String namespace;
+        if (name.lastIndexOf('/') != -1) {
+            className = name.substring(name.lastIndexOf('/') + 1);
+            namespace = name.substring(0, name.lastIndexOf('/'));
+        } else {
+            className = name;
+            namespace = "";
+        }
+        namespace = namespace.replaceAll("/", ".");
+
+        this.classInfo.registerClass(className, namespace, access);
+
+        logger.debug("");
+        logger.debug(this.classInfo.toString() + " extends " + superName + " {");
+    }
+
+    @Override
+    public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+        final MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+        final MethodInfo methodInfo = new MethodInfo(name, descriptor, access, -1);
+        logger.debug("");
+        logger.debug("\t " + methodInfo + " {");
+        return new InitialMethodVisitor(mv, classInfo, methodInfo);
     }
 
     @Override
@@ -47,15 +72,6 @@ public final class InitialClassVisitor extends ClassVisitor implements Opcodes {
         logger.debug("");
         logger.debug("}");
         super.visitEnd();
-    }
-
-    @Override
-    public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-        final EnumSet<ModifierTypes> modifierTypes = ASMParserUtil.determineModifiers(access, name);
-        logger.debug("");
-        logger.debug(new StringJoiner(" ").add("\t").add(modifierTypes.toString()).add(name).add(descriptor).add("{"));
-        final MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-        return new InitialMethodVisitor(mv);
     }
 
 }

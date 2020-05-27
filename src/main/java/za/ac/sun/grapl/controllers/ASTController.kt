@@ -1,5 +1,7 @@
 package za.ac.sun.grapl.controllers
 
+import org.apache.logging.log4j.LogManager
+import org.apache.logging.log4j.Logger
 import org.objectweb.asm.Label
 import org.objectweb.asm.util.ASMifier
 import za.ac.sun.grapl.domain.enums.JumpState
@@ -24,6 +26,7 @@ import za.ac.sun.grapl.domain.stack.block.StoreBlock
 import za.ac.sun.grapl.domain.stack.operand.ConstantItem
 import za.ac.sun.grapl.domain.stack.operand.OperatorItem
 import za.ac.sun.grapl.domain.stack.operand.VariableItem
+import za.ac.sun.grapl.hooks.IHook
 import za.ac.sun.grapl.util.ASMParserUtil
 import za.ac.sun.grapl.util.JumpStackUtil
 import java.util.*
@@ -32,7 +35,9 @@ import kotlin.collections.HashMap
 import kotlin.collections.HashSet
 import kotlin.math.absoluteValue
 
-class ASTController private constructor() : AbstractController() {
+class ASTController(
+        private val hook: IHook
+) : AbstractController {
     private val operandStack = Stack<OperandItem?>()
     private val variables = HashSet<VariableItem>()
     private val bHistory = Stack<BlockItem>()
@@ -45,13 +50,6 @@ class ASTController private constructor() : AbstractController() {
     private var currentMethod: MethodVertex? = null
     private var currentLineNo = -1
     private lateinit var methodInfo: MethodInfo
-
-    /**
-     * Sets the current order counter to the max order found in the currently connected graph database.
-     */
-    fun resetOrder() {
-        order = super.hook.maxOrder()
-    }
 
     /**
      * Given a package name signature and the current class, will and resolve common package chains with the
@@ -73,7 +71,7 @@ class ASTController private constructor() : AbstractController() {
         currentClass = FileVertex(className, order++)
         // Join FILE and NAMESPACE_BLOCK if namespace is present
         if (!Objects.isNull(nbv)) {
-            super.hook.joinFileVertexTo(currentClass, nbv)
+            this.hook.joinFileVertexTo(currentClass, nbv)
         }
     }
 
@@ -91,7 +89,7 @@ class ASTController private constructor() : AbstractController() {
         for (i in 1 until namespaceList.size) {
             namespaceBuilder.append("." + namespaceList[i])
             currNamespaceBlock = NamespaceBlockVertex(namespaceList[i], namespaceBuilder.toString(), order++)
-            super.hook.joinNamespaceBlocks(prevNamespaceBlock, currNamespaceBlock)
+            this.hook.joinNamespaceBlocks(prevNamespaceBlock, currNamespaceBlock)
             prevNamespaceBlock = currNamespaceBlock
         }
         return currNamespaceBlock
@@ -267,7 +265,7 @@ class ASTController private constructor() : AbstractController() {
             handleJumpDestination(start)
         }
         if (!bHistory.isEmpty() && bHistory.peek() is NestedBodyBlock) {
-            if (!super.hook.isBlock(bHistory.peek().order)) {
+            if (!this.hook.isBlock(bHistory.peek().order)) {
                 val newBlock = (bHistory.pop() as NestedBodyBlock).setLabel(start)
                 val bodyVertex = BlockVertex(newBlock.position.name, newBlock.order, 1, "VOID", line)
                 if (!bHistory.empty()) hook.assignToBlock(currentMethod, bodyVertex, bHistory.peek().order) else hook.assignToBlock(currentMethod, bodyVertex, 0)
@@ -313,10 +311,9 @@ class ASTController private constructor() : AbstractController() {
     /**
      * Handles visitJumpInsn if the opcode is a nullary jump.
      *
-     * @param jumpOp the jump operation.
      * @param label  the label to jump to.
      */
-    fun pushNullaryJumps(jumpOp: String, label: Label) {
+    fun pushNullaryJumps(label: Label) {
         val jumpHistory = JumpStackUtil.getJumpHistory(bHistory)
         val lastJump = JumpStackUtil.getLastJump(bHistory)
         assert(Objects.nonNull(lastJump))
@@ -444,20 +441,24 @@ class ASTController private constructor() : AbstractController() {
             """.trimIndent()
     }
 
-    private fun clear() {
+    fun clear(): ASTController {
         operandStack.clear()
         variables.clear()
         bHistory.clear()
-        currentLineNo = -1;
+        currentLineNo = -1
+        return this
     }
 
-    private object Singleton {
-        val INSTANCE = ASTController()
+    /**
+     * Sets the current order counter to the max order found in the currently connected graph database.
+     */
+    fun resetOrder(): ASTController {
+        order = this.hook.maxOrder()
+        return this
     }
 
     companion object {
-        val instance: ASTController
-            get() = Singleton.INSTANCE
+        val logger: Logger = LogManager.getLogger()
     }
 
 }

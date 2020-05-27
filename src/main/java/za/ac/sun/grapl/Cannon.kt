@@ -18,7 +18,8 @@ package za.ac.sun.grapl
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.objectweb.asm.ClassReader
-import za.ac.sun.grapl.controllers.ASTController.Companion.instance
+import za.ac.sun.grapl.controllers.ASTController
+import za.ac.sun.grapl.domain.meta.ClassInfo
 import za.ac.sun.grapl.hooks.IHook
 import za.ac.sun.grapl.util.ResourceCompilationUtil.compileJavaFile
 import za.ac.sun.grapl.util.ResourceCompilationUtil.compileJavaFiles
@@ -32,7 +33,7 @@ import java.util.*
 import java.util.function.Consumer
 import java.util.jar.JarFile
 
-class Cannon(hook: IHook) {
+class Cannon(private val hook: IHook) {
     private val loadedFiles: LinkedList<File> = LinkedList()
 
     /**
@@ -81,13 +82,19 @@ class Cannon(hook: IHook) {
      */
     private fun fire(f: File) {
         try {
+            val classInfo = ClassInfo()
+            val astController = ASTController(hook)
             FileInputStream(f).use { fis ->
+                // Initialize services and controllers
+                astController.clear().resetOrder()
+
                 val cr = ClassReader(fis)
                 // The class visitors are declared here and wrapped by one another in a pipeline
-                val rootVisitor = InitialClassVisitor()
+                val rootVisitor = InitialClassVisitor(classInfo)
                 cr.accept(rootVisitor, 0)
+
                 // Once initial data has been gathered
-                val astVisitor = ASTClassVisitor(instance)
+                val astVisitor = ASTClassVisitor(classInfo, astController)
                 // ^ append new visitors here
                 cr.accept(astVisitor, 0)
             }
@@ -98,10 +105,5 @@ class Cannon(hook: IHook) {
 
     companion object {
         val logger: Logger = LogManager.getLogger()
-    }
-
-    init {
-        // Set controller hooks
-        instance.hook = hook
     }
 }

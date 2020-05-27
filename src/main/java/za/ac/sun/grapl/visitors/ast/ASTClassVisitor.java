@@ -19,40 +19,31 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import za.ac.sun.grapl.controllers.ASTController;
+import za.ac.sun.grapl.domain.meta.ClassInfo;
 
 public final class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
-    private final ASTController controller;
+    private final ASTController astController;
+    private final ClassInfo classInfo;
 
-    public ASTClassVisitor(final ASTController astController) {
+    public ASTClassVisitor(final ClassInfo classInfo, final ASTController astController) {
         super(ASM5);
-        this.controller = astController;
-        this.controller.resetOrder();
+        this.classInfo = classInfo;
+        this.astController = astController;
     }
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
         super.visit(version, access, name, signature, superName, interfaces);
-        String className;
-        String namespace;
-        if (name.lastIndexOf('/') != -1) {
-            className = name.substring(name.lastIndexOf('/') + 1);
-            namespace = name.substring(0, name.lastIndexOf('/'));
-        } else {
-            className = name;
-            namespace = "";
-        }
-        namespace = namespace.replaceAll("/", ".");
-
-        controller.projectFileAndNamespace(namespace, className);
+        this.astController.projectFileAndNamespace(classInfo.namespace, classInfo.className);
         // TODO: Could create MEMBER vertex from here to declare member classes
     }
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-        controller.pushNewMethod(name, descriptor, access);
+        astController.pushNewMethod(name, descriptor, access);
         MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-        return new ASTMethodVisitor(mv);
+        return new ASTMethodVisitor(mv, astController, classInfo);
     }
 
     @Override
