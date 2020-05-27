@@ -1,5 +1,6 @@
 package za.ac.sun.grapl.domain.meta
 
+import org.objectweb.asm.Label
 import za.ac.sun.grapl.util.ASMParserUtil
 
 data class MethodInfo(
@@ -9,11 +10,33 @@ data class MethodInfo(
         var lineNumber: Int? = -1
 ) {
     private val allVariables = mutableListOf<LocalVarInfo>()
+    private val allJumps = HashSet<JumpInfo>()
+    private val allLabels = mutableListOf<LineInfo>()
 
-    fun addVariable(frameId: Int, debugName: String?) {
+    fun addVariable(frameId: Int) {
+        allVariables.add(LocalVarInfo(frameId))
+    }
+
+    fun addVarDebugInfo(frameId: Int, debugName: String, descriptor: String, startLabel: Label, endLabel: Label) {
         val existingVar = allVariables.find { it.frameId == frameId }
-        if (existingVar != null) existingVar.debugName = debugName
-        else allVariables.add(LocalVarInfo(frameId, debugName))
+        if (existingVar != null) {
+            existingVar.debugName = debugName
+            existingVar.descriptor = descriptor
+            existingVar.startLabel = startLabel
+            existingVar.endLabel = endLabel
+        }
+    }
+
+    fun getVariable(frameId: Int): LocalVarInfo? {
+        return allVariables.find { it.frameId == frameId }
+    }
+
+    fun addJump(jumpOp: String, label: Label) {
+        allJumps.add(JumpInfo(jumpOp, label))
+    }
+
+    fun addLabel(lineNumber: Int, label: Label) {
+        allLabels.add(LineInfo(lineNumber, label))
     }
 
     override fun toString(): String {

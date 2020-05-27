@@ -32,12 +32,10 @@ public final class InitialMethodVisitor extends MethodVisitor implements Opcodes
 
     private final static Logger logger = LogManager.getLogger();
 
-    private final ClassInfo classInfo;
     private final MethodInfo methodInfo;
 
-    public InitialMethodVisitor(final MethodVisitor mv, final ClassInfo classInfo, final MethodInfo methodInfo) {
+    public InitialMethodVisitor(final MethodVisitor mv, final MethodInfo methodInfo) {
         super(ASM5, mv);
-        this.classInfo = classInfo;
         this.methodInfo = methodInfo;
     }
 
@@ -49,28 +47,28 @@ public final class InitialMethodVisitor extends MethodVisitor implements Opcodes
     @Override
     public void visitLabel(Label label) {
         logger.debug("");
-        logger.debug("\t " + label + " (label)");
+        logger.debug("\t" + label + " (label)");
         super.visitLabel(label);
     }
 
     @Override
     public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
-        logger.debug("\t " + ASMifier.OPCODES[opcode] + owner + " " + name + " " + descriptor + " (visitFieldInsn)");
+        logger.debug("\t" + ASMifier.OPCODES[opcode] + owner + " " + name + " " + descriptor + " (visitFieldInsn)");
         super.visitFieldInsn(opcode, owner, name, descriptor);
     }
 
     @Override
     public void visitVarInsn(int opcode, int var) {
-        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " -> " + var + " (visitVarInsn)");
-        methodInfo.addVariable(var, null);
+        logger.debug("\t" + ASMifier.OPCODES[opcode] + " -> " + var + " (visitVarInsn)");
+        methodInfo.addVariable(var);
         super.visitVarInsn(opcode, var);
     }
 
     @Override
     public void visitLocalVariable(String name, String descriptor, String signature, Label start, Label end, int index) {
         logger.debug("\t --- DEBUG INFO ---");
-        logger.debug("\t  " + descriptor + " " + name + " -> (" + start + "; " + end + ") (visitLocalVariable)");
-        methodInfo.addVariable(index, name);
+        logger.debug("\t" + descriptor + " " + name + " -> (" + start + "; " + end + ") (visitLocalVariable)");
+        methodInfo.addVarDebugInfo(index, name, descriptor, start, end);
         super.visitLocalVariable(name, descriptor, signature, start, end, index);
     }
 
@@ -79,7 +77,7 @@ public final class InitialMethodVisitor extends MethodVisitor implements Opcodes
         logger.debug("\t  " + line + " " + start + " (visitLineNumber)");
         if (Integer.valueOf(-1).equals(methodInfo.getLineNumber())) methodInfo.setLineNumber(line - 1);
 
-        classInfo.addLabel(line, start);
+        methodInfo.addLabel(line, start);
         super.visitLineNumber(line, start);
     }
 
@@ -92,7 +90,7 @@ public final class InitialMethodVisitor extends MethodVisitor implements Opcodes
     @Override
     public void visitJumpInsn(int opcode, Label label) {
         logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + label + " (visitJumpInsn)");
-        classInfo.addJump(ASMifier.OPCODES[opcode], label);
+        methodInfo.addJump(ASMifier.OPCODES[opcode], label);
         super.visitJumpInsn(opcode, label);
     }
 

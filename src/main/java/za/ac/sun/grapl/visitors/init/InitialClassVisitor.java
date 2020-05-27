@@ -61,10 +61,10 @@ public final class InitialClassVisitor extends ClassVisitor implements Opcodes {
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
         final MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-        final MethodInfo methodInfo = new MethodInfo(name, descriptor, access, -1);
+        final MethodInfo methodInfo = classInfo.addMethod(name, descriptor, access, -1);
         logger.debug("");
         logger.debug("\t " + methodInfo + " {");
-        return new InitialMethodVisitor(mv, classInfo, methodInfo);
+        return new InitialMethodVisitor(mv, methodInfo);
     }
 
     @Override

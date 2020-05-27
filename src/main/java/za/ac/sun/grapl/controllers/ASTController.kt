@@ -60,7 +60,6 @@ class ASTController(
      */
     fun projectFileAndNamespace(namespace: String, className: String) {
         classPath = if (namespace.isEmpty()) className else "$namespace.$className"
-
         // Build NAMESPACE_BLOCK if packages are present
         var nbv: NamespaceBlockVertex? = null
         if (namespace.isNotEmpty()) {

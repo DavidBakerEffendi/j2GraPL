@@ -23,6 +23,8 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.util.ASMifier;
 import za.ac.sun.grapl.controllers.ASTController;
 import za.ac.sun.grapl.domain.meta.ClassInfo;
+import za.ac.sun.grapl.domain.meta.LocalVarInfo;
+import za.ac.sun.grapl.domain.meta.MethodInfo;
 import za.ac.sun.grapl.util.ASMParserUtil;
 
 public final class ASTMethodVisitor extends MethodVisitor implements Opcodes {
@@ -30,16 +32,16 @@ public final class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     final static Logger logger = LogManager.getLogger();
 
     private final ASTController astController;
-    private final ClassInfo classInfo;
+    private final MethodInfo methodInfo;
 
     public ASTMethodVisitor(
             final MethodVisitor mv,
             final ASTController astController,
-            final ClassInfo classInfo
+            final MethodInfo methodInfo
     ) {
         super(ASM5, mv);
         this.astController = astController;
-        this.classInfo = classInfo;
+        this.methodInfo = methodInfo;
     }
 
     @Override

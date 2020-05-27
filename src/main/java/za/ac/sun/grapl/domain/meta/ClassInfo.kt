@@ -1,6 +1,5 @@
 package za.ac.sun.grapl.domain.meta
 
-import org.objectweb.asm.Label
 import za.ac.sun.grapl.controllers.AbstractController
 import za.ac.sun.grapl.util.ASMParserUtil
 import kotlin.properties.Delegates
@@ -10,8 +9,7 @@ class ClassInfo : AbstractController {
     lateinit var namespace: String
     var access by Delegates.notNull<Int>()
 
-    private val allJumps = HashSet<JumpInfo>()
-    private val allLabels = mutableListOf<LineInfo>()
+
     private val classMethods = mutableListOf<MethodInfo>()
 
     fun registerClass(className: String, namespace: String, access: Int) {
@@ -20,16 +18,14 @@ class ClassInfo : AbstractController {
         this.access = access
     }
 
-    fun addMethod(methodName: String, methodSignature: String, access: Int, lineNumber: Int) {
-        classMethods.add(MethodInfo(methodName, methodSignature, access, lineNumber))
+    fun addMethod(methodName: String, methodSignature: String, access: Int, lineNumber: Int): MethodInfo {
+        val methodInfo = MethodInfo(methodName, methodSignature, access, lineNumber)
+        classMethods.add(methodInfo)
+        return methodInfo
     }
 
-    fun addLabel(lineNumber: Int, label: Label) {
-        allLabels.add(LineInfo(lineNumber, label))
-    }
-
-    fun addJump(jumpOp: String, label: Label) {
-        allJumps.add(JumpInfo(jumpOp, label))
+    fun clear() {
+        classMethods.clear()
     }
 
     override fun toString(): String {
