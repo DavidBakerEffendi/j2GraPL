@@ -20,6 +20,7 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import za.ac.sun.grapl.controllers.ASTController;
 import za.ac.sun.grapl.domain.meta.ClassInfo;
+import za.ac.sun.grapl.domain.meta.MethodInfo;
 
 public final class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
@@ -41,9 +42,11 @@ public final class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
+        final MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+        final MethodInfo methodInfo = classInfo.getMethod(name, descriptor, access);
         astController.pushNewMethod(name, descriptor, access);
-        MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-        return new ASTMethodVisitor(mv, astController, classInfo);
+        assert methodInfo != null;
+        return new ASTMethodVisitor(mv, astController, methodInfo);
     }
 
     @Override

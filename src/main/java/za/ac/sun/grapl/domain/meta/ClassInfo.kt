@@ -24,6 +24,10 @@ class ClassInfo : AbstractController {
         return methodInfo
     }
 
+    fun getMethod(methodName: String, methodSignature: String, access: Int): MethodInfo? {
+        return classMethods.find { methodInfo -> methodInfo == MethodInfo(methodName, methodSignature, access) }
+    }
+
     fun clear() {
         classMethods.clear()
     }

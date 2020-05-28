@@ -86,6 +86,7 @@ class Cannon(private val hook: IHook) {
             val astController = ASTController(hook)
             FileInputStream(f).use { fis ->
                 // Initialize services and controllers
+                classInfo.clear()
                 astController.clear().resetOrder()
 
                 val cr = ClassReader(fis)
