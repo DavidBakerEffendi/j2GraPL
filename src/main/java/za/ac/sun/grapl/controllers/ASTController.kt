@@ -269,8 +269,9 @@ class ASTController(
         }
 
         val totalAssociatedJumps = this.methodInfo.getAssociatedJumps(line)
-        if (totalAssociatedJumps.size > JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size) {
-            println("$start is associated with a jump that hasn't been encountered yet")
+        if (totalAssociatedJumps.filter { jumpInfo ->  jumpInfo.jumpOp != "GOTO" }.size > JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size) {
+            logger.debug("$start (line $line) is associated with a jump that hasn't been encountered yet | $totalAssociatedJumps")
+            logger.debug("JumpInfo: ${totalAssociatedJumps.size} | Current assoc jumps ${JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size}")
             // TODO get jump info since this current line no is technically wrong
             val condRoot = BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
             futureIfBlock.add(condRoot)
@@ -375,7 +376,8 @@ class ASTController(
             pushJumpBlock(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
             bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
         } else {
-            // TODO: we need to find the corresponding ifcmp block since it's current label property is null
+            // We need to find the corresponding ifcmp block since its current label property is null by #associateLineNumberWithLabel
+            allJumpsEncountered.find { jumpBlock -> jumpBlock.order == condRoot.order }?.label = label
         }
 
         val condBlock = BlockVertex(ASMParserUtil.parseAndFlipEquality(jumpOp).toString(), order++, 2, jumpType, currentLineNo)
