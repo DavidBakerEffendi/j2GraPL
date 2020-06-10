@@ -41,7 +41,8 @@ class ASTController(
     private val operandStack = Stack<OperandItem?>()
     private val variables = HashSet<VariableItem>()
     private val bHistory = Stack<BlockItem>()
-    private val allJumps = HashSet<JumpBlock>()
+    private val allJumpsEncountered = HashSet<JumpBlock>()
+    private val futureIfBlock = Stack<BlockVertex>()
     private val pairedBlocks: MutableMap<IfCmpBlock, GotoBlock?> = HashMap()
     private var order = 0
     private var currentLabel: Label? = null
@@ -97,9 +98,9 @@ class ASTController(
     /**
      * Generates the method meta-data vertices describing the method being visited.
      */
-    fun pushNewMethod(methodName: String, methodSignature: String, access: Int) {
+    fun pushNewMethod(methodInfo: MethodInfo) {
         this.clear()
-        this.methodInfo = MethodInfo(methodName, methodSignature, access)
+        this.methodInfo = methodInfo
     }
 
     /**
@@ -254,14 +255,29 @@ class ASTController(
     }
 
     fun associateLineNumberWithLabel(line: Int, start: Label) {
+        // So that our pre-scan labels and current scan labels can resolve
+        this.methodInfo.addLabel(line, start)
+
         if (currentLineNo == -1) {
             createMethod(methodInfo, line - 1)
         }
         currentLineNo = line
         currentLabel = start
 
-        if (JumpStackUtil.isJumpDestination(allJumps, start)) {
+        if (JumpStackUtil.isJumpDestination(allJumpsEncountered, start)) {
             handleJumpDestination(start)
+        }
+
+        val totalAssociatedJumps = this.methodInfo.getAssociatedJumps(line)
+        if (totalAssociatedJumps.size > JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size) {
+            println("$start is associated with a jump that hasn't been encountered yet")
+            // TODO get jump info since this current line no is technically wrong
+            val condRoot = BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
+            futureIfBlock.add(condRoot)
+            if (bHistory.isEmpty()) hook.assignToBlock(currentMethod, condRoot, 0) else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
+            // We do not know the new label of the ifCmpBlock that we expect to appear later in the bytecode
+            pushJumpBlock(IfCmpBlock(condRoot.order, null, start, JumpState.IF_ROOT))
+            bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
         }
         if (!bHistory.isEmpty() && bHistory.peek() is NestedBodyBlock) {
             if (!this.hook.isBlock(bHistory.peek().order)) {
@@ -274,7 +290,7 @@ class ASTController(
     }
 
     private fun handleJumpDestination(jumpDestination: Label) {
-        val associatedJumps = JumpStackUtil.getAssociatedJumps(allJumps, jumpDestination)
+        val associatedJumps = JumpStackUtil.getAssociatedJumps(allJumpsEncountered, jumpDestination)
         val numIfCmpAssocs = associatedJumps.stream().filter { g: JumpBlock? -> g is IfCmpBlock }.count()
         val numGotoAssocs = associatedJumps.stream().filter { g: JumpBlock? -> g is GotoBlock }.count()
         logger.debug("Encountered jump destination #IfCmp:$numIfCmpAssocs #Goto: $numGotoAssocs")
@@ -318,7 +334,7 @@ class ASTController(
         assert(Objects.nonNull(lastJump))
         val currentBlock = GotoBlock(order, currentLabel, label, lastJump!!.position)
         logger.debug("Pushing $currentBlock")
-        allJumps.add(currentBlock)
+        allJumpsEncountered.add(currentBlock)
         tryPairGotoBlock(currentBlock)
         var blockItem: BlockItem? = null
         while (!bHistory.isEmpty() && bHistory.peek() !is JumpBlock) {
@@ -350,10 +366,19 @@ class ASTController(
     fun pushBinaryJump(jumpOp: String, label: Label) {
         logger.debug("Recognized binary jump $jumpOp with label $label")
         val jumpType = ASMParserUtil.getBinaryJumpType(jumpOp)
-        // Build if-root and if-cond
-        val condRoot = BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
+        // If, as in the case of do-while, the if block happens after the body and thus the if-node already exists,
+        // we should fetch the corresponding if-node
+        val condRoot = if (futureIfBlock.isNotEmpty()) futureIfBlock.pop() else BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
+        // We can tell if it's a brand new conditional route by checking the line number
+        if (condRoot.lineNumber == currentLineNo) {
+            if (bHistory.isEmpty()) hook.assignToBlock(currentMethod, condRoot, 0) else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
+            pushJumpBlock(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
+            bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
+        } else {
+            // TODO: we need to find the corresponding ifcmp block since it's current label property is null
+        }
+
         val condBlock = BlockVertex(ASMParserUtil.parseAndFlipEquality(jumpOp).toString(), order++, 2, jumpType, currentLineNo)
-        if (bHistory.isEmpty()) hook.assignToBlock(currentMethod, condRoot, 0) else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
         hook.assignToBlock(currentMethod, condBlock, condRoot.order)
         // Add if-cond operands
         val ops = listOfNotNull(operandStack.pop(), operandStack.pop()).asReversed()
@@ -366,8 +391,6 @@ class ASTController(
                     hook.assignToBlock(currentMethod, LocalVertex(op.id, op.id, op.type, currentLineNo, order++), condBlock.order)
             }
         })
-        pushJumpBlock(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
-        bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
     }
 
     /**
@@ -384,7 +407,7 @@ class ASTController(
 
     private fun pushJumpBlock(item: JumpBlock) {
         bHistory.push(item)
-        allJumps.add(item)
+        allJumpsEncountered.add(item)
     }
 
     private fun tryPairGotoBlock(gotoBlock: GotoBlock) {

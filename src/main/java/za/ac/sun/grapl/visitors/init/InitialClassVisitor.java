@@ -31,6 +31,7 @@ import java.util.StringJoiner;
 public final class InitialClassVisitor extends ClassVisitor implements Opcodes {
 
     private final static Logger logger = LogManager.getLogger();
+
     private final ClassInfo classInfo;
 
     public InitialClassVisitor(ClassInfo classInfo) {

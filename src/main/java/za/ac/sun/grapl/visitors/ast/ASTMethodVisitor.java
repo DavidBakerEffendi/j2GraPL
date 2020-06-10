@@ -32,16 +32,13 @@ public final class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     final static Logger logger = LogManager.getLogger();
 
     private final ASTController astController;
-    private final MethodInfo methodInfo;
 
     public ASTMethodVisitor(
             final MethodVisitor mv,
-            final ASTController astController,
-            final MethodInfo methodInfo
+            final ASTController astController
     ) {
         super(ASM5, mv);
         this.astController = astController;
-        this.methodInfo = methodInfo;
     }
 
     @Override

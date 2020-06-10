@@ -32,6 +32,7 @@ public final class InitialMethodVisitor extends MethodVisitor implements Opcodes
 
     private final static Logger logger = LogManager.getLogger();
 
+    private Label currentLabel;
     private final MethodInfo methodInfo;
 
     public InitialMethodVisitor(final MethodVisitor mv, final MethodInfo methodInfo) {
@@ -48,6 +49,7 @@ public final class InitialMethodVisitor extends MethodVisitor implements Opcodes
     public void visitLabel(Label label) {
         logger.debug("");
         logger.debug("\t" + label + " (label)");
+        currentLabel = label;
         super.visitLabel(label);
     }
 
@@ -90,7 +92,7 @@ public final class InitialMethodVisitor extends MethodVisitor implements Opcodes
     @Override
     public void visitJumpInsn(int opcode, Label label) {
         logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + label + " (visitJumpInsn)");
-        methodInfo.addJump(ASMifier.OPCODES[opcode], label);
+        methodInfo.addJump(ASMifier.OPCODES[opcode], label, currentLabel);
         super.visitJumpInsn(opcode, label);
     }
 

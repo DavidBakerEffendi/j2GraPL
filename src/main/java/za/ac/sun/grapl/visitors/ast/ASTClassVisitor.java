@@ -44,9 +44,9 @@ public final class ASTClassVisitor extends ClassVisitor implements Opcodes {
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
         final MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
         final MethodInfo methodInfo = classInfo.getMethod(name, descriptor, access);
-        astController.pushNewMethod(name, descriptor, access);
         assert methodInfo != null;
-        return new ASTMethodVisitor(mv, astController, methodInfo);
+        astController.pushNewMethod(methodInfo);
+        return new ASTMethodVisitor(mv, astController);
     }
 
     @Override

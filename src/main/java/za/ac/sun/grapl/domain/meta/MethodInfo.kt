@@ -11,7 +11,7 @@ data class MethodInfo(
 ) {
     private val allVariables = mutableListOf<LocalVarInfo>()
     private val allJumps = HashSet<JumpInfo>()
-    private val allLabels = mutableListOf<LineInfo>()
+    private val allLines = HashSet<LineInfo>()
 
     fun addVariable(frameId: Int) {
         allVariables.add(LocalVarInfo(frameId))
@@ -31,12 +31,19 @@ data class MethodInfo(
         return allVariables.find { it.frameId == frameId }
     }
 
-    fun addJump(jumpOp: String, label: Label) {
-        allJumps.add(JumpInfo(jumpOp, label))
+    private fun getLineInfo(lineNumber: Int): LineInfo? = allLines.find { lineInfo -> lineInfo.lineNumber == lineNumber }
+
+    fun addJump(jumpOp: String, destLabel: Label, currentLabel: Label) {
+        val jumpInfo = JumpInfo(jumpOp, destLabel, currentLabel)
+        allJumps.add(jumpInfo)
     }
 
-    fun addLabel(lineNumber: Int, label: Label) {
-        allLabels.add(LineInfo(lineNumber, label))
+    fun addLabel(lineNumber: Int, label: Label) = getLineInfo(lineNumber)?.apply { associatedLabels.add(label) }
+            ?: allLines.add(LineInfo(lineNumber).apply { associatedLabels.add(label) })
+
+    fun getAssociatedJumps(lineNumber: Int): MutableList<JumpInfo> {
+        val assocLineInfo = getLineInfo(lineNumber) ?: return emptyList<JumpInfo>().toMutableList()
+        return allJumps.filter { jInfo: JumpInfo -> assocLineInfo.associatedLabels.contains(jInfo.destLabel) }.toMutableList()
     }
 
     override fun toString(): String {
