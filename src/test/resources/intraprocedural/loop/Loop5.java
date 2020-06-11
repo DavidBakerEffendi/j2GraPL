@@ -10,7 +10,7 @@ public class Loop5 {
                 a++;
             } while (a < b);
         } while (a < b);
-        a = 2;
+        a = 3;
     }
 
 }

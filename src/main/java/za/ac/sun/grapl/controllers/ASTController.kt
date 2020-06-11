@@ -286,7 +286,6 @@ class ASTController(
 
                 // Account for the nested case
                 if (i != jumpCountDifference - 1 && jumpCountDifference > 1) {
-                    hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order - 2)
                     val bodyVertex = BlockVertex(nestedBodyBlock.position.name, nestedBodyBlock.order, 1, "VOID", line)
                     hook.assignToBlock(currentMethod, bodyVertex, bHistory.peek().order - 1)
                 }
