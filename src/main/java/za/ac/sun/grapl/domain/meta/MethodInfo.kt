@@ -46,6 +46,8 @@ data class MethodInfo(
         return allJumps.filter { jInfo: JumpInfo -> assocLineInfo.associatedLabels.contains(jInfo.destLabel) }.toMutableList()
     }
 
+    fun getLineNumber(label: Label): Int = allLines.find { lineInfo -> lineInfo.associatedLabels.contains(label) }?.lineNumber ?: -1
+
     override fun toString(): String {
         return "$lineNumber: ${ASMParserUtil.determineModifiers(access)} $methodName $methodSignature"
     }

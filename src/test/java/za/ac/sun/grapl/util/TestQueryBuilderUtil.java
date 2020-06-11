@@ -14,11 +14,15 @@ import za.ac.sun.grapl.domain.models.vertices.ModifierVertex;
 public class TestQueryBuilderUtil {
 
     public static GraphTraversal<Vertex, Vertex> buildASTRepeat(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex) {
-        return g.V(rootVertex).repeat(__.out(edge.toString())).emit();
+        return g.V(rootVertex).repeat(__.out(edge.toString()));
     }
 
     public static GraphTraversal<Vertex, Vertex> getVertexAlongEdge(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex, VertexLabels label, String key, String value) {
-        return buildASTRepeat(g, edge, rootVertex).has(label.toString(), key, value);
+        return buildASTRepeat(g, edge, rootVertex).emit().has(label.toString(), key, value);
+    }
+
+    public static GraphTraversal<Vertex, Vertex> getVertexAlongEdgeFixed(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex, VertexLabels label, String key, String value, int max) {
+        return buildASTRepeat(g, edge, rootVertex).until(__.has(label.toString(), key, value).or().loops().is(max));
     }
 
     public static GraphTraversal<Vertex, Vertex> buildStoreTraversal(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex) {
@@ -26,15 +30,15 @@ public class TestQueryBuilderUtil {
     }
 
     public static GraphTraversal<Vertex, Vertex> buildMethodModifierTraversal(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex) {
-        return buildASTRepeat(g, edge, rootVertex).hasLabel(ModifierVertex.LABEL.toString());
+        return buildASTRepeat(g, edge, rootVertex).emit().hasLabel(ModifierVertex.LABEL.toString());
     }
 
     public static GraphTraversal<Vertex, Vertex> buildMethodReturnTraversal(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex) {
-        return buildASTRepeat(g, edge, rootVertex).hasLabel(MethodReturnVertex.LABEL.toString());
+        return buildASTRepeat(g, edge, rootVertex).emit().hasLabel(MethodReturnVertex.LABEL.toString());
     }
 
     public static GraphTraversal<Vertex, Vertex> buildMethodParameterInTraversal(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex) {
-        return buildASTRepeat(g, edge, rootVertex).hasLabel(MethodParameterInVertex.LABEL.toString());
+        return buildASTRepeat(g, edge, rootVertex).emit().hasLabel(MethodParameterInVertex.LABEL.toString());
     }
 
 }

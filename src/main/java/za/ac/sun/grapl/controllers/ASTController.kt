@@ -269,16 +269,28 @@ class ASTController(
         }
 
         val totalAssociatedJumps = this.methodInfo.getAssociatedJumps(line)
-        if (totalAssociatedJumps.filter { jumpInfo ->  jumpInfo.jumpOp != "GOTO" }.size > JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size) {
-            logger.debug("$start (line $line) is associated with a jump that hasn't been encountered yet | $totalAssociatedJumps")
+        val jumpCountDifference = totalAssociatedJumps.filter { jumpInfo -> jumpInfo.jumpOp != "GOTO" }.size - JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size
+        if (jumpCountDifference >= 1) {
+            logger.debug("$start (line $line) is associated with $jumpCountDifference jump(s) that haven't been encountered yet | $totalAssociatedJumps")
             logger.debug("JumpInfo: ${totalAssociatedJumps.size} | Current assoc jumps ${JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size}")
             // TODO get jump info since this current line no is technically wrong
-            val condRoot = BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
-            futureIfBlock.add(condRoot)
-            if (bHistory.isEmpty()) hook.assignToBlock(currentMethod, condRoot, 0) else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
-            // We do not know the new label of the ifCmpBlock that we expect to appear later in the bytecode
-            pushJumpBlock(IfCmpBlock(condRoot.order, null, start, JumpState.IF_ROOT))
-            bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
+            for (i in 0 until jumpCountDifference) {
+                val condRoot = BlockVertex("WHILE", order++, 1, "BOOLEAN", currentLineNo)
+                futureIfBlock.add(condRoot)
+                if (bHistory.isEmpty()) hook.assignToBlock(currentMethod, condRoot, 0) else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
+
+                // We do not know the new label of the ifCmpBlock that we expect to appear later in the bytecode
+                val nestedBodyBlock = NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY)
+                pushJumpBlock(IfCmpBlock(condRoot.order, null, start, JumpState.IF_ROOT))
+                bHistory.push(nestedBodyBlock)
+
+                // Account for the nested case
+                if (i != jumpCountDifference - 1 && jumpCountDifference > 1) {
+                    hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order - 2)
+                    val bodyVertex = BlockVertex(nestedBodyBlock.position.name, nestedBodyBlock.order, 1, "VOID", line)
+                    hook.assignToBlock(currentMethod, bodyVertex, bHistory.peek().order - 1)
+                }
+            }
         }
         if (!bHistory.isEmpty() && bHistory.peek() is NestedBodyBlock) {
             if (!this.hook.isBlock(bHistory.peek().order)) {
@@ -337,6 +349,7 @@ class ASTController(
         logger.debug("Pushing $currentBlock")
         allJumpsEncountered.add(currentBlock)
         tryPairGotoBlock(currentBlock)
+        val destinationLineNumber = this.methodInfo.getLineNumber(label)
         var blockItem: BlockItem? = null
         while (!bHistory.isEmpty() && bHistory.peek() !is JumpBlock) {
             blockItem = bHistory.pop()
@@ -355,6 +368,11 @@ class ASTController(
             if (bHistory.peek() is JumpBlock && (bHistory.peek() as JumpBlock).label !== label) {
                 bHistory.push(NestedBodyBlock(order++, label, JumpState.ELSE_BODY))
             }
+            if (destinationLineNumber != -1 && destinationLineNumber < currentLineNo) {
+                // This is GOTO is part of a loop
+                logger.debug("This GOTO is part of a loop @ order $order")
+                bHistory.pop()
+            }
         }
     }
 
@@ -371,13 +389,15 @@ class ASTController(
         // we should fetch the corresponding if-node
         val condRoot = if (futureIfBlock.isNotEmpty()) futureIfBlock.pop() else BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
         // We can tell if it's a brand new conditional route by checking the line number
-        if (condRoot.lineNumber == currentLineNo) {
+        if (condRoot.order == order - 1) {
             if (bHistory.isEmpty()) hook.assignToBlock(currentMethod, condRoot, 0) else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
             pushJumpBlock(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
             bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
         } else {
             // We need to find the corresponding ifcmp block since its current label property is null by #associateLineNumberWithLabel
             allJumpsEncountered.find { jumpBlock -> jumpBlock.order == condRoot.order }?.label = label
+            bHistory.pop()
+            bHistory.pop()
         }
 
         val condBlock = BlockVertex(ASMParserUtil.parseAndFlipEquality(jumpOp).toString(), order++, 2, jumpType, currentLineNo)
