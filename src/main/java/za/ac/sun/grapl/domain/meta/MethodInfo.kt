@@ -11,6 +11,7 @@ data class MethodInfo(
 ) {
     private val allVariables = mutableListOf<LocalVarInfo>()
     private val allJumps = HashSet<JumpInfo>()
+    val jumpRoot = HashMap<Int, String>()
     private val allLines = HashSet<LineInfo>()
 
     fun addVariable(frameId: Int) {
@@ -47,6 +48,18 @@ data class MethodInfo(
     }
 
     fun getLineNumber(label: Label): Int = allLines.find { lineInfo -> lineInfo.associatedLabels.contains(label) }?.lineNumber ?: -1
+
+    fun upsertJumpRootAtLine(lineNumber: Int, name: String) = if (jumpRoot.containsKey(lineNumber)) jumpRoot.replace(lineNumber, name) else jumpRoot.put(lineNumber, name)
+
+    fun getJumpRootFromLine(lineNumber: Int): String = jumpRoot.getOrDefault(lineNumber, "IF")
+
+    fun getJumpRootFromLine(label: Label): String = jumpRoot.getOrDefault(getLineNumber(label), "IF")
+
+    fun isLabelAssociatedWithLoops(label: Label): Boolean {
+        val loopNames = listOf("WHILE", "DO_WHILE", "FOR")
+        val rootName = jumpRoot.getOrDefault(getLineNumber(label), "IF")
+        return !loopNames.none { name -> name == rootName }
+    }
 
     override fun toString(): String {
         return "$lineNumber: ${ASMParserUtil.determineModifiers(access)} $methodName $methodSignature"
