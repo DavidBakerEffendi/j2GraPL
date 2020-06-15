@@ -352,7 +352,8 @@ class ASTController(
      */
     fun pushNullaryJumps(label: Label) {
         val jumpHistory = JumpStackUtil.getJumpHistory(bHistory)
-        val lastJump = JumpStackUtil.getLastJump(bHistory)
+        // TODO: This shouldn't reach null so this is not an ideal workaround
+        val lastJump = JumpStackUtil.getLastJump(bHistory) ?: allJumpsEncountered.maxBy { j -> j.order }
         val currentBlock = GotoBlock(order, currentLabel, label, lastJump!!.position)
         logger.debug("Pushing $currentBlock")
         // Retain info learned from this method
@@ -402,7 +403,14 @@ class ASTController(
         val jumpType = ASMParserUtil.getBinaryJumpType(jumpOp)
         // If, as in the case of do-while, the if block happens after the body and thus the if-node already exists,
         // we should fetch the corresponding if-node
-        val condRoot: BlockVertex = if (futureIfBlock.isNotEmpty()) futureIfBlock.pop() else BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
+        // TODO: We can't assume last future block is always the one correlated
+
+        val condRoot: BlockVertex = if (futureIfBlock.isNotEmpty()) {
+            // Determine if the last future jump block is correlated to this jump
+            if (!this.methodInfo.isJumpVertexAssociatedWithGivenLine(futureIfBlock.peek(), currentLineNo))
+                BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
+            else futureIfBlock.pop()
+        } else BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
         this.methodInfo.upsertJumpRootAtLine(currentLineNo, condRoot.name)
         // We can tell if it's a brand new conditional route by checking the line number
         if (condRoot.order == order - 1) {

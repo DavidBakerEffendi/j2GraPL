@@ -218,4 +218,8 @@ public class LoopIntraproceduralTest {
         assertTrue(getVertexAlongEdgeFixed(g, EdgeLabels.AST, postWhileStoreVertex, LocalVertex.LABEL, "name", "2", 1).hasNext());
     }
 
+    @Test
+    public void loop7Test() {
+
+    }
 }

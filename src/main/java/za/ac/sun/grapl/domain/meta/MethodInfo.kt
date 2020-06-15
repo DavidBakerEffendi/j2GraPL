@@ -1,6 +1,7 @@
 package za.ac.sun.grapl.domain.meta
 
 import org.objectweb.asm.Label
+import za.ac.sun.grapl.domain.models.vertices.BlockVertex
 import za.ac.sun.grapl.util.ASMParserUtil
 
 data class MethodInfo(
@@ -11,7 +12,7 @@ data class MethodInfo(
 ) {
     private val allVariables = mutableListOf<LocalVarInfo>()
     private val allJumps = HashSet<JumpInfo>()
-    val jumpRoot = HashMap<Int, String>()
+    private val jumpRoot = HashMap<Int, String>()
     private val allLines = HashSet<LineInfo>()
 
     fun addVariable(frameId: Int) {
@@ -47,13 +48,13 @@ data class MethodInfo(
         return allJumps.filter { jInfo: JumpInfo -> assocLineInfo.associatedLabels.contains(jInfo.destLabel) }.toMutableList()
     }
 
-    fun getLineNumber(label: Label): Int = allLines.find { lineInfo -> lineInfo.associatedLabels.contains(label) }?.lineNumber ?: -1
+    fun getLineNumber(label: Label): Int = allLines.find { lineInfo -> lineInfo.associatedLabels.contains(label) }?.lineNumber
+            ?: -1
+
+    fun isJumpVertexAssociatedWithGivenLine(jumpBlockVertex: BlockVertex, lineNumber: Int) =
+            !getAssociatedJumps(jumpBlockVertex.lineNumber).none { jumpInfo -> getLineNumber(jumpInfo.currLabel) == lineNumber }
 
     fun upsertJumpRootAtLine(lineNumber: Int, name: String) = if (jumpRoot.containsKey(lineNumber)) jumpRoot.replace(lineNumber, name) else jumpRoot.put(lineNumber, name)
-
-    fun getJumpRootFromLine(lineNumber: Int): String = jumpRoot.getOrDefault(lineNumber, "IF")
-
-    fun getJumpRootFromLine(label: Label): String = jumpRoot.getOrDefault(getLineNumber(label), "IF")
 
     fun isLabelAssociatedWithLoops(label: Label): Boolean {
         val loopNames = listOf("WHILE", "DO_WHILE", "FOR")
