@@ -369,7 +369,9 @@ class ASTController(
             }
             if (destinationLineNumber != -1 && destinationLineNumber < currentLineNo) {
                 // This is GOTO is part of a loop
-                logger.debug("This GOTO is part of a loop @ order $order")
+                val pairedBlock = pairedBlocks.filter{ (_, v) -> v == currentBlock }.keys.first()
+                logger.debug("This GOTO is part of a loop @ order $order associated with block $pairedBlock")
+                this.hook.updateBlockProperty(currentMethod, pairedBlock.order, "name", "WHILE")
                 bHistory.pop()
             }
         }

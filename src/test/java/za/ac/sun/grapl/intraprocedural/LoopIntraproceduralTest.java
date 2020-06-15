@@ -79,7 +79,7 @@ public class LoopIntraproceduralTest {
     @Test
     public void loop1Test() {
         // Get conditional root
-        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "IF");
+        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "WHILE");
         assertTrue(whileRootTraversal.hasNext());
         final Vertex whileRoot = whileRootTraversal.next();
         // Check while branch
@@ -115,7 +115,7 @@ public class LoopIntraproceduralTest {
     @Test
     public void loop3Test() {
         // Get conditional root
-        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "IF");
+        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "WHILE");
         assertTrue(whileRootTraversal.hasNext());
         final Vertex whileRoot = whileRootTraversal.next();
         // Check while branch
