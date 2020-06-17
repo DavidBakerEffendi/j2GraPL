@@ -394,8 +394,20 @@ class ASTController(
                 // This is GOTO is part of a loop
                 pairedBlocks.filter { (_, v) -> v == currentBlock }.keys.forEach { pairedBlock ->
                     logger.debug("This GOTO is part of a loop @ order $order associated with block $pairedBlock")
-                    this.hook.updateBlockProperty(currentMethod, pairedBlock.order, "name", "WHILE")
-                    this.methodInfo.upsertJumpRootAtLine(methodInfo.getLineNumber(pairedBlock.label!!), "WHILE")
+                    // The label may not be initialized yet and will be updated at a later stage but we can try search
+                    // it based on the destination label
+                    val name: String?
+                    val maybeLineNumber: Int?
+                    if (pairedBlock.label != null) {
+                        name = "WHILE"
+                        maybeLineNumber = methodInfo.getLineNumber(pairedBlock.label!!)
+                        this.methodInfo.upsertJumpRootAtLine(maybeLineNumber, name)
+                    } else {
+                        name = "DO_WHILE"
+                        maybeLineNumber = methodInfo.findJumpLineBasedOnDestLabel(pairedBlock.destination)
+                    }
+                    if (maybeLineNumber != null) this.methodInfo.upsertJumpRootAtLine(maybeLineNumber, name)
+                    this.hook.updateBlockProperty(currentMethod, pairedBlock.order, "name", name)
                     bHistory.pop()
                 }
 

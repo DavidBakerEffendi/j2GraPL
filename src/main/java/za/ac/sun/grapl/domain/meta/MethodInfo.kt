@@ -62,6 +62,15 @@ data class MethodInfo(
         return !loopNames.none { name -> name == rootName }
     }
 
+    fun findJumpLineBasedOnDestLabel(destLabel: Label): Int? {
+        // Find associated labels with the dest label
+        val associatedLabels = allLines.find { lineInfo -> lineInfo.associatedLabels.contains(destLabel) }?.associatedLabels ?: return null
+        // Match this with a jump
+        val matchedJump = allJumps.find { jumpInfo ->  associatedLabels.contains(jumpInfo.destLabel)} ?: return null
+        // Get the current line of the jump current line
+        return allLines.find { lineInfo -> lineInfo.associatedLabels.contains(matchedJump.currLabel) }?.lineNumber
+    }
+
     override fun toString(): String {
         return "$lineNumber: ${ASMParserUtil.determineModifiers(access)} $methodName $methodSignature"
     }

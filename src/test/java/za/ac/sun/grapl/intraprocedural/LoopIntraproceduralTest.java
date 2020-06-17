@@ -275,4 +275,49 @@ public class LoopIntraproceduralTest {
         assertTrue(getVertexAlongEdgeFixed(g, EdgeLabels.AST, postWhileStoreVertex, LiteralVertex.LABEL, "name", "3", 1).hasNext());
         assertTrue(getVertexAlongEdgeFixed(g, EdgeLabels.AST, postWhileStoreVertex, LocalVertex.LABEL, "name", "2", 1).hasNext());
     }
+
+    @Test
+    public void loop9Test() {
+        // Get conditional root
+        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "WHILE");
+        assertTrue(whileRootTraversal.hasNext());
+        final Vertex whileRoot = whileRootTraversal.next();
+        // Check while branch
+        final GraphTraversal<Vertex, Vertex> whileBodyTraversal = g.V(whileRoot).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "20");
+        assertTrue(whileBodyTraversal.hasNext());
+        final Vertex whileBody = whileBodyTraversal.next();
+        // Check nested-while branch
+        final GraphTraversal<Vertex, Vertex> whileWhileRootTraversal = g.V(whileBody).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "DO_WHILE").has("order", "24");
+        assertTrue(whileWhileRootTraversal.hasNext());
+        final GraphTraversal<Vertex, Vertex> whileWhileBodyTraversal = g.V(whileBody).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "25");
+        assertTrue(whileWhileBodyTraversal.hasNext());
+        final Vertex whileWhileBody = whileWhileBodyTraversal.next();
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, BlockVertex.LABEL, "name", "STORE").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, LocalVertex.LABEL, "name", "1").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, BlockVertex.LABEL, "name", "ADD").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, LiteralVertex.LABEL, "name", "1").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, LocalVertex.LABEL, "name", "1").hasNext());
+        // Check nested-while-while branch
+        final GraphTraversal<Vertex, Vertex> whileWhileWhileRootTraversal = g.V(whileWhileBody).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "WHILE").has("order", "31");
+        assertTrue(whileWhileWhileRootTraversal.hasNext());
+        final GraphTraversal<Vertex, Vertex> whileWhileWhileBodyTraversal = g.V(whileWhileBody).repeat(__.out("AST")).emit()
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "32");
+        assertTrue(whileWhileWhileBodyTraversal.hasNext());
+        final Vertex whileWhileWhileBody = whileWhileWhileBodyTraversal.next();
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileWhileBody, BlockVertex.LABEL, "name", "STORE").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileWhileBody, LocalVertex.LABEL, "name", "2").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileWhileBody, BlockVertex.LABEL, "name", "ADD").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileWhileBody, LiteralVertex.LABEL, "name", "1").hasNext());
+        assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileWhileBody, LocalVertex.LABEL, "name", "2").hasNext());
+        // Check method level store
+        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE", 1).has("order", "44");
+        assertTrue(postWhileStoreTraversal.hasNext());
+        final Vertex postWhileStoreVertex = postWhileStoreTraversal.next();
+        assertTrue(getVertexAlongEdgeFixed(g, EdgeLabels.AST, postWhileStoreVertex, LiteralVertex.LABEL, "name", "3", 1).hasNext());
+        assertTrue(getVertexAlongEdgeFixed(g, EdgeLabels.AST, postWhileStoreVertex, LocalVertex.LABEL, "name", "2", 1).hasNext());
+    }
 }
