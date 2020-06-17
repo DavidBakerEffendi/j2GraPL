@@ -56,6 +56,8 @@ data class MethodInfo(
 
     fun upsertJumpRootAtLine(lineNumber: Int, name: String) = if (jumpRoot.containsKey(lineNumber)) jumpRoot.replace(lineNumber, name) else jumpRoot.put(lineNumber, name)
 
+    fun getJumpRootName(currentLabel: Label?) = jumpRoot.getOrDefault(allLines.find { lineInfo -> lineInfo.associatedLabels.contains(currentLabel) }?.lineNumber, "IF")
+
     fun isLabelAssociatedWithLoops(label: Label): Boolean {
         val loopNames = listOf("WHILE", "DO_WHILE", "FOR")
         val rootName = jumpRoot.getOrDefault(getLineNumber(label), "IF")
@@ -64,9 +66,10 @@ data class MethodInfo(
 
     fun findJumpLineBasedOnDestLabel(destLabel: Label): Int? {
         // Find associated labels with the dest label
-        val associatedLabels = allLines.find { lineInfo -> lineInfo.associatedLabels.contains(destLabel) }?.associatedLabels ?: return null
+        val associatedLabels = allLines.find { lineInfo -> lineInfo.associatedLabels.contains(destLabel) }?.associatedLabels
+                ?: return null
         // Match this with a jump
-        val matchedJump = allJumps.find { jumpInfo ->  associatedLabels.contains(jumpInfo.destLabel)} ?: return null
+        val matchedJump = allJumps.find { jumpInfo -> associatedLabels.contains(jumpInfo.destLabel) } ?: return null
         // Get the current line of the jump current line
         return allLines.find { lineInfo -> lineInfo.associatedLabels.contains(matchedJump.currLabel) }?.lineNumber
     }

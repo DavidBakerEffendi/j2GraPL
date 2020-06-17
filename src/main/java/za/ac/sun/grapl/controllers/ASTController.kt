@@ -338,8 +338,10 @@ class ASTController(
             val lastAssociatedJump = associatedJumps[associatedJumps.size - 1]
             if (peekedBlock.destination === jumpDestination) {
                 bHistory.pop()
-                if (peekedBlock.position == JumpState.IF_ROOT && peekedBlock is IfCmpBlock
-                        && pairedBlocks.containsKey(peekedBlock)) {
+                if (peekedBlock.position == JumpState.IF_ROOT
+                        && peekedBlock is IfCmpBlock
+                        && pairedBlocks.containsKey(peekedBlock)
+                        && listOf("WHILE", "DO_WHILE").none { s -> s == methodInfo.getJumpRootName(bHistory.peek()?.label) }) {
                     // Entering else-body
                     bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.ELSE_BODY))
                 } else {
@@ -374,6 +376,7 @@ class ASTController(
         val destinationLineNumber = this.methodInfo.getLineNumber(label)
         var blockItem: BlockItem? = null
         while (!bHistory.isEmpty() && bHistory.peek() !is JumpBlock) {
+            logger.debug("Popping sdsda")
             blockItem = bHistory.pop()
         }
         if (Objects.nonNull(blockItem)) {
@@ -406,9 +409,15 @@ class ASTController(
                         name = "DO_WHILE"
                         maybeLineNumber = methodInfo.findJumpLineBasedOnDestLabel(pairedBlock.destination)
                     }
-                    if (maybeLineNumber != null) this.methodInfo.upsertJumpRootAtLine(maybeLineNumber, name)
+                    if (maybeLineNumber != null) {
+                        this.methodInfo.upsertJumpRootAtLine(maybeLineNumber, name)
+                    } else {
+                        logger.warn("Did not update jump root due to no line number associated")
+                    }
                     this.hook.updateBlockProperty(currentMethod, pairedBlock.order, "name", name)
-                    bHistory.pop()
+                    logger.debug("Getting rid of something I probably shouldn't ${bHistory.peek()}")
+                    if (bHistory.peek() !is NestedBodyBlock)
+                        bHistory.pop()
                 }
 
             }
