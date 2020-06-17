@@ -1,15 +1,15 @@
 package intraprocedural.loop;
 
-public class Loop7 {
+public class Loop8 {
 
     public static void main(String args[]) {
         int a = 1; // L?
         int b = 2; // L?
-        do {
-            while (a < b) {
+        while (a < b) {
+            do {
                 a++;
-            }
-        } while (a < b);
+            } while (a < b);
+        }
         a = 3;
     }
 

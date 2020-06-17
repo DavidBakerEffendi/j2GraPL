@@ -269,9 +269,7 @@ class ASTController(
         currentLineNo = line
         currentLabel = start
 
-        if (JumpStackUtil.isJumpDestination(allJumpsEncountered, start)) {
-            handleJumpDestination(start)
-        }
+        if (JumpStackUtil.isJumpDestination(allJumpsEncountered, start)) handleJumpDestination(start)
 
         val totalAssociatedJumps = this.methodInfo.getAssociatedJumps(line)
         val jumpCountDifference = totalAssociatedJumps.filter { jumpInfo -> jumpInfo.jumpOp != "GOTO" }.size - JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size
@@ -286,7 +284,20 @@ class ASTController(
                 if (line < destinationLineNumber && totalAssociatedJumpsWithDest.none { j -> j.jumpOp == "GOTO" }) {
                     val condRoot = BlockVertex("DO_WHILE", order++, 1, "BOOLEAN", currentLineNo)
                     futureIfBlock.add(condRoot)
-                    if (bHistory.isEmpty()) hook.assignToBlock(currentMethod, condRoot, 0) else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
+                    if (bHistory.isEmpty()) {
+                        hook.assignToBlock(currentMethod, condRoot, 0)
+                    } else {
+                        // Check if this nested body is not created to its if-root before this statement in Loop8 test
+                        if (!hook.isBlock(bHistory.peek().order)) {
+                            val bodyBlock = bHistory.pop()
+                            val bodyVertex = BlockVertex("IF_BODY", bodyBlock.order, 1, "BOOLEAN", currentLineNo)
+                            hook.assignToBlock(currentMethod, bodyVertex, bHistory.peek().order)
+                            hook.assignToBlock(currentMethod, condRoot, bodyVertex.order)
+                            bHistory.push(bodyBlock)
+                        } else {
+                            hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
+                        }
+                    }
 
                     // We do not know the new label of the ifCmpBlock that we expect to appear later in the bytecode
                     val nestedBodyBlock = NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY)
@@ -403,8 +414,6 @@ class ASTController(
         val jumpType = ASMParserUtil.getBinaryJumpType(jumpOp)
         // If, as in the case of do-while, the if block happens after the body and thus the if-node already exists,
         // we should fetch the corresponding if-node
-        // TODO: We can't assume last future block is always the one correlated
-
         val condRoot: BlockVertex = if (futureIfBlock.isNotEmpty()) {
             // Determine if the last future jump block is correlated to this jump
             if (!this.methodInfo.isJumpVertexAssociatedWithGivenLine(futureIfBlock.peek(), currentLineNo))
@@ -412,6 +421,7 @@ class ASTController(
             else futureIfBlock.pop()
         } else BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
         this.methodInfo.upsertJumpRootAtLine(currentLineNo, condRoot.name)
+        logger.debug("Using ${if (condRoot.order == order - 1) "new" else "existing"} vertex to represent IF_CMP")
         // We can tell if it's a brand new conditional route by checking the line number
         if (condRoot.order == order - 1) {
             if (bHistory.isEmpty()) hook.assignToBlock(currentMethod, condRoot, 0) else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
