@@ -19,40 +19,34 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import za.ac.sun.grapl.controllers.ASTController;
+import za.ac.sun.grapl.domain.meta.ClassInfo;
+import za.ac.sun.grapl.domain.meta.MethodInfo;
 
 public final class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
-    private final ASTController controller;
+    private final ASTController astController;
+    private final ClassInfo classInfo;
 
-    public ASTClassVisitor(final ClassVisitor cv) {
-        super(ASM5, cv);
-        this.controller = ASTController.Companion.getInstance();
-        this.controller.resetOrder();
+    public ASTClassVisitor(final ClassInfo classInfo, final ASTController astController) {
+        super(ASM5);
+        this.classInfo = classInfo;
+        this.astController = astController;
     }
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
         super.visit(version, access, name, signature, superName, interfaces);
-        String className;
-        String namespace;
-        if (name.lastIndexOf('/') != -1) {
-            className = name.substring(name.lastIndexOf('/') + 1);
-            namespace = name.substring(0, name.lastIndexOf('/'));
-        } else {
-            className = name;
-            namespace = "";
-        }
-        namespace = namespace.replaceAll("/", ".");
-
-        controller.projectFileAndNamespace(namespace, className);
+        this.astController.projectFileAndNamespace(classInfo.namespace, classInfo.className);
         // TODO: Could create MEMBER vertex from here to declare member classes
     }
 
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-        controller.pushNewMethod(name, descriptor, access);
-        MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-        return new ASTMethodVisitor(mv);
+        final MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
+        final MethodInfo methodInfo = classInfo.getMethod(name, descriptor, access);
+        assert methodInfo != null;
+        astController.pushNewMethod(methodInfo);
+        return new ASTMethodVisitor(mv, astController);
     }
 
     @Override

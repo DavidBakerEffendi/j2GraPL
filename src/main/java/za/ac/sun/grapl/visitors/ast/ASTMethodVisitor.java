@@ -22,17 +22,23 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.util.ASMifier;
 import za.ac.sun.grapl.controllers.ASTController;
+import za.ac.sun.grapl.domain.meta.ClassInfo;
+import za.ac.sun.grapl.domain.meta.LocalVarInfo;
+import za.ac.sun.grapl.domain.meta.MethodInfo;
 import za.ac.sun.grapl.util.ASMParserUtil;
 
 public final class ASTMethodVisitor extends MethodVisitor implements Opcodes {
 
     final static Logger logger = LogManager.getLogger();
 
-    private final ASTController controller;
+    private final ASTController astController;
 
-    public ASTMethodVisitor(final MethodVisitor mv) {
+    public ASTMethodVisitor(
+            final MethodVisitor mv,
+            final ASTController astController
+    ) {
         super(ASM5, mv);
-        this.controller = ASTController.Companion.getInstance();
+        this.astController = astController;
     }
 
     @Override
@@ -43,13 +49,13 @@ public final class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     @Override
     public void visitInsn(int opcode) {
         super.visitInsn(opcode);
-        controller.pushConstInsnOperation(opcode);
+        astController.pushConstInsnOperation(opcode);
     }
 
     @Override
     public void visitIntInsn(int opcode, int operand) {
         super.visitIntInsn(opcode, operand);
-        controller.pushConstInsnOperation(opcode, operand);
+        astController.pushConstInsnOperation(opcode, operand);
     }
 
     @Override
@@ -57,8 +63,8 @@ public final class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         super.visitVarInsn(opcode, var);
         final String operation = ASMifier.OPCODES[opcode];
 
-        if (ASMParserUtil.isLoad(operation)) controller.pushVarInsnLoad(var, operation);
-        else if (ASMParserUtil.isStore(operation)) controller.pushVarInsnStore(var, operation);
+        if (ASMParserUtil.isLoad(operation)) astController.pushVarInsnLoad(var, operation);
+        else if (ASMParserUtil.isStore(operation)) astController.pushVarInsnStore(var, operation);
     }
 
     @Override
@@ -81,9 +87,9 @@ public final class ASTMethodVisitor extends MethodVisitor implements Opcodes {
         super.visitJumpInsn(opcode, label);
         final String jumpOp = ASMifier.OPCODES[opcode];
 
-        if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) controller.pushNullaryJumps(jumpOp, label);
-        else if (ASMParserUtil.UNARY_JUMPS.contains(jumpOp)) controller.pushUnaryJump(jumpOp, label);
-        else if (ASMParserUtil.BINARY_JUMPS.contains(jumpOp)) controller.pushBinaryJump(jumpOp, label);
+        if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) astController.pushNullaryJumps(label);
+        else if (ASMParserUtil.UNARY_JUMPS.contains(jumpOp)) astController.pushUnaryJump(jumpOp, label);
+        else if (ASMParserUtil.BINARY_JUMPS.contains(jumpOp)) astController.pushBinaryJump(jumpOp, label);
     }
 
     @Override
@@ -94,25 +100,25 @@ public final class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     @Override
     public void visitLdcInsn(Object val) {
         super.visitLdcInsn(val);
-        controller.pushConstInsnOperation(val);
+        astController.pushConstInsnOperation(val);
     }
 
     @Override
     public void visitIincInsn(int var, int increment) {
         super.visitIincInsn(var, increment);
-        controller.pushVarInc(var, increment);
+        astController.pushVarInc(var, increment);
     }
 
     @Override
     public void visitLineNumber(int line, Label start) {
         super.visitLineNumber(line, start);
-        controller.associateLineNumberWithLabel(line, start);
+        astController.associateLineNumberWithLabel(line, start);
     }
 
     @Override
     public void visitEnd() {
         super.visitEnd();
-        logger.debug(controller.toString());
+        logger.debug(astController.toString());
     }
 
 }
