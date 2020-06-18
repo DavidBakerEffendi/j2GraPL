@@ -336,7 +336,7 @@ class ASTController(
             val totalAssociatedJumpsWithDest = this.methodInfo.getAssociatedJumps(destinationLineNumber)
             logger.debug("Line $line vs JumpOrigin $destinationLineNumber = ${if (line < destinationLineNumber) "jump is above" else "jump is below"} which is associated with $totalAssociatedJumpsWithDest")
             if (line < destinationLineNumber && totalAssociatedJumpsWithDest.none { j -> j.jumpOp == "GOTO" }) {
-                val condRoot = BlockVertex("DO_WHILE", order++, 1, "BOOLEAN", this.methodInfo.findJumpLineBasedOnDestLabel(start) ?: currentLineNo)
+                val condRoot = BlockVertex("DO_WHILE", order++, 1, "BOOLEAN", currentLineNo)
                 futureIfBlock.add(condRoot)
                 if (bHistory.isEmpty()) {
                     hook.assignToBlock(currentMethod, condRoot, 0)
