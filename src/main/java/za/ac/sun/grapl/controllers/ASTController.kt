@@ -331,13 +331,12 @@ class ASTController(
     private fun handleLoopDestination(start: Label, line: Int, jumpCountDifference: Int, totalAssociatedJumps: MutableList<JumpInfo>) {
         logger.debug("$start (line $line) is associated with $jumpCountDifference jump(s) that haven't been encountered yet | $totalAssociatedJumps")
         logger.debug("JumpInfo: ${totalAssociatedJumps.size} | Current assoc jumps ${JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size}")
-        // TODO get jump info since this current line no is technically wrong
         for (i in 0 until jumpCountDifference) {
             val destinationLineNumber = this.methodInfo.getLineNumber(totalAssociatedJumps.first().currLabel)
             val totalAssociatedJumpsWithDest = this.methodInfo.getAssociatedJumps(destinationLineNumber)
             logger.debug("Line $line vs JumpOrigin $destinationLineNumber = ${if (line < destinationLineNumber) "jump is above" else "jump is below"} which is associated with $totalAssociatedJumpsWithDest")
             if (line < destinationLineNumber && totalAssociatedJumpsWithDest.none { j -> j.jumpOp == "GOTO" }) {
-                val condRoot = BlockVertex("DO_WHILE", order++, 1, "BOOLEAN", currentLineNo)
+                val condRoot = BlockVertex("DO_WHILE", order++, 1, "BOOLEAN", this.methodInfo.findJumpLineBasedOnDestLabel(start) ?: currentLineNo)
                 futureIfBlock.add(condRoot)
                 if (bHistory.isEmpty()) {
                     hook.assignToBlock(currentMethod, condRoot, 0)
@@ -419,8 +418,6 @@ class ASTController(
                     }
                     if (maybeLineNumber != null) {
                         this.methodInfo.upsertJumpRootAtLine(maybeLineNumber, name)
-                    } else {
-                        logger.warn("Did not update jump root due to no line number associated")
                     }
                     this.hook.updateBlockProperty(currentMethod, pairedBlock.order, "name", name)
                     logger.debug("Getting rid of something I probably shouldn't ${bHistory.peek()}")
