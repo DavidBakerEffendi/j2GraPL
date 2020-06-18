@@ -8,8 +8,6 @@ class ClassInfo : AbstractController {
     lateinit var className: String
     lateinit var namespace: String
     var access by Delegates.notNull<Int>()
-
-
     private val classMethods = mutableListOf<MethodInfo>()
 
     fun registerClass(className: String, namespace: String, access: Int) {

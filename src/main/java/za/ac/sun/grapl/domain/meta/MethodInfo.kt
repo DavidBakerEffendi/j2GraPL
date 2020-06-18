@@ -29,10 +29,6 @@ data class MethodInfo(
         }
     }
 
-    fun getVariable(frameId: Int): LocalVarInfo? {
-        return allVariables.find { it.frameId == frameId }
-    }
-
     private fun getLineInfo(lineNumber: Int): LineInfo? = allLines.find { lineInfo -> lineInfo.lineNumber == lineNumber }
 
     fun addJump(jumpOp: String, destLabel: Label, currentLabel: Label) {

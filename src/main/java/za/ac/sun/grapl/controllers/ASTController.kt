@@ -6,6 +6,7 @@ import org.objectweb.asm.Label
 import org.objectweb.asm.util.ASMifier
 import za.ac.sun.grapl.domain.enums.JumpState
 import za.ac.sun.grapl.domain.enums.ModifierTypes
+import za.ac.sun.grapl.domain.meta.JumpInfo
 import za.ac.sun.grapl.domain.meta.MethodInfo
 import za.ac.sun.grapl.domain.models.vertices.BlockVertex
 import za.ac.sun.grapl.domain.models.vertices.FileVertex
@@ -259,59 +260,24 @@ class ASTController(
                 }
     }
 
+    /**
+     * Handles the combination of line number and label.
+     */
     fun associateLineNumberWithLabel(line: Int, start: Label) {
         // So that our pre-scan labels and current scan labels can resolve
         this.methodInfo.addLabel(line, start)
-
         if (currentLineNo == -1) {
             createMethod(methodInfo, line - 1)
         }
         currentLineNo = line
         currentLabel = start
 
-        if (JumpStackUtil.isJumpDestination(allJumpsEncountered, start)) handleJumpDestination(start)
-
         val totalAssociatedJumps = this.methodInfo.getAssociatedJumps(line)
         val jumpCountDifference = totalAssociatedJumps.filter { jumpInfo -> jumpInfo.jumpOp != "GOTO" }.size - JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size
-        if (jumpCountDifference >= 1) {
-            logger.debug("$start (line $line) is associated with $jumpCountDifference jump(s) that haven't been encountered yet | $totalAssociatedJumps")
-            logger.debug("JumpInfo: ${totalAssociatedJumps.size} | Current assoc jumps ${JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size}")
-            // TODO get jump info since this current line no is technically wrong
-            for (i in 0 until jumpCountDifference) {
-                val destinationLineNumber = this.methodInfo.getLineNumber(totalAssociatedJumps.first().currLabel)
-                val totalAssociatedJumpsWithDest = this.methodInfo.getAssociatedJumps(destinationLineNumber)
-                logger.debug("Line $line vs JumpOrigin $destinationLineNumber = ${if (line < destinationLineNumber) "jump is above" else "jump is below"} which is associated with $totalAssociatedJumpsWithDest")
-                if (line < destinationLineNumber && totalAssociatedJumpsWithDest.none { j -> j.jumpOp == "GOTO" }) {
-                    val condRoot = BlockVertex("DO_WHILE", order++, 1, "BOOLEAN", currentLineNo)
-                    futureIfBlock.add(condRoot)
-                    if (bHistory.isEmpty()) {
-                        hook.assignToBlock(currentMethod, condRoot, 0)
-                    } else {
-                        // Check if this nested body is not created to its if-root before this statement in Loop8 test
-                        if (!hook.isBlock(bHistory.peek().order)) {
-                            val bodyBlock = bHistory.pop()
-                            val bodyVertex = BlockVertex("IF_BODY", bodyBlock.order, 1, "BOOLEAN", currentLineNo)
-                            hook.assignToBlock(currentMethod, bodyVertex, bHistory.peek().order)
-                            hook.assignToBlock(currentMethod, condRoot, bodyVertex.order)
-                            bHistory.push(bodyBlock)
-                        } else {
-                            hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
-                        }
-                    }
 
-                    // We do not know the new label of the ifCmpBlock that we expect to appear later in the bytecode
-                    val nestedBodyBlock = NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY)
-                    pushJumpBlock(IfCmpBlock(condRoot.order, null, start, JumpState.IF_ROOT))
-                    bHistory.push(nestedBodyBlock)
+        if (JumpStackUtil.isJumpDestination(allJumpsEncountered, start)) handleJumpDestination(start)
+        if (jumpCountDifference >= 1) handleLoopDestination(start, line, jumpCountDifference, totalAssociatedJumps)
 
-                    // Account for the nested case
-                    if (i != jumpCountDifference - 1 && jumpCountDifference > 1) {
-                        val bodyVertex = BlockVertex(nestedBodyBlock.position.name, nestedBodyBlock.order, 1, "VOID", line)
-                        hook.assignToBlock(currentMethod, bodyVertex, bHistory.peek().order - 1)
-                    }
-                }
-            }
-        }
         if (!bHistory.isEmpty() && bHistory.peek() is NestedBodyBlock) {
             if (!this.hook.isBlock(bHistory.peek().order)) {
                 val newBlock = (bHistory.pop() as NestedBodyBlock).setLabel(start)
@@ -322,6 +288,9 @@ class ASTController(
         }
     }
 
+    /**
+     * Handles a line that is associated with a jump operation's destination.
+     */
     private fun handleJumpDestination(jumpDestination: Label) {
         val associatedJumps = JumpStackUtil.getAssociatedJumps(allJumpsEncountered, jumpDestination)
         val numIfCmpAssocs = associatedJumps.stream().filter { g: JumpBlock? -> g is IfCmpBlock }.count()
@@ -348,11 +317,52 @@ class ASTController(
                     // Exiting if-root
                     bHistory.pop()
                 }
-            } else if (lastAssociatedJump is GotoBlock) {
+            } else if (lastAssociatedJump is GotoBlock && lastAssociatedJump.destination === jumpDestination) {
                 // This pops the current state off of an edge-body, and thus, off of the if-root
-                if (lastAssociatedJump.destination === jumpDestination) {
-                    bHistory.pop()
-                    bHistory.pop()
+                bHistory.pop()
+                bHistory.pop()
+            }
+        }
+    }
+
+    /**
+     * Handles a loop jump destination e.g. while loop.
+     */
+    private fun handleLoopDestination(start: Label, line: Int, jumpCountDifference: Int, totalAssociatedJumps: MutableList<JumpInfo>) {
+        logger.debug("$start (line $line) is associated with $jumpCountDifference jump(s) that haven't been encountered yet | $totalAssociatedJumps")
+        logger.debug("JumpInfo: ${totalAssociatedJumps.size} | Current assoc jumps ${JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size}")
+        // TODO get jump info since this current line no is technically wrong
+        for (i in 0 until jumpCountDifference) {
+            val destinationLineNumber = this.methodInfo.getLineNumber(totalAssociatedJumps.first().currLabel)
+            val totalAssociatedJumpsWithDest = this.methodInfo.getAssociatedJumps(destinationLineNumber)
+            logger.debug("Line $line vs JumpOrigin $destinationLineNumber = ${if (line < destinationLineNumber) "jump is above" else "jump is below"} which is associated with $totalAssociatedJumpsWithDest")
+            if (line < destinationLineNumber && totalAssociatedJumpsWithDest.none { j -> j.jumpOp == "GOTO" }) {
+                val condRoot = BlockVertex("DO_WHILE", order++, 1, "BOOLEAN", currentLineNo)
+                futureIfBlock.add(condRoot)
+                if (bHistory.isEmpty()) {
+                    hook.assignToBlock(currentMethod, condRoot, 0)
+                } else {
+                    // Check if this nested body is not created to its if-root before this statement in Loop8 test
+                    if (!hook.isBlock(bHistory.peek().order)) {
+                        val bodyBlock = bHistory.pop()
+                        val bodyVertex = BlockVertex("IF_BODY", bodyBlock.order, 1, "BOOLEAN", currentLineNo)
+                        hook.assignToBlock(currentMethod, bodyVertex, bHistory.peek().order)
+                        hook.assignToBlock(currentMethod, condRoot, bodyVertex.order)
+                        bHistory.push(bodyBlock)
+                    } else {
+                        hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
+                    }
+                }
+
+                // We do not know the new label of the ifCmpBlock that we expect to appear later in the bytecode
+                val nestedBodyBlock = NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY)
+                pushJumpBlock(IfCmpBlock(condRoot.order, null, start, JumpState.IF_ROOT))
+                bHistory.push(nestedBodyBlock)
+
+                // Account for the nested case
+                if (i != jumpCountDifference - 1 && jumpCountDifference > 1) {
+                    val bodyVertex = BlockVertex(nestedBodyBlock.position.name, nestedBodyBlock.order, 1, "VOID", line)
+                    hook.assignToBlock(currentMethod, bodyVertex, bHistory.peek().order - 1)
                 }
             }
         }
@@ -365,7 +375,6 @@ class ASTController(
      */
     fun pushNullaryJumps(label: Label) {
         val jumpHistory = JumpStackUtil.getJumpHistory(bHistory)
-        // TODO: This shouldn't reach null so this is not an ideal workaround
         val lastJump = JumpStackUtil.getLastJump(bHistory) ?: allJumpsEncountered.maxBy { j -> j.order }
         val currentBlock = GotoBlock(order, currentLabel, label, lastJump!!.position)
         logger.debug("Pushing $currentBlock")
@@ -376,7 +385,6 @@ class ASTController(
         val destinationLineNumber = this.methodInfo.getLineNumber(label)
         var blockItem: BlockItem? = null
         while (!bHistory.isEmpty() && bHistory.peek() !is JumpBlock) {
-            logger.debug("Popping sdsda")
             blockItem = bHistory.pop()
         }
         if (Objects.nonNull(blockItem)) {
