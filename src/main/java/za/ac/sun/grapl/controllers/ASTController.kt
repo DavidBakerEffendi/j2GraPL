@@ -295,8 +295,16 @@ class ASTController(
         val associatedJumps = JumpStackUtil.getAssociatedJumps(allJumpsEncountered, jumpDestination)
         val numIfCmpAssocs = associatedJumps.stream().filter { g: JumpBlock? -> g is IfCmpBlock }.count()
         val numGotoAssocs = associatedJumps.stream().filter { g: JumpBlock? -> g is GotoBlock }.count()
-        logger.debug("Encountered jump destination #IfCmp:$numIfCmpAssocs #Goto: $numGotoAssocs")
+        logger.debug("Encountered jump destination @ line $currentLineNo #IfCmp: $numIfCmpAssocs #Goto: $numGotoAssocs")
         logger.debug("Associated jumps: $associatedJumps")
+        // TODO: This is a bit of a hacky fix that will need confirmation
+        if (numGotoAssocs >= numIfCmpAssocs + 1 && bHistory.size > 2) {
+            for (i in 0 until numGotoAssocs * (1 + numIfCmpAssocs)) {
+                if (bHistory.size < 2) break
+                bHistory.pop()
+                bHistory.pop()
+            }
+        }
         while (bHistory.size > 2 && bHistory[bHistory.size - 2] !is JumpBlock
                 && bHistory.stream().anyMatch { g: BlockItem? -> g is IfCmpBlock }) {
             bHistory.pop()
