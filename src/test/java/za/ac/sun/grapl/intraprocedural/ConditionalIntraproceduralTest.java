@@ -46,9 +46,9 @@ public class ConditionalIntraproceduralTest {
         ResourceCompilationUtil.deleteClassFiles(PATH);
         File f = new File(TEST_DIR);
         if (f.exists()) {
-            if (!f.delete()) {
-                logger.warn("Could not clear " + ConditionalIntraproceduralTest.class.getName() + "'s test resources.");
-            }
+//            if (!f.delete()) {
+//                logger.warn("Could not clear " + ConditionalIntraproceduralTest.class.getName() + "'s test resources.");
+//            }
         }
     }
 
@@ -716,6 +716,11 @@ public class ConditionalIntraproceduralTest {
         assertTrue(elseIfStoreOpTraversal.hasNext());
         final Vertex elseIfStoreOp = elseIfStoreOpTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, elseIfStoreOp, BlockVertex.LABEL, "name", "MUL").hasNext());
+    }
+
+    @Test
+    public void conditional15Test() {
+
     }
 
 }

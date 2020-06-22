@@ -25,7 +25,9 @@ import org.objectweb.asm.util.ASMifier;
 import za.ac.sun.grapl.domain.meta.ClassInfo;
 import za.ac.sun.grapl.domain.meta.JumpInfo;
 import za.ac.sun.grapl.domain.meta.MethodInfo;
+import za.ac.sun.grapl.domain.stack.OperandItem;
 
+import java.util.Stack;
 import java.util.StringJoiner;
 
 public final class InitialMethodVisitor extends MethodVisitor implements Opcodes {
@@ -34,6 +36,7 @@ public final class InitialMethodVisitor extends MethodVisitor implements Opcodes
 
     private Label currentLabel;
     private final MethodInfo methodInfo;
+    private final Stack<String> operandStack = new Stack<>();
 
     public InitialMethodVisitor(final MethodVisitor mv, final MethodInfo methodInfo) {
         super(ASM5, mv);
@@ -68,8 +71,7 @@ public final class InitialMethodVisitor extends MethodVisitor implements Opcodes
 
     @Override
     public void visitLocalVariable(String name, String descriptor, String signature, Label start, Label end, int index) {
-        logger.debug("\t --- DEBUG INFO ---");
-        logger.debug("\t" + descriptor + " " + name + " -> (" + start + "; " + end + ") (visitLocalVariable)");
+        logger.debug("\tDEBUG INFO: " + descriptor + " " + name + " -> (" + start + "; " + end + ") (visitLocalVariable)");
         methodInfo.addVarDebugInfo(index, name, descriptor, start, end);
         super.visitLocalVariable(name, descriptor, signature, start, end, index);
     }
