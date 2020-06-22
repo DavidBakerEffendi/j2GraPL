@@ -297,14 +297,15 @@ class ASTController(
         val numGotoAssocs = associatedJumps.stream().filter { g: JumpBlock? -> g is GotoBlock }.count()
         logger.debug("Encountered jump destination @ line $currentLineNo #IfCmp: $numIfCmpAssocs #Goto: $numGotoAssocs")
         logger.debug("Associated jumps: $associatedJumps")
-        // TODO: This is a bit of a hacky fix that will need confirmation
-        if (numGotoAssocs >= numIfCmpAssocs + 1 && bHistory.size > 2) {
+        // Handles if-else-if chains
+        if (numGotoAssocs + numIfCmpAssocs > 1 && numGotoAssocs >= numIfCmpAssocs && bHistory.size > 2) {
             for (i in 0 until numGotoAssocs * (1 + numIfCmpAssocs)) {
                 if (bHistory.size < 2) break
                 bHistory.pop()
                 bHistory.pop()
             }
         }
+        // Makes sure if-else bodies are on the same level
         while (bHistory.size > 2 && bHistory[bHistory.size - 2] !is JumpBlock
                 && bHistory.stream().anyMatch { g: BlockItem? -> g is IfCmpBlock }) {
             bHistory.pop()
@@ -319,7 +320,7 @@ class ASTController(
                         && peekedBlock is IfCmpBlock
                         && pairedBlocks.containsKey(peekedBlock)
                         && listOf("WHILE", "DO_WHILE").none { s -> s == methodInfo.getJumpRootName(bHistory.peek()?.label) }) {
-                    // Entering else-body
+                    // Entering else-body (ignore if it's a loop)
                     bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.ELSE_BODY))
                 } else {
                     // Exiting if-root
