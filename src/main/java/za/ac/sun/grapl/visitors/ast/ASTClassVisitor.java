@@ -19,17 +19,17 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import za.ac.sun.grapl.controllers.ASTController;
-import za.ac.sun.grapl.controllers.ClassMetaController;
+import za.ac.sun.grapl.domain.meta.MetaDataCollector;
 import za.ac.sun.grapl.domain.meta.ClassInfo;
-import za.ac.sun.grapl.domain.meta.MethodInfo;
+import za.ac.sun.grapl.controllers.MethodInfoController;
 
 public final class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
-    private final ClassMetaController classMetaController;
+    private final MetaDataCollector classMetaController;
     private final ASTController astController;
     private ClassInfo classInfo;
 
-    public ASTClassVisitor(final ClassMetaController classMetaController, final ASTController astController) {
+    public ASTClassVisitor(final MetaDataCollector classMetaController, final ASTController astController) {
         super(ASM5);
         this.classMetaController = classMetaController;
         this.astController = astController;
@@ -47,7 +47,7 @@ public final class ASTClassVisitor extends ClassVisitor implements Opcodes {
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
         final MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-        final MethodInfo methodInfo = classInfo.getMethod(name, descriptor, access);
+        final MethodInfoController methodInfo = classInfo.getMethod(name, descriptor, access);
         assert methodInfo != null;
         astController.pushNewMethod(methodInfo);
         return new ASTMethodVisitor(mv, astController);

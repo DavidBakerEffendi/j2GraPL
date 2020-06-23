@@ -20,51 +20,26 @@ import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.Label;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.util.ASMifier;
 import za.ac.sun.grapl.controllers.ASTController;
-import za.ac.sun.grapl.domain.meta.ClassInfo;
-import za.ac.sun.grapl.domain.meta.LocalVarInfo;
-import za.ac.sun.grapl.domain.meta.MethodInfo;
-import za.ac.sun.grapl.util.ASMParserUtil;
+import za.ac.sun.grapl.visitors.OpStackMethodVisitor;
 
-public final class ASTMethodVisitor extends MethodVisitor implements Opcodes {
+public final class ASTMethodVisitor extends OpStackMethodVisitor implements Opcodes {
 
     final static Logger logger = LogManager.getLogger();
 
-    private final ASTController astController;
+    public final ASTController astController;
 
     public ASTMethodVisitor(
             final MethodVisitor mv,
             final ASTController astController
     ) {
-        super(ASM5, mv);
+        super(mv, astController);
         this.astController = astController;
     }
 
     @Override
     public void visitCode() {
         super.visitCode();
-    }
-
-    @Override
-    public void visitInsn(int opcode) {
-        super.visitInsn(opcode);
-        astController.pushConstInsnOperation(opcode);
-    }
-
-    @Override
-    public void visitIntInsn(int opcode, int operand) {
-        super.visitIntInsn(opcode, operand);
-        astController.pushConstInsnOperation(opcode, operand);
-    }
-
-    @Override
-    public void visitVarInsn(int opcode, int var) {
-        super.visitVarInsn(opcode, var);
-        final String operation = ASMifier.OPCODES[opcode];
-
-        if (ASMParserUtil.isLoad(operation)) astController.pushVarInsnLoad(var, operation);
-        else if (ASMParserUtil.isStore(operation)) astController.pushVarInsnStore(var, operation);
     }
 
     @Override
@@ -83,30 +58,8 @@ public final class ASTMethodVisitor extends MethodVisitor implements Opcodes {
     }
 
     @Override
-    public void visitJumpInsn(int opcode, Label label) {
-        super.visitJumpInsn(opcode, label);
-        final String jumpOp = ASMifier.OPCODES[opcode];
-
-        if (ASMParserUtil.NULLARY_JUMPS.contains(jumpOp)) astController.pushNullaryJumps(label);
-        else if (ASMParserUtil.UNARY_JUMPS.contains(jumpOp)) astController.pushUnaryJump(jumpOp, label);
-        else if (ASMParserUtil.BINARY_JUMPS.contains(jumpOp)) astController.pushBinaryJump(jumpOp, label);
-    }
-
-    @Override
     public void visitLabel(Label label) {
         super.visitLabel(label);
-    }
-
-    @Override
-    public void visitLdcInsn(Object val) {
-        super.visitLdcInsn(val);
-        astController.pushConstInsnOperation(val);
-    }
-
-    @Override
-    public void visitIincInsn(int var, int increment) {
-        super.visitIincInsn(var, increment);
-        astController.pushVarInc(var, increment);
     }
 
     @Override

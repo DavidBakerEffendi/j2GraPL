@@ -1,8 +1,8 @@
-package za.ac.sun.grapl.controllers
+package za.ac.sun.grapl.domain.meta
 
-import za.ac.sun.grapl.domain.meta.ClassInfo
+import za.ac.sun.grapl.controllers.AbstractController
 
-class ClassMetaController : OpStackController() {
+class MetaDataCollector : AbstractController {
 
     private val allClasses = HashSet<ClassInfo>()
 

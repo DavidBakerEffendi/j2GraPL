@@ -19,8 +19,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.objectweb.asm.ClassReader
 import za.ac.sun.grapl.controllers.ASTController
-import za.ac.sun.grapl.controllers.ClassMetaController
-import za.ac.sun.grapl.domain.meta.ClassInfo
+import za.ac.sun.grapl.domain.meta.MetaDataCollector
 import za.ac.sun.grapl.hooks.IHook
 import za.ac.sun.grapl.util.ResourceCompilationUtil.compileJavaFile
 import za.ac.sun.grapl.util.ResourceCompilationUtil.compileJavaFiles
@@ -84,7 +83,7 @@ class Cannon(private val hook: IHook) {
     private fun fire(f: File) {
         try {
             // Allows us to accumulate information about classes beforehand
-            val classMetaController = ClassMetaController()
+            val classMetaController = MetaDataCollector()
             // Allows us to build up our AST using the connection held by the hook
             val astController = ASTController(hook)
             FileInputStream(f).use { fis ->

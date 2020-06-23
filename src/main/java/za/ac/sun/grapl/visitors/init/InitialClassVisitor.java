@@ -20,23 +20,18 @@ import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
-import za.ac.sun.grapl.controllers.ClassMetaController;
-import za.ac.sun.grapl.domain.enums.ModifierTypes;
+import za.ac.sun.grapl.domain.meta.MetaDataCollector;
 import za.ac.sun.grapl.domain.meta.ClassInfo;
-import za.ac.sun.grapl.domain.meta.MethodInfo;
-import za.ac.sun.grapl.util.ASMParserUtil;
-
-import java.util.EnumSet;
-import java.util.StringJoiner;
+import za.ac.sun.grapl.controllers.MethodInfoController;
 
 public final class InitialClassVisitor extends ClassVisitor implements Opcodes {
 
     private final static Logger logger = LogManager.getLogger();
 
     private ClassInfo classInfo;
-    private final ClassMetaController classMetaController;
+    private final MetaDataCollector classMetaController;
 
-    public InitialClassVisitor(final ClassMetaController classMetaController) {
+    public InitialClassVisitor(final MetaDataCollector classMetaController) {
         super(ASM5);
         this.classMetaController = classMetaController;
     }
@@ -52,7 +47,7 @@ public final class InitialClassVisitor extends ClassVisitor implements Opcodes {
     @Override
     public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
         final MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-        final MethodInfo methodInfo = classInfo.addMethod(name, descriptor, access, -1);
+        final MethodInfoController methodInfo = classInfo.addMethod(name, descriptor, access, -1);
         logger.debug("");
         logger.debug("\t " + methodInfo + " {");
         return new InitialMethodVisitor(mv, methodInfo);

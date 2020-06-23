@@ -3,11 +3,9 @@ package za.ac.sun.grapl.controllers
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.objectweb.asm.Label
-import org.objectweb.asm.util.ASMifier
 import za.ac.sun.grapl.domain.enums.JumpState
 import za.ac.sun.grapl.domain.enums.ModifierTypes
 import za.ac.sun.grapl.domain.meta.JumpInfo
-import za.ac.sun.grapl.domain.meta.MethodInfo
 import za.ac.sun.grapl.domain.models.GraPLVertex
 import za.ac.sun.grapl.domain.models.vertices.BlockVertex
 import za.ac.sun.grapl.domain.models.vertices.FileVertex
@@ -35,11 +33,11 @@ import java.util.*
 import java.util.function.Consumer
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
-import kotlin.math.absoluteValue
 
 class ASTController(
         private val hook: IHook
 ) : OpStackController() {
+
     private val bHistory = Stack<BlockItem>()
     private val allJumpsEncountered = HashSet<JumpBlock>()
     private val vertexStack = Stack<GraPLVertex>()
@@ -50,7 +48,7 @@ class ASTController(
     private var currentClass: FileVertex? = null
     private var currentMethod: MethodVertex? = null
     private var currentLineNo = -1
-    private lateinit var methodInfo: MethodInfo
+    private lateinit var methodInfo: MethodInfoController
     private val logger: Logger = LogManager.getLogger()
 
     /**
@@ -99,7 +97,7 @@ class ASTController(
     /**
      * Generates the method meta-data vertices describing the method being visited.
      */
-    fun pushNewMethod(methodInfo: MethodInfo) {
+    fun pushNewMethod(methodInfo: MethodInfoController) {
         this.clear()
         this.methodInfo = methodInfo
     }
@@ -107,7 +105,7 @@ class ASTController(
     /**
      * Using the given method info and line number, will project method data on the graph.
      */
-    private fun createMethod(methodInfo: MethodInfo, lineNumber: Int) {
+    private fun createMethod(methodInfo: MethodInfoController, lineNumber: Int) {
         val methodName = methodInfo.methodName
         val methodSignature = methodInfo.methodSignature
         val access = methodInfo.access
@@ -314,7 +312,7 @@ class ASTController(
      *
      * @param label  the label to jump to.
      */
-    fun pushNullaryJumps(label: Label) {
+    override fun pushNullaryJumps(label: Label) {
         val jumpHistory = JumpStackUtil.getJumpHistory(bHistory)
         val lastJump = JumpStackUtil.getLastJump(bHistory) ?: allJumpsEncountered.maxBy { j -> j.order }
         val currentBlock = GotoBlock(order, currentLabel, label, lastJump!!.position)
@@ -451,7 +449,6 @@ class ASTController(
     /**
      * Will handle the case of an operator being nested under a parent block.
      *
-     * @param prevBlock    the parent block of this operation.
      * @param operatorItem the operator stack item.
      */
     override fun handleOperator(operatorItem: OperatorItem) {

@@ -1,15 +1,19 @@
-package za.ac.sun.grapl.domain.meta
+package za.ac.sun.grapl.controllers
 
 import org.objectweb.asm.Label
+import za.ac.sun.grapl.domain.meta.JumpInfo
+import za.ac.sun.grapl.domain.meta.LineInfo
+import za.ac.sun.grapl.domain.meta.LocalVarInfo
 import za.ac.sun.grapl.domain.models.vertices.BlockVertex
 import za.ac.sun.grapl.util.ASMParserUtil
 
-data class MethodInfo(
+data class MethodInfoController(
         val methodName: String,
         val methodSignature: String,
         val access: Int,
         var lineNumber: Int? = -1
-) {
+) : OpStackController() {
+
     private val allVariables = mutableListOf<LocalVarInfo>()
     private val allJumps = HashSet<JumpInfo>()
     private val jumpRoot = HashMap<Int, String>()
@@ -78,7 +82,7 @@ data class MethodInfo(
         if (this === other) return true
         if (javaClass != other?.javaClass) return false
 
-        other as MethodInfo
+        other as MethodInfoController
 
         if (methodName != other.methodName) return false
         if (methodSignature != other.methodSignature) return false

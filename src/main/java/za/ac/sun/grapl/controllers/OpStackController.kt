@@ -114,6 +114,8 @@ abstract class OpStackController : AbstractController {
         }
     }
 
+    open fun pushNullaryJumps(label: Label) = Unit
+
     open fun pushBinaryJump(jumpOp: String, label: Label) {
         listOfNotNull(operandStack.pop(), operandStack.pop()).asReversed()
     }
