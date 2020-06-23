@@ -8,7 +8,7 @@ class ClassInfo(
         val className: String,
         val namespace: String,
         private val access: Int
-) : AbstractController {
+) {
     private val classMethods = mutableListOf<MethodInfoController>()
 
     fun addMethod(methodName: String, methodSignature: String, access: Int, lineNumber: Int): MethodInfoController {

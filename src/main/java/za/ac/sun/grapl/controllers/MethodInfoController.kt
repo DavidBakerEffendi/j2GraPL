@@ -15,7 +15,8 @@ data class MethodInfoController(
 ) : OpStackController() {
 
     private val allVariables = mutableListOf<LocalVarInfo>()
-    private val allJumps = HashSet<JumpInfo>()
+    private val allJumps = LinkedHashSet<JumpInfo>()
+    private val ternaryPairs = HashMap<JumpInfo, JumpInfo>()
     private val jumpRoot = HashMap<Int, String>()
     private val allLines = HashSet<LineInfo>()
 
@@ -38,6 +39,12 @@ data class MethodInfoController(
     fun addJump(jumpOp: String, destLabel: Label, currentLabel: Label) {
         val jumpInfo = JumpInfo(jumpOp, destLabel, currentLabel)
         allJumps.add(jumpInfo)
+    }
+
+    fun addTernaryPair(gotoOp: String, destLabel: Label, currentLabel: Label) {
+        val lastJump = allJumps.last()
+        addJump(gotoOp, destLabel, currentLabel)
+        ternaryPairs[lastJump] = JumpInfo(gotoOp, destLabel, currentLabel)
     }
 
     fun addLabel(lineNumber: Int, label: Label) = getLineInfo(lineNumber)?.apply { associatedLabels.add(label) }

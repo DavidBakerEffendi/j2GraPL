@@ -14,8 +14,8 @@ import kotlin.math.absoluteValue
 
 abstract class OpStackController : AbstractController {
 
-    protected val operandStack = Stack<OperandItem?>()
-    protected val variables = HashSet<VariableItem>()
+    val operandStack = Stack<OperandItem?>()
+    val variables = HashSet<VariableItem>()
     private val logger: Logger = LogManager.getLogger()
 
     fun pushConstInsnOperation(`val`: Any) {

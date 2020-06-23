@@ -1,8 +1,6 @@
 package za.ac.sun.grapl.domain.meta
 
-import za.ac.sun.grapl.controllers.AbstractController
-
-class MetaDataCollector : AbstractController {
+class MetaDataCollector {
 
     private val allClasses = HashSet<ClassInfo>()
 

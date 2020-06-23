@@ -23,18 +23,22 @@ import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.util.ASMifier;
 import za.ac.sun.grapl.controllers.MethodInfoController;
+import za.ac.sun.grapl.domain.stack.OperandItem;
+import za.ac.sun.grapl.domain.stack.operand.ConstantItem;
 import za.ac.sun.grapl.visitors.OpStackMethodVisitor;
+
+import java.util.Stack;
 
 public final class InitialMethodVisitor extends OpStackMethodVisitor implements Opcodes {
 
     private final static Logger logger = LogManager.getLogger();
 
     private Label currentLabel;
-    private final MethodInfoController methodInfo;
+    private final MethodInfoController methodInfoController;
 
-    public InitialMethodVisitor(final MethodVisitor mv, final MethodInfoController methodInfo) {
-        super(mv, methodInfo);
-        this.methodInfo = methodInfo;
+    public InitialMethodVisitor(final MethodVisitor mv, final MethodInfoController methodInfoController) {
+        super(mv, methodInfoController);
+        this.methodInfoController = methodInfoController;
     }
 
     @Override
@@ -57,14 +61,18 @@ public final class InitialMethodVisitor extends OpStackMethodVisitor implements 
     @Override
     public void visitVarInsn(int opcode, int var) {
         logger.debug("\t" + ASMifier.OPCODES[opcode] + " -> " + var + " (visitVarInsn)");
-        methodInfo.addVariable(var);
+        methodInfoController.addVariable(var);
         super.visitVarInsn(opcode, var);
     }
 
     @Override
     public void visitJumpInsn(int opcode, Label label) {
         logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + label + " (visitJumpInsn)");
-        methodInfo.addJump(ASMifier.OPCODES[opcode], label, currentLabel);
+        final Stack<OperandItem> operandStack = methodInfoController.getOperandStack();
+        if ("GOTO".equals(ASMifier.OPCODES[opcode]) && !operandStack.isEmpty() && operandStack.peek() instanceof ConstantItem)
+            methodInfoController.addTernaryPair(ASMifier.OPCODES[opcode], label, currentLabel);
+        else
+            methodInfoController.addJump(ASMifier.OPCODES[opcode], label, currentLabel);
         super.visitJumpInsn(opcode, label);
     }
 
@@ -91,16 +99,17 @@ public final class InitialMethodVisitor extends OpStackMethodVisitor implements 
     @Override
     public void visitLocalVariable(String name, String descriptor, String signature, Label start, Label end, int index) {
         logger.debug("\tDEBUG INFO: " + descriptor + " " + name + " -> (" + start + "; " + end + ") (visitLocalVariable)");
-        methodInfo.addVarDebugInfo(index, name, descriptor, start, end);
+        methodInfoController.addVarDebugInfo(index, name, descriptor, start, end);
         super.visitLocalVariable(name, descriptor, signature, start, end, index);
     }
 
     @Override
     public void visitLineNumber(int line, Label start) {
         logger.debug("\t  " + line + " " + start + " (visitLineNumber)");
-        if (Integer.valueOf(-1).equals(methodInfo.getLineNumber())) methodInfo.setLineNumber(line - 1);
+        if (Integer.valueOf(-1).equals(methodInfoController.getLineNumber()))
+            methodInfoController.setLineNumber(line - 1);
 
-        methodInfo.addLabel(line, start);
+        methodInfoController.addLabel(line, start);
         super.visitLineNumber(line, start);
     }
 
