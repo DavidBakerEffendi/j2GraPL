@@ -11,22 +11,20 @@ class ClassInfoTest {
 
     @BeforeEach
     fun setUp() {
-        testModel = ClassInfo()
-        testModel.registerClass("Test", "za.ac.sun.grapl", 1)
+        testModel = ClassInfo("Test", "za.ac.sun.grapl", 1)
     }
 
     @Test
     fun equalsTest() {
-        val testModel1 = ClassInfo()
-        testModel1.registerClass("Test", "za.ac.sun.grapl", 1)
+        val testModel1 = ClassInfo("Test", "za.ac.sun.grapl", 1)
         assertTrue(testModel == testModel1)
         assertTrue(testModel.hashCode() == testModel1.hashCode())
-        testModel1.registerClass("Test1", "za.ac.sun.grapl", 1)
-        assertFalse(testModel == testModel1)
-        assertFalse(testModel.hashCode() == testModel1.hashCode())
-        testModel1.registerClass("Test", "za.ac.grapl", 1)
-        assertFalse(testModel == testModel1)
-        assertFalse(testModel.hashCode() == testModel1.hashCode())
+        val testModel2 = ClassInfo("Test1", "za.ac.sun.grapl", 1)
+        assertFalse(testModel == testModel2)
+        assertFalse(testModel.hashCode() == testModel2.hashCode())
+        val testModel3 = ClassInfo("Test", "za.ac.grapl", 1)
+        assertFalse(testModel == testModel3)
+        assertFalse(testModel.hashCode() == testModel3.hashCode())
         assertFalse(testModel.equals("Test"))
     }
 }

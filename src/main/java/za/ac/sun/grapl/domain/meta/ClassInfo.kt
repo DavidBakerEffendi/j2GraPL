@@ -4,17 +4,12 @@ import za.ac.sun.grapl.controllers.AbstractController
 import za.ac.sun.grapl.util.ASMParserUtil
 import kotlin.properties.Delegates
 
-class ClassInfo : AbstractController {
-    lateinit var className: String
-    lateinit var namespace: String
-    var access by Delegates.notNull<Int>()
+class ClassInfo(
+        val className: String,
+        val namespace: String,
+        private val access: Int
+) : AbstractController {
     private val classMethods = mutableListOf<MethodInfo>()
-
-    fun registerClass(className: String, namespace: String, access: Int) {
-        this.className = className
-        this.namespace = namespace
-        this.access = access
-    }
 
     fun addMethod(methodName: String, methodSignature: String, access: Int, lineNumber: Int): MethodInfo {
         val methodInfo = MethodInfo(methodName, methodSignature, access, lineNumber)
@@ -23,7 +18,8 @@ class ClassInfo : AbstractController {
     }
 
     fun getMethod(methodName: String, methodSignature: String, access: Int): MethodInfo? {
-        return classMethods.find { methodInfo -> methodInfo == MethodInfo(methodName, methodSignature, access) }
+        val hashCode = 31 * (31 * methodName.hashCode() + methodSignature.hashCode()) + access.hashCode()
+        return classMethods.find { methodInfo -> methodInfo.hashCode() ==  hashCode }
     }
 
     fun clear() {

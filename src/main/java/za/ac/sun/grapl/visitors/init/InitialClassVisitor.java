@@ -20,6 +20,7 @@ import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
+import za.ac.sun.grapl.controllers.ClassMetaController;
 import za.ac.sun.grapl.domain.enums.ModifierTypes;
 import za.ac.sun.grapl.domain.meta.ClassInfo;
 import za.ac.sun.grapl.domain.meta.MethodInfo;
@@ -32,29 +33,18 @@ public final class InitialClassVisitor extends ClassVisitor implements Opcodes {
 
     private final static Logger logger = LogManager.getLogger();
 
-    private final ClassInfo classInfo;
+    private ClassInfo classInfo;
+    private final ClassMetaController classMetaController;
 
-    public InitialClassVisitor(ClassInfo classInfo) {
+    public InitialClassVisitor(final ClassMetaController classMetaController) {
         super(ASM5);
-        this.classInfo = classInfo;
+        this.classMetaController = classMetaController;
     }
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
         super.visit(version, access, name, signature, superName, interfaces);
-        String className;
-        String namespace;
-        if (name.lastIndexOf('/') != -1) {
-            className = name.substring(name.lastIndexOf('/') + 1);
-            namespace = name.substring(0, name.lastIndexOf('/'));
-        } else {
-            className = name;
-            namespace = "";
-        }
-        namespace = namespace.replaceAll("/", ".");
-
-        this.classInfo.registerClass(className, namespace, access);
-
+        this.classInfo = this.classMetaController.putClass(name, access);
         logger.debug("");
         logger.debug(this.classInfo.toString() + " extends " + superName + " {");
     }

@@ -362,7 +362,7 @@ class ASTController(
                         this.methodInfo.upsertJumpRootAtLine(maybeLineNumber, name)
                     }
                     this.hook.updateBlockProperty(currentMethod, pairedBlock.order, "name", name)
-                    logger.debug("Getting rid of something I probably shouldn't ${bHistory.peek()}")
+
                     if (bHistory.peek() !is NestedBodyBlock)
                         bHistory.pop()
                 }

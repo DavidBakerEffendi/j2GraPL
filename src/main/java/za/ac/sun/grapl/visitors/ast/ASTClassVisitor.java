@@ -19,24 +19,28 @@ import org.objectweb.asm.ClassVisitor;
 import org.objectweb.asm.MethodVisitor;
 import org.objectweb.asm.Opcodes;
 import za.ac.sun.grapl.controllers.ASTController;
+import za.ac.sun.grapl.controllers.ClassMetaController;
 import za.ac.sun.grapl.domain.meta.ClassInfo;
 import za.ac.sun.grapl.domain.meta.MethodInfo;
 
 public final class ASTClassVisitor extends ClassVisitor implements Opcodes {
 
+    private final ClassMetaController classMetaController;
     private final ASTController astController;
-    private final ClassInfo classInfo;
+    private ClassInfo classInfo;
 
-    public ASTClassVisitor(final ClassInfo classInfo, final ASTController astController) {
+    public ASTClassVisitor(final ClassMetaController classMetaController, final ASTController astController) {
         super(ASM5);
-        this.classInfo = classInfo;
+        this.classMetaController = classMetaController;
         this.astController = astController;
     }
 
     @Override
     public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
         super.visit(version, access, name, signature, superName, interfaces);
-        this.astController.projectFileAndNamespace(classInfo.namespace, classInfo.className);
+        this.classInfo = this.classMetaController.getClass(name);
+        assert classInfo != null;
+        this.astController.projectFileAndNamespace(classInfo.getNamespace(), classInfo.getClassName());
         // TODO: Could create MEMBER vertex from here to declare member classes
     }
 
