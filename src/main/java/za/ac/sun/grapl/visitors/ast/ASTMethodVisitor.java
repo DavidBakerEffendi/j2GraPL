@@ -38,31 +38,6 @@ public final class ASTMethodVisitor extends OpStackMethodVisitor implements Opco
     }
 
     @Override
-    public void visitCode() {
-        super.visitCode();
-    }
-
-    @Override
-    public void visitTypeInsn(int opcode, String type) {
-        super.visitTypeInsn(opcode, type);
-    }
-
-    @Override
-    public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
-        super.visitFieldInsn(opcode, owner, name, descriptor);
-    }
-
-    @Override
-    public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
-        super.visitMethodInsn(opcode, owner, name, desc, itf);
-    }
-
-    @Override
-    public void visitLabel(Label label) {
-        super.visitLabel(label);
-    }
-
-    @Override
     public void visitLineNumber(int line, Label start) {
         super.visitLineNumber(line, start);
         astController.associateLineNumberWithLabel(line, start);

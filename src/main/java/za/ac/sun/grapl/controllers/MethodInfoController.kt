@@ -18,7 +18,6 @@ data class MethodInfoController(
     private val allJumps = LinkedHashSet<JumpInfo>()
     private val ternaryPairs = HashMap<JumpInfo, JumpInfo>()
     private val jumpRoot = HashMap<Int, String>()
-    private val allLines = HashSet<LineInfo>()
 
     fun addVariable(frameId: Int) {
         allVariables.add(LocalVarInfo(frameId))
@@ -34,56 +33,47 @@ data class MethodInfoController(
         }
     }
 
-    private fun getLineInfo(lineNumber: Int): LineInfo? = allLines.find { lineInfo -> lineInfo.lineNumber == lineNumber }
+    fun addJump(jumpOp: String, destLabel: Label, currentLabel: Label) =
+            allJumps.add(JumpInfo(jumpOp, destLabel, currentLabel, super.pseudoLineNo))
 
-    fun addJump(jumpOp: String, destLabel: Label, currentLabel: Label) {
-        val jumpInfo = JumpInfo(jumpOp, destLabel, currentLabel)
-        allJumps.add(jumpInfo)
-    }
 
     fun addTernaryPair(gotoOp: String, destLabel: Label, currentLabel: Label) {
         val lastJump = allJumps.last()
         addJump(gotoOp, destLabel, currentLabel)
-        ternaryPairs[lastJump] = JumpInfo(gotoOp, destLabel, currentLabel)
+        ternaryPairs[lastJump] = JumpInfo(gotoOp, destLabel, currentLabel, super.pseudoLineNo)
     }
 
-    fun addLabel(lineNumber: Int, label: Label) = getLineInfo(lineNumber)?.apply { associatedLabels.add(label) }
-            ?: allLines.add(LineInfo(lineNumber).apply { associatedLabels.add(label) })
-
-    fun getAssociatedJumps(lineNumber: Int): MutableList<JumpInfo> {
-        val assocLineInfo = getLineInfo(lineNumber) ?: return emptyList<JumpInfo>().toMutableList()
+    fun getAssociatedJumps(pseudoLineNo: Int): MutableList<JumpInfo> {
+        val assocLineInfo = getLineInfo(pseudoLineNo) ?: return emptyList<JumpInfo>().toMutableList()
         return allJumps.filter { jInfo: JumpInfo -> assocLineInfo.associatedLabels.contains(jInfo.destLabel) }.toMutableList()
     }
 
-    fun getLineNumber(label: Label): Int = allLines.find { lineInfo -> lineInfo.associatedLabels.contains(label) }?.lineNumber
-            ?: -1
-
-    fun isJumpVertexAssociatedWithGivenLine(jumpBlockVertex: BlockVertex, lineNumber: Int) =
-            !getAssociatedJumps(jumpBlockVertex.lineNumber).none { jumpInfo -> getLineNumber(jumpInfo.currLabel) == lineNumber }
+    fun getPseudoLineNumber(label: Label): Int = getLineInfo(label)?.pseudoLineNumber ?: -1
 
     fun upsertJumpRootAtLine(lineNumber: Int, name: String) = if (jumpRoot.containsKey(lineNumber)) jumpRoot.replace(lineNumber, name) else jumpRoot.put(lineNumber, name)
 
-    fun getJumpRootName(currentLabel: Label?) = jumpRoot.getOrDefault(allLines.find { lineInfo -> lineInfo.associatedLabels.contains(currentLabel) }?.lineNumber, "IF")
+    fun getJumpRootName(currentLabel: Label?) = jumpRoot.getOrDefault(currentLabel?.let { getPseudoLineNumber(it) }, "IF")
 
     fun isLabelAssociatedWithLoops(label: Label): Boolean {
         val loopNames = listOf("WHILE", "DO_WHILE", "FOR")
-        val rootName = jumpRoot.getOrDefault(getLineNumber(label), "IF")
+        val rootName = jumpRoot.getOrDefault(getPseudoLineNumber(label), "IF")
         return !loopNames.none { name -> name == rootName }
     }
 
     fun findJumpLineBasedOnDestLabel(destLabel: Label): Int? {
         // Find associated labels with the dest label
-        val associatedLabels = allLines.find { lineInfo -> lineInfo.associatedLabels.contains(destLabel) }?.associatedLabels
-                ?: return null
+        val associatedLabels = getLineInfo(destLabel)?.associatedLabels ?: return null
         // Match this with a jump
         val matchedJump = allJumps.find { jumpInfo -> associatedLabels.contains(jumpInfo.destLabel) } ?: return null
         // Get the current line of the jump current line
-        return allLines.find { lineInfo -> lineInfo.associatedLabels.contains(matchedJump.currLabel) }?.lineNumber
+        return getLineInfo(matchedJump.currLabel)?.pseudoLineNumber
     }
 
-    override fun toString(): String {
-        return "$lineNumber: ${ASMParserUtil.determineModifiers(access)} $methodName $methodSignature"
-    }
+    fun isJumpVertexAssociatedWithGivenLine(jumpBlockPseudoLineNo: Int, lineNumber: Int) =
+            !getAssociatedJumps(jumpBlockPseudoLineNo).none { jumpInfo -> getPseudoLineNumber(jumpInfo.currLabel) == lineNumber }
+
+
+    override fun toString() = "$lineNumber: ${ASMParserUtil.determineModifiers(access)} $methodName $methodSignature"
 
     override fun equals(other: Any?): Boolean {
         if (this === other) return true

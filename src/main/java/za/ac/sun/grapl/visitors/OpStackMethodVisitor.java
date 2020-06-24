@@ -20,19 +20,30 @@ public class OpStackMethodVisitor extends MethodVisitor implements Opcodes {
     }
 
     @Override
-    public void visitInsn(int opcode) {
+    public void visitCode() {
+        super.visitCode();
+        controller.initializeMethod();
+    }
+
+    @Override
+    public void visitLabel(final Label label) {
+        this.controller.pushNewLabel(label);
+    }
+
+    @Override
+    public void visitInsn(final int opcode) {
         super.visitInsn(opcode);
         controller.pushConstInsnOperation(opcode);
     }
 
     @Override
-    public void visitIntInsn(int opcode, int operand) {
+    public void visitIntInsn(final int opcode, final int operand) {
         super.visitIntInsn(opcode, operand);
         controller.pushConstInsnOperation(opcode, operand);
     }
 
     @Override
-    public void visitVarInsn(int opcode, int var) {
+    public void visitVarInsn(final int opcode, final int var) {
         super.visitVarInsn(opcode, var);
         final String operation = ASMifier.OPCODES[opcode];
 
@@ -41,7 +52,7 @@ public class OpStackMethodVisitor extends MethodVisitor implements Opcodes {
     }
 
     @Override
-    public void visitJumpInsn(int opcode, Label label) {
+    public void visitJumpInsn(final int opcode, final Label label) {
         super.visitJumpInsn(opcode, label);
         final String jumpOp = ASMifier.OPCODES[opcode];
 
@@ -51,13 +62,13 @@ public class OpStackMethodVisitor extends MethodVisitor implements Opcodes {
     }
 
     @Override
-    public void visitLdcInsn(Object val) {
+    public void visitLdcInsn(final Object val) {
         super.visitLdcInsn(val);
         controller.pushConstInsnOperation(val);
     }
 
     @Override
-    public void visitIincInsn(int var, int increment) {
+    public void visitIincInsn(final int var, final int increment) {
         super.visitIincInsn(var, increment);
         controller.pushVarInc(var, increment);
     }

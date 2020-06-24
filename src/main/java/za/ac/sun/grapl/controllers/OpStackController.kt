@@ -4,6 +4,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.objectweb.asm.Label
 import org.objectweb.asm.util.ASMifier
+import za.ac.sun.grapl.domain.meta.LineInfo
 import za.ac.sun.grapl.domain.stack.OperandItem
 import za.ac.sun.grapl.domain.stack.operand.ConstantItem
 import za.ac.sun.grapl.domain.stack.operand.OperatorItem
@@ -12,11 +13,28 @@ import za.ac.sun.grapl.util.ASMParserUtil
 import java.util.*
 import kotlin.math.absoluteValue
 
-abstract class OpStackController : AbstractController {
+abstract class OpStackController(var allLines: HashSet<LineInfo> = HashSet()) : AbstractController {
+
+    private val logger: Logger = LogManager.getLogger()
 
     val operandStack = Stack<OperandItem?>()
     val variables = HashSet<VariableItem>()
-    private val logger: Logger = LogManager.getLogger()
+    var pseudoLineNo = 0
+        private set
+
+    fun initializeMethod() {
+        pseudoLineNo = 0
+    }
+
+    fun pushNewLabel(label: Label) {
+        pseudoLineNo++
+        getLineInfo(pseudoLineNo)?.apply { associatedLabels.add(label) }
+                ?: allLines.add(LineInfo(pseudoLineNo).apply { associatedLabels.add(label) })
+    }
+
+    protected fun getLineInfo(pseudoLineNo: Int): LineInfo? = allLines.find { lineInfo -> lineInfo.pseudoLineNumber == pseudoLineNo }
+
+    protected fun getLineInfo(label: Label): LineInfo? = allLines.find { lineInfo -> lineInfo.associatedLabels.contains(label) }
 
     fun pushConstInsnOperation(`val`: Any) {
         val canonicalType = `val`.javaClass.canonicalName.replace("\\.".toRegex(), "/")
@@ -116,12 +134,12 @@ abstract class OpStackController : AbstractController {
 
     open fun pushNullaryJumps(label: Label) = Unit
 
-    open fun pushBinaryJump(jumpOp: String, label: Label) {
-        listOfNotNull(operandStack.pop(), operandStack.pop()).asReversed()
+    open fun pushBinaryJump(jumpOp: String, label: Label): List<OperandItem> {
+        return listOfNotNull(operandStack.pop(), operandStack.pop()).asReversed()
     }
 
-    open fun pushUnaryJump(jumpOp: String, label: Label) {
-        operandStack.pop()
+    open fun pushUnaryJump(jumpOp: String, label: Label): OperandItem? {
+        return operandStack.pop()
     }
 
     override fun toString(): String {

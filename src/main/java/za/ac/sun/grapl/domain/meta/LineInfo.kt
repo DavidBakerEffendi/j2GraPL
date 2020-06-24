@@ -2,12 +2,12 @@ package za.ac.sun.grapl.domain.meta
 
 import org.objectweb.asm.Label
 
-data class LineInfo(val lineNumber: Int) {
+data class LineInfo(val pseudoLineNumber: Int) {
 
     val associatedLabels = emptyList<Label>().toMutableList()
 
     override fun toString(): String {
-        return "$lineNumber: $associatedLabels"
+        return "$pseudoLineNumber: $associatedLabels"
     }
 
     override fun equals(other: Any?): Boolean {
@@ -16,12 +16,12 @@ data class LineInfo(val lineNumber: Int) {
 
         other as LineInfo
 
-        if (lineNumber != other.lineNumber) return false
+        if (pseudoLineNumber != other.pseudoLineNumber) return false
 
         return true
     }
 
     override fun hashCode(): Int {
-        return lineNumber
+        return pseudoLineNumber
     }
 }

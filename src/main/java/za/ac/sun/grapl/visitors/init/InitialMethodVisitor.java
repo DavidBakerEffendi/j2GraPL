@@ -108,8 +108,6 @@ public final class InitialMethodVisitor extends OpStackMethodVisitor implements 
         logger.debug("\t  " + line + " " + start + " (visitLineNumber)");
         if (Integer.valueOf(-1).equals(methodInfoController.getLineNumber()))
             methodInfoController.setLineNumber(line - 1);
-
-        methodInfoController.addLabel(line, start);
         super.visitLineNumber(line, start);
     }
 

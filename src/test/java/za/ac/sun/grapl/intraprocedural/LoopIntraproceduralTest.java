@@ -23,6 +23,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static za.ac.sun.grapl.util.TestQueryBuilderUtil.getVertexAlongEdge;
 import static za.ac.sun.grapl.util.TestQueryBuilderUtil.getVertexAlongEdgeFixed;
@@ -45,9 +46,9 @@ public class LoopIntraproceduralTest {
         ResourceCompilationUtil.deleteClassFiles(PATH);
         File f = new File(TEST_DIR);
         if (f.exists()) {
-            if (!f.delete()) {
-                logger.warn("Could not clear " + ConditionalIntraproceduralTest.class.getName() + "'s test resources.");
-            }
+//            if (!f.delete()) {
+//                logger.warn("Could not clear " + ConditionalIntraproceduralTest.class.getName() + "'s test resources.");
+//            }
         }
     }
 
@@ -100,6 +101,9 @@ public class LoopIntraproceduralTest {
         final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "DO_WHILE");
         assertTrue(whileRootTraversal.hasNext());
         final Vertex whileRoot = whileRootTraversal.next();
+        // Check that there is no IF
+        final GraphTraversal<Vertex, Vertex> ifRootCheckTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "IF");
+        assertFalse(ifRootCheckTraversal.hasNext());
         // Check while branch
         final GraphTraversal<Vertex, Vertex> whileBodyTraversal = g.V(whileRoot).repeat(__.out("AST")).emit()
                 .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "20");
