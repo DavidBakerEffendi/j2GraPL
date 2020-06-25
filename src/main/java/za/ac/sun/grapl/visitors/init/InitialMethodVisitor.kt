@@ -25,7 +25,10 @@ import za.ac.sun.grapl.controllers.MethodInfoController
 import za.ac.sun.grapl.domain.stack.operand.ConstantItem
 import za.ac.sun.grapl.visitors.OpStackMethodVisitor
 
-class InitialMethodVisitor(mv: MethodVisitor?, private val methodInfoController: MethodInfoController) : OpStackMethodVisitor(mv, methodInfoController), Opcodes {
+class InitialMethodVisitor(
+        mv: MethodVisitor?,
+        private val methodInfoController: MethodInfoController
+) : OpStackMethodVisitor(mv, methodInfoController), Opcodes {
 
     private var currentLabel: Label? = null
 

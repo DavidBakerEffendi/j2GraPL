@@ -29,6 +29,16 @@ class ASTMethodVisitor(
 
     private val logger = LogManager.getLogger()
 
+    override fun visitCode() {
+        super.visitCode()
+        astController.methodInfo.initializeMethod()
+    }
+
+    override fun visitLabel(label: Label) {
+        super.visitLabel(label)
+        astController.methodInfo.pushNewLabel(label)
+    }
+
     override fun visitLineNumber(line: Int, start: Label) {
         super.visitLineNumber(line, start)
         astController.associateLineNumberWithLabel(line, start)

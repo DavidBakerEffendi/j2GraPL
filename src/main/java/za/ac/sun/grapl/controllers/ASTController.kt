@@ -1,3 +1,18 @@
+/*
+ * Copyright 2020 David Baker Effendi
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package za.ac.sun.grapl.controllers
 
 import org.apache.logging.log4j.LogManager
@@ -37,6 +52,8 @@ class ASTController(
         private val hook: IHook
 ) : OpStackController() {
 
+    private val logger: Logger = LogManager.getLogger()
+
     private val bHistory = Stack<BlockItem>()
     private val allJumpsEncountered = HashSet<JumpBlock>()
     private val vertexStack = LinkedHashMap<GraPLVertex, Int>()
@@ -47,8 +64,8 @@ class ASTController(
     private var currentClass: FileVertex? = null
     private var currentMethod: MethodVertex? = null
     private var currentLineNo = -1
-    private lateinit var methodInfo: MethodInfoController
-    private val logger: Logger = LogManager.getLogger()
+
+    lateinit var methodInfo: MethodInfoController
 
     /**
      * Given a package name signature and the current class, will and resolve common package chains with the
@@ -99,8 +116,6 @@ class ASTController(
     fun pushNewMethod(methodInfo: MethodInfoController) {
         this.clear()
         this.methodInfo = methodInfo
-        // TODO: This is not a good solution and look at modifying the architecture on this slightly
-        this.allLines = this.methodInfo.allLines
     }
 
     /**
@@ -204,7 +219,7 @@ class ASTController(
 
         val totalAssociatedJumps = this.methodInfo.getAssociatedJumps(super.pseudoLineNo)
         val jumpCountDifference = totalAssociatedJumps.filter { jumpInfo -> jumpInfo.jumpOp != "GOTO" }.size - JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size
-
+        println("jump count diff $start $jumpCountDifference $allJumpsEncountered")
         if (JumpStackUtil.isJumpDestination(allJumpsEncountered, start)) handleJumpDestination(start)
         if (jumpCountDifference >= 1) handleLoopDestination(start, super.pseudoLineNo, jumpCountDifference, totalAssociatedJumps)
 

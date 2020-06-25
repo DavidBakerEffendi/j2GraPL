@@ -1,11 +1,25 @@
+/*
+ * Copyright 2020 David Baker Effendi
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package za.ac.sun.grapl.controllers
 
 import org.objectweb.asm.Label
 import za.ac.sun.grapl.domain.meta.JumpInfo
-import za.ac.sun.grapl.domain.meta.LineInfo
 import za.ac.sun.grapl.domain.meta.LocalVarInfo
-import za.ac.sun.grapl.domain.models.vertices.BlockVertex
 import za.ac.sun.grapl.util.ASMParserUtil
+import kotlin.collections.set
 
 data class MethodInfoController(
         val methodName: String,
@@ -50,7 +64,7 @@ data class MethodInfoController(
 
     fun getPseudoLineNumber(label: Label): Int = getLineInfo(label)?.pseudoLineNumber ?: -1
 
-    fun upsertJumpRootAtLine(lineNumber: Int, name: String) = if (jumpRoot.containsKey(lineNumber)) jumpRoot.replace(lineNumber, name) else jumpRoot.put(lineNumber, name)
+    fun upsertJumpRootAtLine(pseudoLineNo: Int, name: String) = if (jumpRoot.containsKey(pseudoLineNo)) jumpRoot.replace(pseudoLineNo, name) else jumpRoot.put(pseudoLineNo, name)
 
     fun getJumpRootName(currentLabel: Label?) = jumpRoot.getOrDefault(currentLabel?.let { getPseudoLineNumber(it) }, "IF")
 
