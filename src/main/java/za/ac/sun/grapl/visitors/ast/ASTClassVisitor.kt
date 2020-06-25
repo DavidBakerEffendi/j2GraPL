@@ -13,49 +13,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package za.ac.sun.grapl.visitors.ast;
+package za.ac.sun.grapl.visitors.ast
 
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import za.ac.sun.grapl.controllers.ASTController;
-import za.ac.sun.grapl.domain.meta.MetaDataCollector;
-import za.ac.sun.grapl.domain.meta.ClassInfo;
-import za.ac.sun.grapl.controllers.MethodInfoController;
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
+import za.ac.sun.grapl.controllers.ASTController
+import za.ac.sun.grapl.domain.meta.ClassInfo
+import za.ac.sun.grapl.domain.meta.MetaDataCollector
 
-public final class ASTClassVisitor extends ClassVisitor implements Opcodes {
+class ASTClassVisitor(private val classMetaController: MetaDataCollector, private val astController: ASTController) : ClassVisitor(Opcodes.ASM5), Opcodes {
 
-    private final MetaDataCollector classMetaController;
-    private final ASTController astController;
-    private ClassInfo classInfo;
+    private var classInfo: ClassInfo? = null
 
-    public ASTClassVisitor(final MetaDataCollector classMetaController, final ASTController astController) {
-        super(ASM5);
-        this.classMetaController = classMetaController;
-        this.astController = astController;
-    }
-
-    @Override
-    public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-        super.visit(version, access, name, signature, superName, interfaces);
-        this.classInfo = this.classMetaController.getClass(name);
-        assert classInfo != null;
-        this.astController.projectFileAndNamespace(classInfo.getNamespace(), classInfo.getClassName());
+    override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String, interfaces: Array<String>) {
+        super.visit(version, access, name, signature, superName, interfaces)
+        classInfo = classMetaController.getClass(name)
+        assert(classInfo != null)
+        astController.projectFileAndNamespace(classInfo!!.namespace, classInfo!!.className)
         // TODO: Could create MEMBER vertex from here to declare member classes
     }
 
-    @Override
-    public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-        final MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-        final MethodInfoController methodInfo = classInfo.getMethod(name, descriptor, access);
-        assert methodInfo != null;
-        astController.pushNewMethod(methodInfo);
-        return new ASTMethodVisitor(mv, astController);
-    }
-
-    @Override
-    public void visitEnd() {
-        super.visitEnd();
+    override fun visitMethod(access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<String>?): MethodVisitor {
+        val mv = super.visitMethod(access, name, descriptor, signature, exceptions)
+        val methodInfo = classInfo!!.getMethod(name, descriptor, access)!!
+        astController.pushNewMethod(methodInfo)
+        return ASTMethodVisitor(mv, astController)
     }
 
 }

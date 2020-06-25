@@ -13,182 +13,103 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package za.ac.sun.grapl.visitors.init;
+package za.ac.sun.grapl.visitors.init
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.objectweb.asm.Handle;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import org.objectweb.asm.util.ASMifier;
-import za.ac.sun.grapl.controllers.MethodInfoController;
-import za.ac.sun.grapl.domain.stack.OperandItem;
-import za.ac.sun.grapl.domain.stack.operand.ConstantItem;
-import za.ac.sun.grapl.visitors.OpStackMethodVisitor;
+import org.apache.logging.log4j.LogManager
+import org.objectweb.asm.Handle
+import org.objectweb.asm.Label
+import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
+import org.objectweb.asm.util.ASMifier
+import za.ac.sun.grapl.controllers.MethodInfoController
+import za.ac.sun.grapl.domain.stack.operand.ConstantItem
+import za.ac.sun.grapl.visitors.OpStackMethodVisitor
 
-import java.util.Stack;
+class InitialMethodVisitor(mv: MethodVisitor?, private val methodInfoController: MethodInfoController) : OpStackMethodVisitor(mv, methodInfoController), Opcodes {
 
-public final class InitialMethodVisitor extends OpStackMethodVisitor implements Opcodes {
+    private var currentLabel: Label? = null
 
-    private final static Logger logger = LogManager.getLogger();
-
-    private Label currentLabel;
-    private final MethodInfoController methodInfoController;
-
-    public InitialMethodVisitor(final MethodVisitor mv, final MethodInfoController methodInfoController) {
-        super(mv, methodInfoController);
-        this.methodInfoController = methodInfoController;
+    override fun visitInsn(opcode: Int) {
+        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " (visitInsn)")
+        super.visitInsn(opcode)
     }
 
-    @Override
-    public void visitCode() {
-        super.visitCode();
+    override fun visitIntInsn(opcode: Int, operand: Int) {
+        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + operand + " (visitIntInsn)")
+        super.visitIntInsn(opcode, operand)
     }
 
-    @Override
-    public void visitInsn(int opcode) {
-        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " (visitInsn)");
-        super.visitInsn(opcode);
+    override fun visitVarInsn(opcode: Int, `var`: Int) {
+        logger.debug("\t" + ASMifier.OPCODES[opcode] + " -> " + `var` + " (visitVarInsn)")
+        methodInfoController.addVariable(`var`)
+        super.visitVarInsn(opcode, `var`)
     }
 
-    @Override
-    public void visitIntInsn(int opcode, int operand) {
-        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + operand + " (visitIntInsn)");
-        super.visitIntInsn(opcode, operand);
-    }
-
-    @Override
-    public void visitVarInsn(int opcode, int var) {
-        logger.debug("\t" + ASMifier.OPCODES[opcode] + " -> " + var + " (visitVarInsn)");
-        methodInfoController.addVariable(var);
-        super.visitVarInsn(opcode, var);
-    }
-
-    @Override
-    public void visitJumpInsn(int opcode, Label label) {
-        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + label + " (visitJumpInsn)");
-        final Stack<OperandItem> operandStack = methodInfoController.getOperandStack();
-        if ("GOTO".equals(ASMifier.OPCODES[opcode]) && !operandStack.isEmpty() && operandStack.peek() instanceof ConstantItem)
-            methodInfoController.addTernaryPair(ASMifier.OPCODES[opcode], label, currentLabel);
+    override fun visitJumpInsn(opcode: Int, label: Label) {
+        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + label + " (visitJumpInsn)")
+        val operandStack = methodInfoController.operandStack
+        if ("GOTO" == ASMifier.OPCODES[opcode] && !operandStack.isEmpty() && operandStack.peek() is ConstantItem)
+            methodInfoController.addTernaryPair(ASMifier.OPCODES[opcode], label, currentLabel!!)
         else
-            methodInfoController.addJump(ASMifier.OPCODES[opcode], label, currentLabel);
-        super.visitJumpInsn(opcode, label);
+            methodInfoController.addJump(ASMifier.OPCODES[opcode], label, currentLabel!!)
+        super.visitJumpInsn(opcode, label)
     }
 
-    @Override
-    public void visitIincInsn(int var, int increment) {
-        logger.debug("\t  VAR: " + var + " INC: " + increment + " (visitIincInsn)");
-        super.visitIincInsn(var, increment);
+    override fun visitIincInsn(`var`: Int, increment: Int) {
+        logger.debug("\t  VAR: $`var` INC: $increment (visitIincInsn)")
+        super.visitIincInsn(`var`, increment)
     }
 
-    @Override
-    public void visitLabel(Label label) {
-        logger.debug("");
-        logger.debug("\t" + label + " (label)");
-        currentLabel = label;
-        super.visitLabel(label);
+    override fun visitLabel(label: Label) {
+        logger.debug("")
+        logger.debug("\t$label (label)")
+        currentLabel = label
+        super.visitLabel(label)
     }
 
-    @Override
-    public void visitFieldInsn(int opcode, String owner, String name, String descriptor) {
-        logger.debug("\t" + ASMifier.OPCODES[opcode] + owner + " " + name + " " + descriptor + " (visitFieldInsn)");
-        super.visitFieldInsn(opcode, owner, name, descriptor);
+    override fun visitFieldInsn(opcode: Int, owner: String, name: String, descriptor: String) {
+        logger.debug("\t" + ASMifier.OPCODES[opcode] + owner + " " + name + " " + descriptor + " (visitFieldInsn)")
+        super.visitFieldInsn(opcode, owner, name, descriptor)
     }
 
-    @Override
-    public void visitLocalVariable(String name, String descriptor, String signature, Label start, Label end, int index) {
-        logger.debug("\tDEBUG INFO: " + descriptor + " " + name + " -> (" + start + "; " + end + ") (visitLocalVariable)");
-        methodInfoController.addVarDebugInfo(index, name, descriptor, start, end);
-        super.visitLocalVariable(name, descriptor, signature, start, end, index);
+    override fun visitLocalVariable(name: String, descriptor: String, signature: String?, start: Label, end: Label, index: Int) {
+        logger.debug("\tDEBUG INFO: $descriptor $name -> ($start; $end) (visitLocalVariable)")
+        methodInfoController.addVarDebugInfo(index, name, descriptor, start, end)
+        super.visitLocalVariable(name, descriptor, signature, start, end, index)
     }
 
-    @Override
-    public void visitLineNumber(int line, Label start) {
-        logger.debug("\t  " + line + " " + start + " (visitLineNumber)");
-        if (Integer.valueOf(-1).equals(methodInfoController.getLineNumber()))
-            methodInfoController.setLineNumber(line - 1);
-        super.visitLineNumber(line, start);
+    override fun visitLineNumber(line: Int, start: Label) {
+        logger.debug("\t  $line $start (visitLineNumber)")
+        if (Integer.valueOf(-1) == methodInfoController.lineNumber) methodInfoController.lineNumber = line - 1
+        super.visitLineNumber(line, start)
     }
 
-    @Override
-    public void visitLdcInsn(Object value) {
-        logger.debug("\t  " + value + " (visitLdcInsn)");
-        super.visitLdcInsn(value);
+    override fun visitLdcInsn(`val`: Any) {
+        logger.debug("\t  $`val` (visitLdcInsn)")
+        super.visitLdcInsn(`val`)
     }
 
-    @Override
-    public void visitInvokeDynamicInsn(String name, String descriptor, Handle bootstrapMethodHandle, Object... bootstrapMethodArguments) {
-        logger.debug("\t  " + name + " INC: " + descriptor + " " + bootstrapMethodHandle + " (visitInvokeDynamicInsn)");
-        super.visitInvokeDynamicInsn(name, descriptor, bootstrapMethodHandle, bootstrapMethodArguments);
+    override fun visitInvokeDynamicInsn(name: String, descriptor: String, bootstrapMethodHandle: Handle, vararg bootstrapMethodArguments: Any) {
+        logger.debug("\t  $name INC: $descriptor $bootstrapMethodHandle (visitInvokeDynamicInsn)")
+        super.visitInvokeDynamicInsn(name, descriptor, bootstrapMethodHandle, *bootstrapMethodArguments)
     }
 
-//    @Override
-//    public void visitParameter(String name, int access) {
-//        logger.debug(new StringJoiner(" ")
-//                .add("\t ").add(name).add(ASMParserUtil.determineModifiers(access).toString()).add("(visitParameter)"));
-//        super.visitParameter(name, access);
-//    }
-//
-//    @Override
-//    public void visitTableSwitchInsn(int min, int max, Label dflt, Label... labels) {
-//        StringJoiner sj = new StringJoiner(" ")
-//                .add("\t ").add(String.valueOf(min)).add(String.valueOf(max)).add(dflt.toString());
-//        if (labels.length > 0) {
-//            sj.add("LABELS [");
-//            for (Label label : labels) {
-//                sj.add(label.toString());
-//            }
-//            sj.add("]");
-//        }
-//        logger.debug(sj.add("(visitTableSwitchInsn)"));
-//        super.visitTableSwitchInsn(min, max, dflt, labels);
-//    }
-//
-//    @Override
-//    public void visitLookupSwitchInsn(Label dflt, int[] keys, Label[] labels) {
-//        StringJoiner sj = new StringJoiner(" ")
-//                .add("\t ").add(dflt.toString());
-//        if (keys.length > 0) {
-//            sj.add("KEYS [");
-//            for (int k : keys) {
-//                sj.add(String.valueOf(k));
-//            }
-//            sj.add("]");
-//        }
-//        if (labels.length > 0) {
-//            sj.add("LABELS [");
-//            for (Label label : labels) {
-//                sj.add(label.toString());
-//            }
-//            sj.add("]");
-//        }
-//        logger.debug(sj.add("(visitTableSwitchInsn)"));
-//        super.visitLookupSwitchInsn(dflt, keys, labels);
-//    }
-//
-//    @Override
-//    public void visitTryCatchBlock(Label start, Label end, Label handler, String type) {
-//        logger.debug(new StringJoiner(" ")
-//                .add("\t ").add(start.toString()).add(end.toString())
-//                .add(handler.toString()).add(type).add("(visitTryCatchBlock)"));
-//        super.visitTryCatchBlock(start, end, handler, type);
-//    }
-
-    @Override
-    public void visitTypeInsn(int opcode, String type) {
-        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + type + " (visitTypeInsn)");
-        super.visitTypeInsn(opcode, type);
+    override fun visitTypeInsn(opcode: Int, type: String) {
+        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + type + " (visitTypeInsn)")
+        super.visitTypeInsn(opcode, type)
     }
 
-    @Override
-    public void visitMethodInsn(int opcode, String owner, String name, String desc, boolean itf) {
-        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + owner + " " + name + " " + desc + " (visitMethodInsn)");
-        super.visitMethodInsn(opcode, owner, name, desc, itf);
+    override fun visitMethodInsn(opcode: Int, owner: String, name: String, desc: String, itf: Boolean) {
+        logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + owner + " " + name + " " + desc + " (visitMethodInsn)")
+        super.visitMethodInsn(opcode, owner, name, desc, itf)
     }
 
-    @Override
-    public void visitEnd() {
-        logger.debug("\t}");
+    override fun visitEnd() {
+        logger.debug("\t}")
     }
+
+    companion object {
+        private val logger = LogManager.getLogger()
+    }
+
 }

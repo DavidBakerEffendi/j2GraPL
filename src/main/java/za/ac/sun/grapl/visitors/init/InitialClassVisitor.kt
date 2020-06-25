@@ -13,51 +13,39 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package za.ac.sun.grapl.visitors.init;
+package za.ac.sun.grapl.visitors.init
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.objectweb.asm.ClassVisitor;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import za.ac.sun.grapl.domain.meta.MetaDataCollector;
-import za.ac.sun.grapl.domain.meta.ClassInfo;
-import za.ac.sun.grapl.controllers.MethodInfoController;
+import org.apache.logging.log4j.LogManager
+import org.objectweb.asm.ClassVisitor
+import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
+import za.ac.sun.grapl.domain.meta.ClassInfo
+import za.ac.sun.grapl.domain.meta.MetaDataCollector
 
-public final class InitialClassVisitor extends ClassVisitor implements Opcodes {
+class InitialClassVisitor(private val classMetaController: MetaDataCollector) : ClassVisitor(Opcodes.ASM5), Opcodes {
 
-    private final static Logger logger = LogManager.getLogger();
+    private val logger = LogManager.getLogger()
+    private var classInfo: ClassInfo? = null
 
-    private ClassInfo classInfo;
-    private final MetaDataCollector classMetaController;
-
-    public InitialClassVisitor(final MetaDataCollector classMetaController) {
-        super(ASM5);
-        this.classMetaController = classMetaController;
+    override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String, interfaces: Array<String>) {
+        super.visit(version, access, name, signature, superName, interfaces)
+        classInfo = classMetaController.putClass(name, access)
+        logger.debug("")
+        logger.debug(classInfo.toString() + " extends " + superName + " {")
     }
 
-    @Override
-    public void visit(int version, int access, String name, String signature, String superName, String[] interfaces) {
-        super.visit(version, access, name, signature, superName, interfaces);
-        this.classInfo = this.classMetaController.putClass(name, access);
-        logger.debug("");
-        logger.debug(this.classInfo.toString() + " extends " + superName + " {");
+    override fun visitMethod(access: Int, name: String, descriptor: String, signature: String?, exceptions: Array<String>?): MethodVisitor {
+        val mv = super.visitMethod(access, name, descriptor, signature, exceptions)
+        val methodInfo = classInfo!!.addMethod(name, descriptor, access, -1)
+        logger.debug("")
+        logger.debug("\t $methodInfo {")
+        return InitialMethodVisitor(mv, methodInfo)
     }
 
-    @Override
-    public MethodVisitor visitMethod(int access, String name, String descriptor, String signature, String[] exceptions) {
-        final MethodVisitor mv = super.visitMethod(access, name, descriptor, signature, exceptions);
-        final MethodInfoController methodInfo = classInfo.addMethod(name, descriptor, access, -1);
-        logger.debug("");
-        logger.debug("\t " + methodInfo + " {");
-        return new InitialMethodVisitor(mv, methodInfo);
-    }
-
-    @Override
-    public void visitEnd() {
-        logger.debug("");
-        logger.debug("}");
-        super.visitEnd();
+    override fun visitEnd() {
+        logger.debug("")
+        logger.debug("}")
+        super.visitEnd()
     }
 
 }

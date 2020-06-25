@@ -13,40 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package za.ac.sun.grapl.visitors.ast;
+package za.ac.sun.grapl.visitors.ast
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
-import org.objectweb.asm.Label;
-import org.objectweb.asm.MethodVisitor;
-import org.objectweb.asm.Opcodes;
-import za.ac.sun.grapl.controllers.ASTController;
-import za.ac.sun.grapl.visitors.OpStackMethodVisitor;
+import org.apache.logging.log4j.LogManager
+import org.objectweb.asm.Label
+import org.objectweb.asm.MethodVisitor
+import org.objectweb.asm.Opcodes
+import za.ac.sun.grapl.controllers.ASTController
+import za.ac.sun.grapl.visitors.OpStackMethodVisitor
 
-public final class ASTMethodVisitor extends OpStackMethodVisitor implements Opcodes {
+class ASTMethodVisitor(
+        mv: MethodVisitor?,
+        private val astController: ASTController
+) : OpStackMethodVisitor(mv, astController), Opcodes {
 
-    final static Logger logger = LogManager.getLogger();
+    private val logger = LogManager.getLogger()
 
-    public final ASTController astController;
-
-    public ASTMethodVisitor(
-            final MethodVisitor mv,
-            final ASTController astController
-    ) {
-        super(mv, astController);
-        this.astController = astController;
+    override fun visitLineNumber(line: Int, start: Label) {
+        super.visitLineNumber(line, start)
+        astController.associateLineNumberWithLabel(line, start)
     }
 
-    @Override
-    public void visitLineNumber(int line, Label start) {
-        super.visitLineNumber(line, start);
-        astController.associateLineNumberWithLabel(line, start);
-    }
-
-    @Override
-    public void visitEnd() {
-        super.visitEnd();
-        logger.debug(astController.toString());
+    override fun visitEnd() {
+        super.visitEnd()
+        logger.debug(astController.toString())
     }
 
 }
