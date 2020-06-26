@@ -40,12 +40,9 @@ abstract class OpStackController(var allLines: HashSet<LineInfo> = HashSet()) : 
         pseudoLineNo = 0
     }
 
-    fun pushNewLabel(label: Label) {
-        pseudoLineNo++
-        getLineInfo(pseudoLineNo)?.apply { associatedLabels.add(label) }
-                ?: allLines.add(LineInfo(pseudoLineNo).apply { associatedLabels.add(label) })
-        println(allLines)
-    }
+    fun pushNewLabel(label: Label) =
+            getLineInfo(++pseudoLineNo)?.apply { associatedLabels.add(label) }
+                    ?: allLines.add(LineInfo(pseudoLineNo).apply { associatedLabels.add(label) })
 
     protected fun getLineInfo(pseudoLineNo: Int): LineInfo? = allLines.find { lineInfo -> lineInfo.pseudoLineNumber == pseudoLineNo }
 

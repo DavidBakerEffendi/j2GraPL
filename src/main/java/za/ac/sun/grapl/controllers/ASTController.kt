@@ -56,7 +56,7 @@ class ASTController(
 
     private val bHistory = Stack<BlockItem>()
     private val allJumpsEncountered = HashSet<JumpBlock>()
-    private val vertexStack = LinkedHashMap<GraPLVertex, Int>()
+    private val vertexStack = Stack<Pair<GraPLVertex, Int>>()
     private val pairedBlocks: MutableMap<IfCmpBlock, GotoBlock?> = HashMap()
     private var order = 0
     private var currentLabel: Label? = null
@@ -187,7 +187,7 @@ class ASTController(
         hook.assignToBlock(currentMethod, leftChild, baseBlock.order)
         when (operandItem) {
             is OperatorItem -> {
-                vertexStack[baseBlock] = super.pseudoLineNo
+                vertexStack.push(Pair(baseBlock, pseudoLineNo))
                 handleOperator(operandItem)
             }
             is ConstantItem -> {
@@ -219,7 +219,7 @@ class ASTController(
 
         val totalAssociatedJumps = this.methodInfo.getAssociatedJumps(super.pseudoLineNo)
         val jumpCountDifference = totalAssociatedJumps.filter { jumpInfo -> jumpInfo.jumpOp != "GOTO" }.size - JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size
-        println("jump count diff $start $jumpCountDifference $allJumpsEncountered")
+
         if (JumpStackUtil.isJumpDestination(allJumpsEncountered, start)) handleJumpDestination(start)
         if (jumpCountDifference >= 1) handleLoopDestination(start, super.pseudoLineNo, jumpCountDifference, totalAssociatedJumps)
 
@@ -291,7 +291,7 @@ class ASTController(
             logger.debug("Line $line vs JumpOrigin $destinationLineNumber = ${if (line < destinationLineNumber) "jump is above" else "jump is below"} which is associated with $totalAssociatedJumpsWithDest")
             if (line < destinationLineNumber && totalAssociatedJumpsWithDest.none { j -> j.jumpOp == "GOTO" }) {
                 val condRoot = BlockVertex("DO_WHILE", order++, 1, "BOOLEAN", currentLineNo)
-                vertexStack[condRoot] = pseudoLineNo
+                vertexStack.push(Pair(condRoot, pseudoLineNo))
                 if (bHistory.isEmpty()) {
                     hook.assignToBlock(currentMethod, condRoot, 0)
                 } else {
@@ -392,23 +392,25 @@ class ASTController(
     override fun pushBinaryJump(jumpOp: String, label: Label): List<OperandItem> {
         logger.debug("Recognized binary jump $jumpOp with label $label")
         val jumpType = ASMParserUtil.getBinaryJumpType(jumpOp)
+        val maybeTernaryPair = methodInfo.getAssociatedTernaryJump(pseudoLineNo)
         // If, as in the case of do-while, the if block happens after the body and thus the if-node already exists,
         // we should fetch the corresponding if-node
-        val condRoot: BlockVertex = if (!vertexStack.none { e -> e.key is BlockVertex }) {
+        val condRoot: BlockVertex = if (!vertexStack.none { pair -> pair.first is BlockVertex }) {
             // Determine if the last future jump block is correlated to this jump
-            val lastKey = vertexStack.peek as BlockVertex
-            if (!methodInfo.isJumpVertexAssociatedWithGivenLine(vertexStack[lastKey]!!, pseudoLineNo))
+            val vertexLinePair = vertexStack.peek()
+            if (!methodInfo.isJumpVertexAssociatedWithGivenLine(vertexLinePair.second, pseudoLineNo))
                 BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
             else {
-                // TODO: This is also not ideal
-                vertexStack.remove(lastKey)
-                lastKey
+                vertexStack.pop().first as BlockVertex
             }
         } else BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
-        this.methodInfo.upsertJumpRootAtLine(super.pseudoLineNo, condRoot.name)
+        this.methodInfo.upsertJumpRootAtLine(pseudoLineNo, condRoot.name)
         logger.debug("Using ${if (condRoot.order == order - 1) "new" else "existing ${condRoot.name}"} vertex to represent IF_CMP")
         // We can tell if it's a brand new conditional route by checking the order
         if (condRoot.order == order - 1) {
+            if (maybeTernaryPair != null) {
+                // TODO: Don't assign block yet - this is a ternary cond
+            }
             if (bHistory.isEmpty()) hook.assignToBlock(currentMethod, condRoot, 0) else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
             pushJumpBlock(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
             bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
@@ -475,8 +477,7 @@ class ASTController(
     override fun handleOperator(operatorItem: OperatorItem) {
         logger.debug("Next operator: $operatorItem")
         val currBlock = BlockVertex(operatorItem.id, order++, 1, operatorItem.type, currentLineNo)
-        val prevBlock = vertexStack.peek as BlockVertex
-        vertexStack.remove(prevBlock)
+        val prevBlock = vertexStack.pop().first as BlockVertex
         hook.assignToBlock(currentMethod, currBlock, prevBlock.order)
 
         // TODO: Assume all operations that aren't automatically evaluated by compiler are binary
@@ -486,7 +487,7 @@ class ASTController(
             logger.debug("Next operand: $stackItem")
             when (stackItem) {
                 is OperatorItem -> {
-                    vertexStack[currBlock] = super.pseudoLineNo
+                    vertexStack.push(Pair(currBlock, pseudoLineNo))
                     handleOperator(stackItem)
                 }
                 is ConstantItem -> {

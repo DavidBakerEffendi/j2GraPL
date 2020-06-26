@@ -62,6 +62,11 @@ data class MethodInfoController(
         return allJumps.filter { jInfo: JumpInfo -> assocLineInfo.associatedLabels.contains(jInfo.destLabel) }.toMutableList()
     }
 
+    fun getAssociatedTernaryJump(pseudoLineNo: Int): Pair<JumpInfo, JumpInfo>? {
+        val assocLineInfo = getLineInfo(pseudoLineNo) ?: return null
+        return ternaryPairs.filter { k -> assocLineInfo.associatedLabels.contains(k.key.currLabel) }.takeIf { it.isNotEmpty() }?.entries?.first()?.toPair()
+    }
+
     fun getPseudoLineNumber(label: Label): Int = getLineInfo(label)?.pseudoLineNumber ?: -1
 
     fun upsertJumpRootAtLine(pseudoLineNo: Int, name: String) = if (jumpRoot.containsKey(pseudoLineNo)) jumpRoot.replace(pseudoLineNo, name) else jumpRoot.put(pseudoLineNo, name)
