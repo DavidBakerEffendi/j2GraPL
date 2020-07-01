@@ -70,7 +70,7 @@ public class BasicIntraproceduralTest {
         g.io(TEST_DIR).read().iterate();
     }
 
-    public static void testBasic1Structure(GraphTraversalSource g, Vertex methodRoot) {
+    public static void testBasic1Structure(final GraphTraversalSource g, final Vertex methodRoot) {
         assertTrue(buildStoreTraversal(g, EdgeLabels.AST, methodRoot).hasNext());
 
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, LocalVertex.LABEL, "name", "1").has("typeFullName", "INTEGER").hasNext());

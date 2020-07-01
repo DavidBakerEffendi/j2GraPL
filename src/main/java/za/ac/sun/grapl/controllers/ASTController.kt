@@ -36,17 +36,6 @@ import java.util.*
 import java.util.function.Consumer
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
-import kotlin.collections.LinkedHashMap
-
-private val <K, V> LinkedHashMap<K, V>.peek: K?
-    get() {
-        val iterator = keys.iterator()
-        var lastElement: K? = null
-        while (iterator.hasNext()) {
-            lastElement = iterator.next()
-        }
-        return lastElement
-    }
 
 class ASTController(
         private val hook: IHook
@@ -160,50 +149,72 @@ class ASTController(
      * @param varName   the variable name.
      */
     override fun pushVarInsnStore(varName: Int, operation: String) {
-        val operandItem = operandStack.pop()
+        val operandItem = operandStack.pop()!!
         val varType = ASMParserUtil.getStackOperationType(operation)
         val variableItem = getOrPutVariable(varName, varType)
         val baseBlock = BlockVertex("STORE", order++, 1, varType, currentLineNo)
         val storeBlock = StoreBlock(order, currentLabel)
+        storeBlock.l = variableItem
         // Avoid attaching to loop roots
         while (!bHistory.empty() && methodInfo.isLabelAssociatedWithLoops(bHistory.peek().label!!)) {
             bHistory.pop()
         }
-        if (!bHistory.empty()) {
-            // TODO: Recently added for ternary ops
-//            if (!this.hook.isBlock(bHistory.peek().order)) {
-//                val bodyBlock = bHistory.pop()
-//                val bodyVertex = BlockVertex("ELSE_BODY", bodyBlock.order, 1, "BOOLEAN", currentLineNo)
-//                hook.assignToBlock(currentMethod, bodyVertex, bHistory.peek().order)
-//                bHistory.push(bodyBlock)
-//            }
-            hook.assignToBlock(currentMethod, baseBlock, bHistory.peek().order)
-        } else hook.assignToBlock(currentMethod, baseBlock, 0)
-        storeBlock.l = variableItem
-        storeBlock.r = operandItem
+        val maybeTernaryPair = vertexStack.takeIf { it.isNotEmpty() }?.peek()?.second?.let { methodInfo.getAssociatedTernaryJump(it) }
+        if (maybeTernaryPair == null) {
+            if (!bHistory.empty()) {
+                hook.assignToBlock(currentMethod, baseBlock, bHistory.peek().order)
+            } else hook.assignToBlock(currentMethod, baseBlock, 0)
+            storeBlock.r = operandItem
+        } else {
+            storeTernaryOperatorBody(baseBlock, storeBlock, operandItem, varType)
+        }
+
         logger.debug("Pushing $storeBlock")
         bHistory.push(storeBlock)
         val leftChild = LocalVertex(variableItem.id, variableItem.id, variableItem.type, currentLineNo, order++)
         hook.assignToBlock(currentMethod, leftChild, baseBlock.order)
+        if (maybeTernaryPair == null)
+            attachOperandItem(baseBlock, operandItem, varType)
+        bHistory.pop()
+    }
+
+    private fun storeTernaryOperatorBody(baseBlock: BlockVertex, storeBlock: StoreBlock, operandItem: OperandItem, varType: String) {
+        val body = bHistory.pop()
+        val root = bHistory.pop()
+        val pair = vertexStack.pop()
+        if (!bHistory.empty()) hook.joinBlocks(bHistory.peek().order, baseBlock.order)
+        else hook.assignToBlock(currentMethod, baseBlock, 0)
+        // Join if to store
+        val ifRoot = (pair.first as BlockVertex)
+        hook.joinBlocks(baseBlock.order, ifRoot.order)
+        // Create if-body and join latest stack const
+        val ifBodyVertex = BlockVertex("IF_BODY", order++, 1, "BOOLEAN", currentLineNo)
+        val elseBodyVertex = BlockVertex("ELSE_BODY", body.order, 1, "BOOLEAN", currentLineNo)
+        hook.createFreeBlock(ifBodyVertex)
+        hook.createFreeBlock(elseBodyVertex)
+        hook.joinBlocks(ifRoot.order, ifBodyVertex.order)
+        hook.joinBlocks(ifRoot.order, elseBodyVertex.order)
+        val ifBodyOperand = operandStack.pop()!!
+        attachOperandItem(ifBodyVertex, ifBodyOperand, ifBodyOperand.type)
+        storeBlock.r = root
+        hook.assignToBlock(LiteralVertex(operandItem.id, order++, 1, varType, currentLineNo), body.order)
+    }
+
+    private fun attachOperandItem(baseBlock: BlockVertex, operandItem: OperandItem, varType: String) {
         when (operandItem) {
             is OperatorItem -> {
                 vertexStack.push(Pair(baseBlock, pseudoLineNo))
                 handleOperator(operandItem)
             }
-            is ConstantItem -> {
+            is ConstantItem ->
                 hook.assignToBlock(
-                        currentMethod,
                         LiteralVertex(operandItem.id, order++, 1, varType, currentLineNo),
                         baseBlock.order)
-            }
-            is VariableItem -> {
+            is VariableItem ->
                 hook.assignToBlock(
-                        currentMethod,
                         LocalVertex(operandItem.id, operandItem.id, operandItem.type, currentLineNo, order++),
                         baseBlock.order)
-            }
         }
-        bHistory.pop()
     }
 
     /**
@@ -405,15 +416,24 @@ class ASTController(
             }
         } else BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
         this.methodInfo.upsertJumpRootAtLine(pseudoLineNo, condRoot.name)
-        logger.debug("Using ${if (condRoot.order == order - 1) "new" else "existing ${condRoot.name}"} vertex to represent IF_CMP")
+
+        val condBlock = BlockVertex(ASMParserUtil.parseAndFlipEquality(jumpOp).toString(), order++, 2, jumpType, currentLineNo)
+        logger.debug("Using ${if (condRoot.order == order - 2) "new" else "existing ${condRoot.name}"} vertex to represent IF_CMP")
         // We can tell if it's a brand new conditional route by checking the order
-        if (condRoot.order == order - 1) {
+        if (condRoot.order == order - 2) {
             if (maybeTernaryPair != null) {
-                // TODO: Don't assign block yet - this is a ternary cond
+               prepareStackForTernaryJump(label, condRoot, condBlock)
+
+            } else {
+                if (bHistory.isEmpty()) {
+                    hook.assignToBlock(currentMethod, condRoot, 0)
+                }
+                else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
+                pushJumpBlock(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
+                bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
             }
-            if (bHistory.isEmpty()) hook.assignToBlock(currentMethod, condRoot, 0) else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
-            pushJumpBlock(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
-            bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
+
+
         } else {
             // We need to find the corresponding ifcmp block since its current label property is null by #associateLineNumberWithLabel
             allJumpsEncountered.find { jumpBlock -> jumpBlock.order == condRoot.order }?.label = label
@@ -423,17 +443,30 @@ class ASTController(
             }
         }
 
-        val condBlock = BlockVertex(ASMParserUtil.parseAndFlipEquality(jumpOp).toString(), order++, 2, jumpType, currentLineNo)
-        hook.assignToBlock(currentMethod, condBlock, condRoot.order)
+        return buildJumpCondition(condBlock, condRoot, jumpOp, label, jumpType)
+    }
+
+    private fun prepareStackForTernaryJump(label: Label, condRoot: BlockVertex, condBlock: BlockVertex) {
+        logger.debug("Preparing the stack for a ternary jump")
+        hook.createFreeBlock(condRoot)
+        vertexStack.push(Pair(condBlock, pseudoLineNo))
+        vertexStack.push(Pair(condRoot, pseudoLineNo))
+        pushJumpBlock(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
+        bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
+    }
+
+    private fun buildJumpCondition(condBlock: BlockVertex, condRoot: BlockVertex, jumpOp: String, label: Label, jumpType: String): List<OperandItem> {
+        hook.createFreeBlock(condBlock)
+        hook.joinBlocks(condRoot.order, condBlock.order)
         // Add if-cond operands
         val ops = super.pushBinaryJump(jumpOp, label)
         logger.debug("Jump arguments = [" + ops[0] + ", " + ops[1] + "]")
         ops.forEach(Consumer { op: OperandItem ->
             when (op) {
                 is ConstantItem ->
-                    hook.assignToBlock(currentMethod, LiteralVertex(op.id, order++, 1, jumpType, currentLineNo), condBlock.order)
+                    hook.assignToBlock(LiteralVertex(op.id, order++, 1, jumpType, currentLineNo), condBlock.order)
                 is VariableItem ->
-                    hook.assignToBlock(currentMethod, LocalVertex(op.id, op.id, op.type, currentLineNo, order++), condBlock.order)
+                    hook.assignToBlock(LocalVertex(op.id, op.id, op.type, currentLineNo, order++), condBlock.order)
             }
         })
         return ops
@@ -478,7 +511,8 @@ class ASTController(
         logger.debug("Next operator: $operatorItem")
         val currBlock = BlockVertex(operatorItem.id, order++, 1, operatorItem.type, currentLineNo)
         val prevBlock = vertexStack.pop().first as BlockVertex
-        hook.assignToBlock(currentMethod, currBlock, prevBlock.order)
+        hook.createFreeBlock(currBlock)
+        hook.joinBlocks(prevBlock.order, currBlock.order)
 
         // TODO: Assume all operations that aren't automatically evaluated by compiler are binary
         val noOperands = 2
@@ -492,11 +526,11 @@ class ASTController(
                 }
                 is ConstantItem -> {
                     val literalVertex = LiteralVertex(stackItem.id, order++, 1, stackItem.type, currentLineNo)
-                    hook.assignToBlock(currentMethod, literalVertex, currBlock.order)
+                    hook.assignToBlock(literalVertex, currBlock.order)
                 }
                 is VariableItem -> {
                     val localVertex = LocalVertex(stackItem.id, stackItem.id, stackItem.type, currentLineNo, order++)
-                    hook.assignToBlock(currentMethod, localVertex, currBlock.order)
+                    hook.assignToBlock(localVertex, currBlock.order)
                 }
             }
         }

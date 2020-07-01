@@ -73,6 +73,7 @@ class Cannon(private val hook: IHook) {
      */
     fun fire() {
         loadedFiles.forEach(Consumer { f: File -> this.fire(f) })
+        loadedFiles.clear()
     }
 
     /**
