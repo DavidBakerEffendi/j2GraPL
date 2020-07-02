@@ -18,7 +18,11 @@ package za.ac.sun.grapl.controllers
 import org.objectweb.asm.Label
 import za.ac.sun.grapl.domain.meta.JumpInfo
 import za.ac.sun.grapl.domain.meta.LocalVarInfo
+import za.ac.sun.grapl.domain.stack.block.JumpBlock
 import za.ac.sun.grapl.util.ASMParserUtil
+import java.util.*
+import kotlin.collections.HashMap
+import kotlin.collections.LinkedHashSet
 import kotlin.collections.set
 
 data class MethodInfoController(
@@ -30,7 +34,7 @@ data class MethodInfoController(
 
     private val allVariables = mutableListOf<LocalVarInfo>()
     private val allJumps = LinkedHashSet<JumpInfo>()
-    private val ternaryPairs = HashMap<JumpInfo, JumpInfo>()
+    private val ternaryPairs = LinkedHashMap<JumpInfo, JumpInfo>()
     private val jumpRoot = HashMap<Int, String>()
 
     fun addVariable(frameId: Int) {
@@ -52,7 +56,7 @@ data class MethodInfoController(
 
 
     fun addTernaryPair(gotoOp: String, destLabel: Label, currentLabel: Label) {
-        val lastJump = allJumps.last()
+        val lastJump = allJumps.findLast { !ternaryPairs.containsKey(it) && it.jumpOp.contains("IF_")}!!
         addJump(gotoOp, destLabel, currentLabel)
         ternaryPairs[lastJump] = JumpInfo(gotoOp, destLabel, currentLabel, super.pseudoLineNo)
     }
@@ -63,8 +67,11 @@ data class MethodInfoController(
     }
 
     fun getAssociatedTernaryJump(pseudoLineNo: Int): Pair<JumpInfo, JumpInfo>? {
-        val assocLineInfo = getLineInfo(pseudoLineNo) ?: return null
-        return ternaryPairs.filter { k -> assocLineInfo.associatedLabels.contains(k.key.currLabel) }.takeIf { it.isNotEmpty() }?.entries?.first()?.toPair()
+        return ternaryPairs.filter { it.value.pseudoLineNo == pseudoLineNo }.takeIf { it.isNotEmpty() }?.entries?.first()?.toPair()
+    }
+
+    fun getAssociatedTernaryJump(pseudoLineNo: Int, blacklist: Stack<Pair<JumpInfo, JumpInfo>>): Pair<JumpInfo, JumpInfo>? {
+        return ternaryPairs.filter { ternPair -> ternPair.key.pseudoLineNo == pseudoLineNo && blacklist.none { it.first == ternPair.key } }.takeIf { it.isNotEmpty() }?.entries?.last()?.toPair()
     }
 
     fun getPseudoLineNumber(label: Label): Int = getLineInfo(label)?.pseudoLineNumber ?: -1

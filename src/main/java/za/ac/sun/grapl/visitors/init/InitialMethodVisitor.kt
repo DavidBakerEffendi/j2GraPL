@@ -30,6 +30,8 @@ class InitialMethodVisitor(
         private val methodInfoController: MethodInfoController
 ) : OpStackMethodVisitor(mv, methodInfoController), Opcodes {
 
+    private val logger = LogManager.getLogger()
+
     private var currentLabel: Label? = null
 
     override fun visitInsn(opcode: Int) {
@@ -109,10 +111,6 @@ class InitialMethodVisitor(
 
     override fun visitEnd() {
         logger.debug("\t}")
-    }
-
-    companion object {
-        private val logger = LogManager.getLogger()
     }
 
 }
