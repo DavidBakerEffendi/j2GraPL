@@ -45,6 +45,8 @@ class ASTController(
 
     private val bHistory = Stack<BlockItem>()
     private val allJumpsEncountered = HashSet<JumpBlock>()
+    // TODO: Not a fan of this solution but we will try
+    private val ternPairStack = Stack<Pair<JumpInfo, JumpInfo>>()
     private val vertexStack = Stack<Pair<GraPLVertex, Int>>()
     private val pairedBlocks: MutableMap<IfCmpBlock, GotoBlock?> = HashMap()
     private var order = 0
@@ -159,8 +161,13 @@ class ASTController(
         while (!bHistory.empty() && methodInfo.isLabelAssociatedWithLoops(bHistory.peek().label!!)) {
             bHistory.pop()
         }
-        val maybeTernaryPair = vertexStack.takeIf { it.isNotEmpty() }?.peek()?.second?.let { methodInfo.getAssociatedTernaryJump(it) }
-        if (maybeTernaryPair == null) {
+        println("yee")
+        // TODO: maybe tern pair should pop off all tern stack stuff
+        println("${vertexStack.size} $vertexStack")
+        println("${ternPairStack.size} $ternPairStack")
+//        val maybeTernaryPairs = getTernaryPairsFromStack(vertexStack)
+        val maybeTernaryPairs = this.vertexStack.takeIf { it.isNotEmpty() }?.peek()?.second?.let { methodInfo.getAssociatedTernaryJump(it) }
+        if (maybeTernaryPairs == null) {
             if (!bHistory.empty()) {
                 hook.assignToBlock(currentMethod, baseBlock, bHistory.peek().order)
             } else hook.assignToBlock(currentMethod, baseBlock, 0)
@@ -173,15 +180,23 @@ class ASTController(
         bHistory.push(storeBlock)
         val leftChild = LocalVertex(variableItem.id, variableItem.id, variableItem.type, currentLineNo, order++)
         hook.assignToBlock(currentMethod, leftChild, baseBlock.order)
-        if (maybeTernaryPair == null)
+        if (maybeTernaryPairs == null)
             attachOperandItem(baseBlock, operandItem, varType)
         bHistory.pop()
+    }
+
+    private fun getTernaryPairsFromStack(vertexStack: Stack<Pair<GraPLVertex, Int>>) {
+        // TODO: Get all the pairs
+        val ternStack = Stack<BlockVertex>()
+
+        this.vertexStack.takeIf { it.isNotEmpty() }?.peek()?.second?.let { methodInfo.getAssociatedTernaryJump(it) }
     }
 
     private fun storeTernaryOperatorBody(baseBlock: BlockVertex, storeBlock: StoreBlock, operandItem: OperandItem, varType: String) {
         val body = bHistory.pop()
         val root = bHistory.pop()
         val pair = vertexStack.pop()
+
         if (!bHistory.empty()) hook.joinBlocks(bHistory.peek().order, baseBlock.order)
         else hook.assignToBlock(currentMethod, baseBlock, 0)
         // Join if to store
@@ -403,7 +418,10 @@ class ASTController(
     override fun pushBinaryJump(jumpOp: String, label: Label): List<OperandItem> {
         logger.debug("Recognized binary jump $jumpOp with label $label")
         val jumpType = ASMParserUtil.getBinaryJumpType(jumpOp)
-        val maybeTernaryPair = methodInfo.getAssociatedTernaryJump(pseudoLineNo)
+        // TODO: Keep in mind how we're linking terns
+        val maybeTernaryPair = methodInfo.getAssociatedTernaryJump(pseudoLineNo, ternPairStack)
+        println("Selected pair: $maybeTernaryPair")
+        ternPairStack.push(maybeTernaryPair)
         // If, as in the case of do-while, the if block happens after the body and thus the if-node already exists,
         // we should fetch the corresponding if-node
         val condRoot: BlockVertex = if (!vertexStack.none { pair -> pair.first is BlockVertex }) {
@@ -423,7 +441,6 @@ class ASTController(
         if (condRoot.order == order - 2) {
             if (maybeTernaryPair != null) {
                prepareStackForTernaryJump(label, condRoot, condBlock)
-
             } else {
                 if (bHistory.isEmpty()) {
                     hook.assignToBlock(currentMethod, condRoot, 0)
