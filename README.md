@@ -16,6 +16,7 @@ j2GraPL is currently under development. It has the following capabilities:
     - Arithmetic
     - If-else
     - While and do-while
+    - Ternary operator assignments with primitives
 * Can project to all graph databases currently supported by [GraPLHook4j](https://github.com/DavidBakerEffendi/GraPLHook4j).
 * Currently, accepts source code, class files (or directories containing either), and JAR files.
 
