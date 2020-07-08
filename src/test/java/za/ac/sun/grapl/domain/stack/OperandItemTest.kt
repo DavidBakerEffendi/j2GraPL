@@ -1,22 +1,21 @@
-package za.ac.sun.grapl.domain.meta
+package za.ac.sun.grapl.domain.stack
 
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotEquals
 import org.junit.jupiter.api.Test
-import za.ac.sun.grapl.util.ASMParserUtil
 
-class ClassInfoTest {
+class OperandItemTest {
+
+    inner class OperandChild(par1: String, par2: String) : OperandItem(par1, par2)
 
     @Test
     fun equalsTest() {
-        val value1 = ClassInfo(STRING_1, STRING_1, INT_1)
-        val value2 = ClassInfo(STRING_1, STRING_1, INT_1)
-        val value3 = ClassInfo(STRING_2, STRING_1, INT_1)
-        val value4 = ClassInfo(STRING_1, STRING_2, INT_1)
+        val value1 = OperandChild(STRING_1, STRING_1)
+        val value2 = OperandChild(STRING_1, STRING_1)
+        val value3 = OperandChild(STRING_2, STRING_1)
         assertEquals(value1, value1)
         assertEquals(value1, value2)
         assertNotEquals(value1, value3)
-        assertNotEquals(value1, value4)
         assertNotEquals(value1, STRING_1)
         assertEquals(value1.hashCode(), value2.hashCode())
         assertNotEquals(value1.hashCode(), value3.hashCode())
@@ -24,12 +23,11 @@ class ClassInfoTest {
 
     @Test
     fun toStringTest() {
-        val value1 = ClassInfo(STRING_1, STRING_1, INT_1)
-        assertEquals("${ASMParserUtil.determineModifiers(INT_1)} $STRING_1.$STRING_1", value1.toString())
+        val value1 = OperandChild(STRING_1, STRING_1)
+        assertEquals("OperandItem(id='$STRING_1', type='$STRING_1')", value1.toString())
     }
 
     companion object {
-        const val INT_1 = 1
         const val STRING_1 = "TEST1"
         const val STRING_2 = "TEST2"
     }

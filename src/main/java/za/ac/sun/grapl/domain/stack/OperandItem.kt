@@ -14,4 +14,8 @@ abstract class OperandItem(val id: String, val type: String) : StackItem {
         return Objects.hash(id)
     }
 
+    override fun toString(): String {
+        return "OperandItem(id='$id', type='$type')"
+    }
+
 }
