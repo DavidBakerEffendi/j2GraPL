@@ -48,7 +48,7 @@ abstract class OpStackController(var allLines: HashSet<LineInfo> = HashSet()) : 
 
     protected fun getLineInfo(label: Label): LineInfo? = allLines.find { lineInfo -> lineInfo.associatedLabels.contains(label) }
 
-    fun pushConstInsnOperation(`val`: Any) {
+    open fun pushConstInsnOperation(`val`: Any): ConstantItem {
         val canonicalType = `val`.javaClass.canonicalName.replace("\\.".toRegex(), "/")
         val className = canonicalType.substring(canonicalType.lastIndexOf("/") + 1)
         val stackItem: ConstantItem
@@ -59,9 +59,10 @@ abstract class OpStackController(var allLines: HashSet<LineInfo> = HashSet()) : 
         }
         logger.debug("Pushing $stackItem")
         operandStack.push(stackItem)
+        return stackItem
     }
 
-    fun pushConstInsnOperation(opcode: Int) {
+    open fun pushConstInsnOperation(opcode: Int): OperandItem? {
         val line = ASMifier.OPCODES[opcode]
         val type: String
         var item: OperandItem? = null
@@ -76,13 +77,15 @@ abstract class OpStackController(var allLines: HashSet<LineInfo> = HashSet()) : 
             logger.debug("Pushing $item")
             operandStack.push(item)
         }
+        return item
     }
 
-    fun pushConstInsnOperation(opcode: Int, operand: Int) {
+    open fun pushConstInsnOperation(opcode: Int, operand: Int): ConstantItem {
         val type = ASMParserUtil.getReadableType(ASMifier.OPCODES[opcode][0])
         val item = ConstantItem(operand.toString(), type)
         logger.debug("Pushing $item")
         operandStack.push(item)
+        return item
     }
 
     /**
@@ -107,10 +110,11 @@ abstract class OpStackController(var allLines: HashSet<LineInfo> = HashSet()) : 
      * @param varName   the variable name.
      * @param operation the load operation.
      */
-    fun pushVarInsnLoad(varName: Int, operation: String) {
+    open fun pushVarInsnLoad(varName: Int, operation: String): VariableItem {
         val variableItem = getOrPutVariable(varName, ASMParserUtil.getStackOperationType(operation))
         logger.debug("Pushing $variableItem")
         operandStack.push(variableItem)
+        return variableItem
     }
 
     fun getOrPutVariable(varName: Int, type: String): VariableItem {

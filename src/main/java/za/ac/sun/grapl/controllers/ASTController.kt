@@ -25,6 +25,7 @@ import za.ac.sun.grapl.domain.models.GraPLVertex
 import za.ac.sun.grapl.domain.models.vertices.*
 import za.ac.sun.grapl.domain.stack.BlockItem
 import za.ac.sun.grapl.domain.stack.OperandItem
+import za.ac.sun.grapl.domain.stack.StackItem
 import za.ac.sun.grapl.domain.stack.block.*
 import za.ac.sun.grapl.domain.stack.operand.ConstantItem
 import za.ac.sun.grapl.domain.stack.operand.OperatorItem
@@ -45,8 +46,10 @@ class ASTController(
 
     private val bHistory = Stack<BlockItem>()
     private val allJumpsEncountered = HashSet<JumpBlock>()
+
     // TODO: Not a fan of this solution but we will try
     private val ternPairStack = Stack<Pair<JumpInfo, JumpInfo>>()
+    private val blockTernList = mutableListOf<StackItem>()
     private val vertexStack = Stack<Pair<GraPLVertex, Int>>()
     private val pairedBlocks: MutableMap<IfCmpBlock, GotoBlock?> = HashMap()
     private var order = 0
@@ -141,7 +144,7 @@ class ASTController(
         )
         // Create MODIFIER
         ASMParserUtil.determineModifiers(access, methodName)
-                .forEach(Consumer { m: ModifierTypes? -> hook.createAndAddToMethod(currentMethod, ModifierVertex(m, order++)) })
+                .forEach(Consumer { m: ModifierTypes -> hook.createAndAddToMethod(currentMethod, ModifierVertex(m, order++)) })
     }
 
     /**
@@ -150,69 +153,82 @@ class ASTController(
      * @param operation the store operation.
      * @param varName   the variable name.
      */
+    @ExperimentalStdlibApi
     override fun pushVarInsnStore(varName: Int, operation: String) {
         val operandItem = operandStack.pop()!!
         val varType = ASMParserUtil.getStackOperationType(operation)
         val variableItem = getOrPutVariable(varName, varType)
-        val baseBlock = BlockVertex("STORE", order++, 1, varType, currentLineNo)
-        val storeBlock = StoreBlock(order, currentLabel)
+        val storeVertex = BlockVertex("STORE", order++, 1, varType, currentLineNo)
+        val storeBlock = StoreBlock(order - 1, currentLabel)
         storeBlock.l = variableItem
         // Avoid attaching to loop roots
         while (!bHistory.empty() && methodInfo.isLabelAssociatedWithLoops(bHistory.peek().label!!)) {
             bHistory.pop()
         }
-        println("yee")
-        // TODO: maybe tern pair should pop off all tern stack stuff
-        println("${vertexStack.size} $vertexStack")
-        println("${ternPairStack.size} $ternPairStack")
-//        val maybeTernaryPairs = getTernaryPairsFromStack(vertexStack)
-        val maybeTernaryPairs = this.vertexStack.takeIf { it.isNotEmpty() }?.peek()?.second?.let { methodInfo.getAssociatedTernaryJump(it) }
-        if (maybeTernaryPairs == null) {
-            if (!bHistory.empty()) {
-                hook.assignToBlock(currentMethod, baseBlock, bHistory.peek().order)
-            } else hook.assignToBlock(currentMethod, baseBlock, 0)
+        // Check if this stores the result of a ternary operator
+        val maybeTernaryRootVertices = getTernaryVerticesFromStack(vertexStack)
+        if (!bHistory.empty()) hook.assignToBlock(currentMethod, storeVertex, bHistory.peek().order)
+        else hook.assignToBlock(currentMethod, storeVertex, 0)
+        if (maybeTernaryRootVertices.isNullOrEmpty()) {
             storeBlock.r = operandItem
+            hook.assignToBlock(LiteralVertex(operandItem.id, order++, 1, varType, currentLineNo), storeBlock.order)
         } else {
-            storeTernaryOperatorBody(baseBlock, storeBlock, operandItem, varType)
+            // Push operand back in the stack and let the function handle building a ternary store
+            operandStack.push(operandItem)
+            storeBlock.r = blockTernList.first()
+            storeTernaryOperatorBody(storeVertex, varType, maybeTernaryRootVertices)
         }
 
         logger.debug("Pushing $storeBlock")
         bHistory.push(storeBlock)
         val leftChild = LocalVertex(variableItem.id, variableItem.id, variableItem.type, currentLineNo, order++)
-        hook.assignToBlock(currentMethod, leftChild, baseBlock.order)
-        if (maybeTernaryPairs == null)
-            attachOperandItem(baseBlock, operandItem, varType)
+        hook.assignToBlock(currentMethod, leftChild, storeVertex.order)
+        if (maybeTernaryRootVertices == null)
+            attachOperandItem(storeVertex, operandItem, varType)
         bHistory.pop()
     }
 
-    private fun getTernaryPairsFromStack(vertexStack: Stack<Pair<GraPLVertex, Int>>) {
-        // TODO: Get all the pairs
-        val ternStack = Stack<BlockVertex>()
-
-        this.vertexStack.takeIf { it.isNotEmpty() }?.peek()?.second?.let { methodInfo.getAssociatedTernaryJump(it) }
+    private fun getTernaryVerticesFromStack(vertexStack: Stack<Pair<GraPLVertex, Int>>): Stack<Pair<GraPLVertex, Int>>? {
+        val stack = Stack<Pair<GraPLVertex, Int>>()
+        vertexStack.takeIf { it.isNotEmpty() }?.filter { pair -> methodInfo.getAssociatedTernaryJump(pair.second) != null }?.apply { stack.addAll(this.reversed()) }
+        return stack
     }
 
-    private fun storeTernaryOperatorBody(baseBlock: BlockVertex, storeBlock: StoreBlock, operandItem: OperandItem, varType: String) {
-        val body = bHistory.pop()
-        val root = bHistory.pop()
-        val pair = vertexStack.pop()
-
-        if (!bHistory.empty()) hook.joinBlocks(bHistory.peek().order, baseBlock.order)
-        else hook.assignToBlock(currentMethod, baseBlock, 0)
-        // Join if to store
-        val ifRoot = (pair.first as BlockVertex)
-        hook.joinBlocks(baseBlock.order, ifRoot.order)
-        // Create if-body and join latest stack const
-        val ifBodyVertex = BlockVertex("IF_BODY", order++, 1, "BOOLEAN", currentLineNo)
-        val elseBodyVertex = BlockVertex("ELSE_BODY", body.order, 1, "BOOLEAN", currentLineNo)
-        hook.createFreeBlock(ifBodyVertex)
-        hook.createFreeBlock(elseBodyVertex)
-        hook.joinBlocks(ifRoot.order, ifBodyVertex.order)
-        hook.joinBlocks(ifRoot.order, elseBodyVertex.order)
-        val ifBodyOperand = operandStack.pop()!!
-        attachOperandItem(ifBodyVertex, ifBodyOperand, ifBodyOperand.type)
-        storeBlock.r = root
-        hook.assignToBlock(LiteralVertex(operandItem.id, order++, 1, varType, currentLineNo), body.order)
+    @ExperimentalStdlibApi
+    private fun storeTernaryOperatorBody(storeVertex: BlockVertex, varType: String, ternaryRootVertices: Stack<Pair<GraPLVertex, Int>>) {
+        val jumpRoots = Stack<BlockVertex>().apply { push(storeVertex) }
+        var lastBody: BlockVertex? = storeVertex
+        while (blockTernList.isNotEmpty()) {
+            when (val ternBlock = blockTernList.removeFirst()) {
+                is IfCmpBlock -> {
+                    // Join hook to last body or the store block
+                    hook.joinBlocks(ternBlock.order, lastBody!!.order)
+                    jumpRoots.push(ternaryRootVertices.removeLast().first as BlockVertex)
+                    lastBody = BlockVertex("IF_BODY", order++, 1, "BOOLEAN", currentLineNo)
+                    hook.createFreeBlock(lastBody)
+                    hook.joinBlocks(jumpRoots.peek().order, lastBody.order)
+                }
+                is GotoBlock -> {
+                    lastBody = BlockVertex("ELSE_BODY", order++, 1, "BOOLEAN", currentLineNo)
+                    hook.createFreeBlock(lastBody)
+                    hook.joinBlocks(jumpRoots.peek().order, lastBody.order)
+                }
+                is ConstantItem -> {
+                    operandStack.remove(ternBlock)
+                    hook.assignToBlock(
+                            LiteralVertex(ternBlock.id, order++, 1, varType, currentLineNo),
+                            lastBody!!.order)
+                    if (lastBody.name == "ELSE_BODY") jumpRoots.pop()
+                }
+                is VariableItem -> {
+                    operandStack.remove(ternBlock)
+                    hook.assignToBlock(
+                            LocalVertex(ternBlock.id, ternBlock.id, ternBlock.type, currentLineNo, order++),
+                            lastBody!!.order)
+                    if (lastBody.name == "ELSE_BODY") jumpRoots.pop()
+                }
+            }
+        }
     }
 
     private fun attachOperandItem(baseBlock: BlockVertex, operandItem: OperandItem, varType: String) {
@@ -357,6 +373,7 @@ class ASTController(
         val jumpHistory = JumpStackUtil.getJumpHistory(bHistory)
         val lastJump = JumpStackUtil.getLastJump(bHistory) ?: allJumpsEncountered.maxBy { j -> j.order }
         val currentBlock = GotoBlock(order, currentLabel, label, lastJump!!.position)
+        if (blockTernList.isNotEmpty()) blockTernList.add(currentBlock)
         logger.debug("Pushing $currentBlock")
         // Retain info learned from this method
         allJumpsEncountered.add(currentBlock)
@@ -415,12 +432,11 @@ class ASTController(
      * @param jumpOp the jump operation.
      * @param label  the label to jump to if the jump condition is satisfied.
      */
+    @ExperimentalStdlibApi
     override fun pushBinaryJump(jumpOp: String, label: Label): List<OperandItem> {
         logger.debug("Recognized binary jump $jumpOp with label $label")
         val jumpType = ASMParserUtil.getBinaryJumpType(jumpOp)
-        // TODO: Keep in mind how we're linking terns
         val maybeTernaryPair = methodInfo.getAssociatedTernaryJump(pseudoLineNo, ternPairStack)
-        println("Selected pair: $maybeTernaryPair")
         ternPairStack.push(maybeTernaryPair)
         // If, as in the case of do-while, the if block happens after the body and thus the if-node already exists,
         // we should fetch the corresponding if-node
@@ -439,14 +455,19 @@ class ASTController(
         logger.debug("Using ${if (condRoot.order == order - 2) "new" else "existing ${condRoot.name}"} vertex to represent IF_CMP")
         // We can tell if it's a brand new conditional route by checking the order
         if (condRoot.order == order - 2) {
+            val ifCmpBlock = IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT)
             if (maybeTernaryPair != null) {
-               prepareStackForTernaryJump(label, condRoot, condBlock)
-            } else {
-                if (bHistory.isEmpty()) {
-                    hook.assignToBlock(currentMethod, condRoot, 0)
+                prepareStackForTernaryJump(label, condRoot)
+                if (blockTernList.isNotEmpty()) {
+                    // Remove blocks used in the conditional
+                    blockTernList.removeLastOrNull()
+                    blockTernList.removeLastOrNull()
                 }
+                blockTernList.add(ifCmpBlock)
+            } else {
+                if (bHistory.isEmpty()) hook.assignToBlock(currentMethod, condRoot, 0)
                 else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
-                pushJumpBlock(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
+                pushJumpBlock(ifCmpBlock)
                 bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
             }
 
@@ -463,13 +484,11 @@ class ASTController(
         return buildJumpCondition(condBlock, condRoot, jumpOp, label, jumpType)
     }
 
-    private fun prepareStackForTernaryJump(label: Label, condRoot: BlockVertex, condBlock: BlockVertex) {
+    private fun prepareStackForTernaryJump(label: Label, condRoot: BlockVertex) {
         logger.debug("Preparing the stack for a ternary jump")
         hook.createFreeBlock(condRoot)
-        vertexStack.push(Pair(condBlock, pseudoLineNo))
         vertexStack.push(Pair(condRoot, pseudoLineNo))
-        pushJumpBlock(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
-        bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
+        allJumpsEncountered.add(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
     }
 
     private fun buildJumpCondition(condBlock: BlockVertex, condRoot: BlockVertex, jumpOp: String, label: Label, jumpType: String): List<OperandItem> {
@@ -487,6 +506,30 @@ class ASTController(
             }
         })
         return ops
+    }
+
+    override fun pushConstInsnOperation(`val`: Any): ConstantItem {
+        val operandItem = super.pushConstInsnOperation(`val`)
+        if (blockTernList.isNotEmpty()) blockTernList.add(operandItem)
+        return operandItem
+    }
+
+    override fun pushConstInsnOperation(opcode: Int): OperandItem? {
+        val operandItem = super.pushConstInsnOperation(opcode)
+        if (operandItem is ConstantItem && blockTernList.isNotEmpty()) blockTernList.add(operandItem)
+        return operandItem
+    }
+
+    override fun pushConstInsnOperation(opcode: Int, operand: Int): ConstantItem {
+        val operandItem = super.pushConstInsnOperation(opcode, operand)
+        if (blockTernList.isNotEmpty()) blockTernList.add(operandItem)
+        return operandItem
+    }
+
+    override fun pushVarInsnLoad(varName: Int, operation: String): VariableItem {
+        val varIns = super.pushVarInsnLoad(varName, operation)
+        if (blockTernList.isNotEmpty()) blockTernList.add(varIns)
+        return varIns
     }
 
     /**
