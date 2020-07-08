@@ -46,8 +46,6 @@ class ASTController(
 
     private val bHistory = Stack<BlockItem>()
     private val allJumpsEncountered = HashSet<JumpBlock>()
-
-    // TODO: Not a fan of this solution but we will try
     private val ternPairStack = Stack<Pair<JumpInfo, JumpInfo>>()
     private val blockTernList = mutableListOf<StackItem>()
     private val vertexStack = Stack<Pair<GraPLVertex, Int>>()
@@ -169,22 +167,24 @@ class ASTController(
         val maybeTernaryRootVertices = getTernaryVerticesFromStack(vertexStack)
         if (!bHistory.empty()) hook.assignToBlock(currentMethod, storeVertex, bHistory.peek().order)
         else hook.assignToBlock(currentMethod, storeVertex, 0)
-        if (maybeTernaryRootVertices.isNullOrEmpty()) {
+        val handlingTernaryStore = maybeTernaryRootVertices.isNullOrEmpty()
+        if (handlingTernaryStore) {
             storeBlock.r = operandItem
-            hook.assignToBlock(LiteralVertex(operandItem.id, order++, 1, varType, currentLineNo), storeBlock.order)
         } else {
             // Push operand back in the stack and let the function handle building a ternary store
             operandStack.push(operandItem)
             storeBlock.r = blockTernList.first()
-            storeTernaryOperatorBody(storeVertex, varType, maybeTernaryRootVertices)
+            storeTernaryOperatorBody(storeVertex, varType, maybeTernaryRootVertices!!)
         }
 
         logger.debug("Pushing $storeBlock")
         bHistory.push(storeBlock)
         val leftChild = LocalVertex(variableItem.id, variableItem.id, variableItem.type, currentLineNo, order++)
         hook.assignToBlock(currentMethod, leftChild, storeVertex.order)
-        if (maybeTernaryRootVertices == null)
+        if (handlingTernaryStore) {
+            // TODO: Check what happens if ternary happens within an expression
             attachOperandItem(storeVertex, operandItem, varType)
+        }
         bHistory.pop()
     }
 
@@ -202,7 +202,7 @@ class ASTController(
             when (val ternBlock = blockTernList.removeFirst()) {
                 is IfCmpBlock -> {
                     // Join hook to last body or the store block
-                    hook.joinBlocks(ternBlock.order, lastBody!!.order)
+                    hook.joinBlocks(lastBody!!.order, ternBlock.order)
                     jumpRoots.push(ternaryRootVertices.removeLast().first as BlockVertex)
                     lastBody = BlockVertex("IF_BODY", order++, 1, "BOOLEAN", currentLineNo)
                     hook.createFreeBlock(lastBody)
@@ -470,8 +470,6 @@ class ASTController(
                 pushJumpBlock(ifCmpBlock)
                 bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
             }
-
-
         } else {
             // We need to find the corresponding ifcmp block since its current label property is null by #associateLineNumberWithLabel
             allJumpsEncountered.find { jumpBlock -> jumpBlock.order == condRoot.order }?.label = label
