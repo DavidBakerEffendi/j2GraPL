@@ -15,6 +15,7 @@ import za.ac.sun.grapl.Cannon;
 import za.ac.sun.grapl.domain.enums.EdgeLabels;
 import za.ac.sun.grapl.domain.enums.Equality;
 import za.ac.sun.grapl.domain.models.vertices.BlockVertex;
+import za.ac.sun.grapl.domain.models.vertices.LiteralVertex;
 import za.ac.sun.grapl.domain.models.vertices.LocalVertex;
 import za.ac.sun.grapl.hooks.TinkerGraphHook;
 import za.ac.sun.grapl.util.ResourceCompilationUtil;
@@ -553,7 +554,7 @@ public class ConditionalIntraproceduralTest {
         assertTrue(elseIfRootTraversal.hasNext());
         final Vertex elseIfRoot = elseIfRootTraversal.next();
         // Check the else-if-body branch
-        final GraphTraversal<Vertex, Vertex> elseIfBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseIfRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "37");
+        final GraphTraversal<Vertex, Vertex> elseIfBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseIfRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "38");
         assertTrue(elseIfBodyTraversal.hasNext());
         final Vertex elseIfBody = elseIfBodyTraversal.next();
         final GraphTraversal<Vertex, Vertex> elseIfStoreOpTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseIfBody, BlockVertex.LABEL, "name", "STORE");
@@ -597,7 +598,7 @@ public class ConditionalIntraproceduralTest {
         assertTrue(elseIfRootTraversal.hasNext());
         final Vertex elseIfRoot = elseIfRootTraversal.next();
         // Check the else-if-body branch
-        final GraphTraversal<Vertex, Vertex> elseIfBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseIfRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "37");
+        final GraphTraversal<Vertex, Vertex> elseIfBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseIfRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "38");
         assertTrue(elseIfBodyTraversal.hasNext());
         final Vertex elseIfBody = elseIfBodyTraversal.next();
         final GraphTraversal<Vertex, Vertex> elseIfStoreOpTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseIfBody, BlockVertex.LABEL, "name", "STORE");
@@ -609,7 +610,7 @@ public class ConditionalIntraproceduralTest {
         assertTrue(elseElseBodyTraversal.hasNext());
         final Vertex elseElseBody = elseElseBodyTraversal.next();
         // Check the else-else-if-body branch
-        final GraphTraversal<Vertex, Vertex> elseElseIfBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseElseBody, BlockVertex.LABEL, "name", "IF_BODY").has("order", "49");
+        final GraphTraversal<Vertex, Vertex> elseElseIfBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseElseBody, BlockVertex.LABEL, "name", "IF_BODY").has("order", "50");
         assertTrue(elseElseIfBodyTraversal.hasNext());
         final Vertex elseElseIfBody = elseElseIfBodyTraversal.next();
         final GraphTraversal<Vertex, Vertex> elseElseStoreOpTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseElseIfBody, BlockVertex.LABEL, "name", "STORE");
@@ -637,11 +638,11 @@ public class ConditionalIntraproceduralTest {
         assertTrue(ifRootTraversal.hasNext());
         final Vertex ifRoot = ifRootTraversal.next();
         // Check the if-body branch
-        final GraphTraversal<Vertex, Vertex> ifBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "20");
+        final GraphTraversal<Vertex, Vertex> ifBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "21");
         assertTrue(ifBodyTraversal.hasNext());
         final Vertex ifBody = ifBodyTraversal.next();
         // Check the if-if-body branch
-        final GraphTraversal<Vertex, Vertex> ifIfBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifBody, BlockVertex.LABEL, "name", "IF_BODY").has("order", "30");
+        final GraphTraversal<Vertex, Vertex> ifIfBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifBody, BlockVertex.LABEL, "name", "IF_BODY").has("order", "31");
         assertTrue(ifIfBodyTraversal.hasNext());
         final Vertex ifIfBody = ifIfBodyTraversal.next();
         final GraphTraversal<Vertex, Vertex> ifIfStoreOpTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifIfBody, BlockVertex.LABEL, "name", "STORE");
@@ -657,7 +658,7 @@ public class ConditionalIntraproceduralTest {
         assertTrue(elseIfRootTraversal.hasNext());
         final Vertex elseIfRoot = elseIfRootTraversal.next();
         // Check the else-if-body branch
-        final GraphTraversal<Vertex, Vertex> elseIfBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseIfRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "42");
+        final GraphTraversal<Vertex, Vertex> elseIfBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseIfRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "43");
         assertTrue(elseIfBodyTraversal.hasNext());
         final Vertex elseIfBody = elseIfBodyTraversal.next();
         final GraphTraversal<Vertex, Vertex> elseIfStoreOpTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseIfBody, BlockVertex.LABEL, "name", "STORE");
@@ -693,7 +694,7 @@ public class ConditionalIntraproceduralTest {
         assertTrue(ifRootTraversal.hasNext());
         final Vertex ifRoot = ifRootTraversal.next();
         // Check the if-body branch
-        final GraphTraversal<Vertex, Vertex> ifBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "20");
+        final GraphTraversal<Vertex, Vertex> ifBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "21");
         assertTrue(ifBodyTraversal.hasNext());
         final Vertex ifBody = ifBodyTraversal.next();
         final GraphTraversal<Vertex, Vertex> ifIfStoreOpTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifBody, BlockVertex.LABEL, "name", "STORE");
@@ -709,13 +710,123 @@ public class ConditionalIntraproceduralTest {
         assertTrue(elseIfRootTraversal.hasNext());
         final Vertex elseIfRoot = elseIfRootTraversal.next();
         // Check the else-if-body branch
-        final GraphTraversal<Vertex, Vertex> elseIfBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseIfRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "37");
+        final GraphTraversal<Vertex, Vertex> elseIfBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseIfRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "38");
         assertTrue(elseIfBodyTraversal.hasNext());
         final Vertex elseIfBody = elseIfBodyTraversal.next();
         final GraphTraversal<Vertex, Vertex> elseIfStoreOpTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseIfBody, BlockVertex.LABEL, "name", "STORE");
         assertTrue(elseIfStoreOpTraversal.hasNext());
         final Vertex elseIfStoreOp = elseIfStoreOpTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, elseIfStoreOp, BlockVertex.LABEL, "name", "MUL").hasNext());
+    }
+
+    @Test
+    public void conditional15Test() {
+        // Get store root
+        final GraphTraversal<Vertex, Vertex> storeTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE").has("order", "23");
+        assertTrue(storeTraversal.hasNext());
+        final Vertex storeVertex = storeTraversal.next();
+        // Left child
+        final GraphTraversal<Vertex, Vertex> localVarTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, storeVertex, LocalVertex.LABEL, "name", "3", 1).has("order", "28");
+        assertTrue(localVarTraversal.hasNext());
+        // Get conditional root
+        final GraphTraversal<Vertex, Vertex> ifRootTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, storeVertex, BlockVertex.LABEL, "name", "IF", 3).has("order", "19");
+        assertTrue(ifRootTraversal.hasNext());
+        final Vertex ifRoot = ifRootTraversal.next();
+        // Check the if-body branch
+        final GraphTraversal<Vertex, Vertex> ifBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "24");
+        assertTrue(ifBodyTraversal.hasNext());
+        final Vertex ifBody = ifBodyTraversal.next();
+        final GraphTraversal<Vertex, Vertex> ifBodyLiteral = getVertexAlongEdge(g, EdgeLabels.AST, ifBody, LiteralVertex.LABEL, "name", "2");
+        assertTrue(ifBodyLiteral.hasNext());
+        // Check the else-body branch
+        final GraphTraversal<Vertex, Vertex> elseBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifRoot, BlockVertex.LABEL, "name", "ELSE_BODY").has("order", "26");
+        assertTrue(elseBodyTraversal.hasNext());
+        final Vertex elseBody = elseBodyTraversal.next();
+        final GraphTraversal<Vertex, Vertex> elseBodyLiteral = getVertexAlongEdge(g, EdgeLabels.AST, elseBody, LiteralVertex.LABEL, "name", "1");
+        assertTrue(elseBodyLiteral.hasNext());
+    }
+
+    @Test
+    public void conditional16Test() {
+        // Get store root
+        final GraphTraversal<Vertex, Vertex> storeTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE").has("order", "27");
+        assertTrue(storeTraversal.hasNext());
+        final Vertex storeVertex = storeTraversal.next();
+        // Left child
+        final GraphTraversal<Vertex, Vertex> localVarTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, storeVertex, LocalVertex.LABEL, "name", "3", 1).has("order", "35");
+        assertTrue(localVarTraversal.hasNext());
+        // Get conditional root
+        final GraphTraversal<Vertex, Vertex> ifRootTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, storeVertex, BlockVertex.LABEL, "name", "IF", 3).has("order", "19");
+        assertTrue(ifRootTraversal.hasNext());
+        final Vertex ifRoot = ifRootTraversal.next();
+        // Check the if-body branch
+        final GraphTraversal<Vertex, Vertex> ifBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "28");
+        assertTrue(ifBodyTraversal.hasNext());
+        final Vertex ifBody = ifBodyTraversal.next();
+        // Check the if-if-root
+        final GraphTraversal<Vertex, Vertex> ifIfRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifBody, BlockVertex.LABEL, "name", "IF").has("order", "23");
+        assertTrue(ifIfRootTraversal.hasNext());
+        final Vertex ifIfRoot = ifIfRootTraversal.next();
+        // Check the if-if-body branch
+        final GraphTraversal<Vertex, Vertex> ifIfBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifIfRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "29");
+        assertTrue(ifIfBodyTraversal.hasNext());
+        final Vertex ifIfBody = ifIfBodyTraversal.next();
+        final GraphTraversal<Vertex, Vertex> ifBodyLiteral = getVertexAlongEdge(g, EdgeLabels.AST, ifIfBody, LiteralVertex.LABEL, "name", "2");
+        assertTrue(ifBodyLiteral.hasNext());
+        // Check the if-else-body branch
+        final GraphTraversal<Vertex, Vertex> ifElseBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifIfRoot, BlockVertex.LABEL, "name", "ELSE_BODY").has("order", "31");
+        assertTrue(ifElseBodyTraversal.hasNext());
+        final Vertex ifElseBody = ifElseBodyTraversal.next();
+        final GraphTraversal<Vertex, Vertex> ifElseBodyLiteral = getVertexAlongEdge(g, EdgeLabels.AST, ifElseBody, LiteralVertex.LABEL, "name", "4");
+        assertTrue(ifElseBodyLiteral.hasNext());
+        // Check the else-body branch
+        final GraphTraversal<Vertex, Vertex> elseBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifRoot, BlockVertex.LABEL, "name", "ELSE_BODY").has("order", "33");
+        assertTrue(elseBodyTraversal.hasNext());
+        final Vertex elseBody = elseBodyTraversal.next();
+        final GraphTraversal<Vertex, Vertex> elseBodyLiteral = getVertexAlongEdge(g, EdgeLabels.AST, elseBody, LiteralVertex.LABEL, "name", "1");
+        assertTrue(elseBodyLiteral.hasNext());
+    }
+
+    @Test
+    public void conditional17Test() {
+        // Get store root
+        final GraphTraversal<Vertex, Vertex> storeTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE").has("order", "27");
+        assertTrue(storeTraversal.hasNext());
+        final Vertex storeVertex = storeTraversal.next();
+        // Left child
+        final GraphTraversal<Vertex, Vertex> localVarTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, storeVertex, LocalVertex.LABEL, "name", "3", 1).has("order", "35");
+        assertTrue(localVarTraversal.hasNext());
+        // Get conditional root
+        final GraphTraversal<Vertex, Vertex> ifRootTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, storeVertex, BlockVertex.LABEL, "name", "IF", 3).has("order", "19");
+        assertTrue(ifRootTraversal.hasNext());
+        final Vertex ifRoot = ifRootTraversal.next();
+        // Check the if-body branch
+        final GraphTraversal<Vertex, Vertex> ifBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "28");
+        assertTrue(ifBodyTraversal.hasNext());
+        final Vertex ifBody = ifBodyTraversal.next();
+        final GraphTraversal<Vertex, Vertex> elseBodyLiteral = getVertexAlongEdge(g, EdgeLabels.AST, ifBody, LocalVertex.LABEL, "name", "1");
+        assertTrue(elseBodyLiteral.hasNext());
+        // Check the else-body branch
+        final GraphTraversal<Vertex, Vertex> elseBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifRoot, BlockVertex.LABEL, "name", "ELSE_BODY").has("order", "30");
+        assertTrue(elseBodyTraversal.hasNext());
+        final Vertex elseBody = elseBodyTraversal.next();
+        // Check the else-if-root
+        final GraphTraversal<Vertex, Vertex> ifIfRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, elseBody, BlockVertex.LABEL, "name", "IF").has("order", "23");
+        assertTrue(ifIfRootTraversal.hasNext());
+        final Vertex ifIfRoot = ifIfRootTraversal.next();
+        // Check the else-if-body branch
+        final GraphTraversal<Vertex, Vertex> ifIfBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifIfRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "31");
+        assertTrue(ifIfBodyTraversal.hasNext());
+        final Vertex ifIfBody = ifIfBodyTraversal.next();
+        final GraphTraversal<Vertex, Vertex> ifBodyLiteral = getVertexAlongEdge(g, EdgeLabels.AST, ifIfBody, LiteralVertex.LABEL, "name", "2");
+        assertTrue(ifBodyLiteral.hasNext());
+        // Check the else-else-body branch
+        final GraphTraversal<Vertex, Vertex> ifElseBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifIfRoot, BlockVertex.LABEL, "name", "ELSE_BODY").has("order", "33");
+        assertTrue(ifElseBodyTraversal.hasNext());
+        final Vertex ifElseBody = ifElseBodyTraversal.next();
+        final GraphTraversal<Vertex, Vertex> ifElseBodyLiteral = getVertexAlongEdge(g, EdgeLabels.AST, ifElseBody, LiteralVertex.LABEL, "name", "4");
+        assertTrue(ifElseBodyLiteral.hasNext());
+
     }
 
 }

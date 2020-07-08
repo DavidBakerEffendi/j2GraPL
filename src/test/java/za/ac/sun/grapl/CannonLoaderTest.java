@@ -6,9 +6,7 @@ import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversal;
 import org.apache.tinkerpop.gremlin.process.traversal.dsl.graph.GraphTraversalSource;
 import org.apache.tinkerpop.gremlin.structure.Vertex;
 import org.apache.tinkerpop.gremlin.tinkergraph.structure.TinkerGraph;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import za.ac.sun.grapl.domain.enums.EdgeLabels;
 import za.ac.sun.grapl.domain.enums.VertexLabels;
 import za.ac.sun.grapl.hooks.TinkerGraphHook;
@@ -52,8 +50,13 @@ public class CannonLoaderTest {
         fileCannon = new Cannon(hook);
     }
 
+    @AfterEach
+    void tearDown() {
+        hook.clearGraph();
+    }
+
     @AfterAll
-    static void tearDown() {
+    static void tearDownAll() {
         File f = new File(TEST_DIR);
         if (f.exists()) {
             if (!f.delete()) {

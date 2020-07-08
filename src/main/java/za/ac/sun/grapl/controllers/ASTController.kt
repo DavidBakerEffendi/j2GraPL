@@ -1,29 +1,32 @@
+/*
+ * Copyright 2020 David Baker Effendi
+ * <p>
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * <p>
+ * http://www.apache.org/licenses/LICENSE-2.0
+ * <p>
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 package za.ac.sun.grapl.controllers
 
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.objectweb.asm.Label
-import org.objectweb.asm.util.ASMifier
 import za.ac.sun.grapl.domain.enums.JumpState
 import za.ac.sun.grapl.domain.enums.ModifierTypes
 import za.ac.sun.grapl.domain.meta.JumpInfo
-import za.ac.sun.grapl.domain.meta.MethodInfo
-import za.ac.sun.grapl.domain.models.vertices.BlockVertex
-import za.ac.sun.grapl.domain.models.vertices.FileVertex
-import za.ac.sun.grapl.domain.models.vertices.LiteralVertex
-import za.ac.sun.grapl.domain.models.vertices.LocalVertex
-import za.ac.sun.grapl.domain.models.vertices.MethodParameterInVertex
-import za.ac.sun.grapl.domain.models.vertices.MethodReturnVertex
-import za.ac.sun.grapl.domain.models.vertices.MethodVertex
-import za.ac.sun.grapl.domain.models.vertices.ModifierVertex
-import za.ac.sun.grapl.domain.models.vertices.NamespaceBlockVertex
+import za.ac.sun.grapl.domain.models.GraPLVertex
+import za.ac.sun.grapl.domain.models.vertices.*
 import za.ac.sun.grapl.domain.stack.BlockItem
 import za.ac.sun.grapl.domain.stack.OperandItem
-import za.ac.sun.grapl.domain.stack.block.GotoBlock
-import za.ac.sun.grapl.domain.stack.block.IfCmpBlock
-import za.ac.sun.grapl.domain.stack.block.JumpBlock
-import za.ac.sun.grapl.domain.stack.block.NestedBodyBlock
-import za.ac.sun.grapl.domain.stack.block.StoreBlock
+import za.ac.sun.grapl.domain.stack.StackItem
+import za.ac.sun.grapl.domain.stack.block.*
 import za.ac.sun.grapl.domain.stack.operand.ConstantItem
 import za.ac.sun.grapl.domain.stack.operand.OperatorItem
 import za.ac.sun.grapl.domain.stack.operand.VariableItem
@@ -34,16 +37,18 @@ import java.util.*
 import java.util.function.Consumer
 import kotlin.collections.HashMap
 import kotlin.collections.HashSet
-import kotlin.math.absoluteValue
 
 class ASTController(
         private val hook: IHook
-) : AbstractController {
-    private val operandStack = Stack<OperandItem?>()
-    private val variables = HashSet<VariableItem>()
+) : OpStackController() {
+
+    private val logger: Logger = LogManager.getLogger()
+
     private val bHistory = Stack<BlockItem>()
     private val allJumpsEncountered = HashSet<JumpBlock>()
-    private val futureIfBlock = Stack<BlockVertex>()
+    private val ternPairStack = Stack<Pair<JumpInfo, JumpInfo>>()
+    private val blockTernList = mutableListOf<StackItem>()
+    private val vertexStack = Stack<Pair<GraPLVertex, Int>>()
     private val pairedBlocks: MutableMap<IfCmpBlock, GotoBlock?> = HashMap()
     private var order = 0
     private var currentLabel: Label? = null
@@ -51,7 +56,8 @@ class ASTController(
     private var currentClass: FileVertex? = null
     private var currentMethod: MethodVertex? = null
     private var currentLineNo = -1
-    private lateinit var methodInfo: MethodInfo
+
+    lateinit var methodInfo: MethodInfoController
 
     /**
      * Given a package name signature and the current class, will and resolve common package chains with the
@@ -99,7 +105,7 @@ class ASTController(
     /**
      * Generates the method meta-data vertices describing the method being visited.
      */
-    fun pushNewMethod(methodInfo: MethodInfo) {
+    fun pushNewMethod(methodInfo: MethodInfoController) {
         this.clear()
         this.methodInfo = methodInfo
     }
@@ -107,7 +113,7 @@ class ASTController(
     /**
      * Using the given method info and line number, will project method data on the graph.
      */
-    private fun createMethod(methodInfo: MethodInfo, lineNumber: Int) {
+    private fun createMethod(methodInfo: MethodInfoController, lineNumber: Int) {
         val methodName = methodInfo.methodName
         val methodSignature = methodInfo.methodSignature
         val access = methodInfo.access
@@ -136,60 +142,7 @@ class ASTController(
         )
         // Create MODIFIER
         ASMParserUtil.determineModifiers(access, methodName)
-                .forEach(Consumer { m: ModifierTypes? -> hook.createAndAddToMethod(currentMethod, ModifierVertex(m, order++)) })
-    }
-
-    fun pushConstInsnOperation(`val`: Any) {
-        val canonicalType = `val`.javaClass.canonicalName.replace("\\.".toRegex(), "/")
-        val className = canonicalType.substring(canonicalType.lastIndexOf("/") + 1)
-        val stackItem: ConstantItem
-        stackItem = if ("Integer" == className || "Long" == className || "Float" == className || "Double" == className) {
-            ConstantItem(`val`.toString(), className.toUpperCase())
-        } else {
-            ConstantItem(`val`.toString(), canonicalType)
-        }
-        logger.debug("Pushing $stackItem")
-        operandStack.push(stackItem)
-    }
-
-    fun pushConstInsnOperation(opcode: Int) {
-        val line = ASMifier.OPCODES[opcode]
-        val type: String
-        var item: OperandItem? = null
-        type = if (line[0] == 'L') "LONG" else ASMParserUtil.getReadableType(line[0])
-        if (ASMParserUtil.isConstant(line)) {
-            val `val` = line.substring(line.indexOf('_') + 1).replace("M", "-")
-            item = ConstantItem(`val`, type)
-        } else if (ASMParserUtil.isOperator(line)) {
-            item = OperatorItem(line.substring(1), type)
-        }
-        if (Objects.nonNull(item)) {
-            logger.debug("Pushing $item")
-            operandStack.push(item)
-        }
-    }
-
-    fun pushConstInsnOperation(opcode: Int, operand: Int) {
-        val type = ASMParserUtil.getReadableType(ASMifier.OPCODES[opcode][0])
-        val item = ConstantItem(operand.toString(), type)
-        logger.debug("Pushing $item")
-        operandStack.push(item)
-    }
-
-    /**
-     * Handles visitIincInsn and artificially coordinates an arithmetic operation with STORE call. This is only called
-     * for integers - other types go through the usual CONST/STORE/OPERATOR hooks.
-     *
-     * @param var the variable being incremented.
-     * @param increment the amount by which `var` is being incremented.
-     */
-    fun pushVarInc(`var`: Int, increment: Int) {
-        val opType = "INTEGER"
-        val op = if (increment > 0) OperatorItem("ADD", opType) else OperatorItem("SUB", opType)
-        val varItem = VariableItem(`var`.toString(), opType)
-        val constItem = ConstantItem(increment.absoluteValue.toString(), opType)
-        operandStack.addAll(listOf(varItem, constItem, op))
-        pushVarInsnStore(`var`, "I${op.id}")
+                .forEach(Consumer { m: ModifierTypes -> hook.createAndAddToMethod(currentMethod, ModifierVertex(m, order++)) })
     }
 
     /**
@@ -198,66 +151,101 @@ class ASTController(
      * @param operation the store operation.
      * @param varName   the variable name.
      */
-    fun pushVarInsnStore(varName: Int, operation: String) {
-        val operandItem = operandStack.pop()
+    @ExperimentalStdlibApi
+    override fun pushVarInsnStore(varName: Int, operation: String) {
+        val operandItem = operandStack.pop()!!
         val varType = ASMParserUtil.getStackOperationType(operation)
         val variableItem = getOrPutVariable(varName, varType)
-        val baseBlock = BlockVertex("STORE", order++, 1, varType, currentLineNo)
-        val storeBlock = StoreBlock(order, currentLabel)
+        val storeVertex = BlockVertex("STORE", order++, 1, varType, currentLineNo)
+        val storeBlock = StoreBlock(order - 1, currentLabel)
+        storeBlock.l = variableItem
         // Avoid attaching to loop roots
         while (!bHistory.empty() && methodInfo.isLabelAssociatedWithLoops(bHistory.peek().label!!)) {
             bHistory.pop()
         }
-        if (!bHistory.empty()) hook.assignToBlock(currentMethod, baseBlock, bHistory.peek().order)
-        else hook.assignToBlock(currentMethod, baseBlock, 0)
-        storeBlock.l = variableItem
-        storeBlock.r = operandItem
+        // Check if this stores the result of a ternary operator
+        val maybeTernaryRootVertices = getTernaryVerticesFromStack(vertexStack)
+        if (!bHistory.empty()) hook.assignToBlock(currentMethod, storeVertex, bHistory.peek().order)
+        else hook.assignToBlock(currentMethod, storeVertex, 0)
+        val handlingTernaryStore = maybeTernaryRootVertices.isNullOrEmpty()
+        if (handlingTernaryStore) {
+            storeBlock.r = operandItem
+        } else {
+            // Push operand back in the stack and let the function handle building a ternary store
+            operandStack.push(operandItem)
+            storeBlock.r = blockTernList.first()
+            storeTernaryOperatorBody(storeVertex, varType, maybeTernaryRootVertices!!)
+        }
+
         logger.debug("Pushing $storeBlock")
         bHistory.push(storeBlock)
         val leftChild = LocalVertex(variableItem.id, variableItem.id, variableItem.type, currentLineNo, order++)
-        hook.assignToBlock(currentMethod, leftChild, baseBlock.order)
-        when (operandItem) {
-            is OperatorItem -> {
-                handleOperator(baseBlock, operandItem)
-            }
-            is ConstantItem -> {
-                hook.assignToBlock(
-                        currentMethod,
-                        LiteralVertex(operandItem.id, order++, 1, varType, currentLineNo),
-                        baseBlock.order)
-            }
-            is VariableItem -> {
-                hook.assignToBlock(
-                        currentMethod,
-                        LocalVertex(operandItem.id, operandItem.id, operandItem.type, currentLineNo, order++),
-                        baseBlock.order)
-            }
+        hook.assignToBlock(currentMethod, leftChild, storeVertex.order)
+        if (handlingTernaryStore) {
+            // TODO: Check what happens if ternary happens within an expression
+            attachOperandItem(storeVertex, operandItem, varType)
         }
         bHistory.pop()
     }
 
-    /**
-     * Handles visitVarInsn if the opcode is a load operation.
-     *
-     * @param varName   the variable name.
-     * @param operation the load operation.
-     */
-    fun pushVarInsnLoad(varName: Int, operation: String) {
-        val variableItem = getOrPutVariable(varName, ASMParserUtil.getStackOperationType(operation))
-        logger.debug("Pushing $variableItem")
-        operandStack.push(variableItem)
+    private fun getTernaryVerticesFromStack(vertexStack: Stack<Pair<GraPLVertex, Int>>): Stack<Pair<GraPLVertex, Int>>? {
+        val stack = Stack<Pair<GraPLVertex, Int>>()
+        vertexStack.takeIf { it.isNotEmpty() }?.filter { pair -> methodInfo.getAssociatedTernaryJump(pair.second) != null }?.apply { stack.addAll(this.reversed()) }
+        return stack
     }
 
-    private fun getOrPutVariable(varName: Int, type: String): VariableItem {
-        val varString = varName.toString()
-        return variables.stream()
-                .filter { variable: VariableItem -> varString == variable.id }
-                .findFirst()
-                .orElseGet {
-                    val temp = VariableItem(varString, type)
-                    variables.add(temp)
-                    temp
+    @ExperimentalStdlibApi
+    private fun storeTernaryOperatorBody(storeVertex: BlockVertex, varType: String, ternaryRootVertices: Stack<Pair<GraPLVertex, Int>>) {
+        val jumpRoots = Stack<BlockVertex>().apply { push(storeVertex) }
+        var lastBody: BlockVertex? = storeVertex
+        while (blockTernList.isNotEmpty()) {
+            when (val ternBlock = blockTernList.removeFirst()) {
+                is IfCmpBlock -> {
+                    // Join hook to last body or the store block
+                    hook.joinBlocks(lastBody!!.order, ternBlock.order)
+                    jumpRoots.push(ternaryRootVertices.removeLast().first as BlockVertex)
+                    lastBody = BlockVertex("IF_BODY", order++, 1, "BOOLEAN", currentLineNo)
+                    hook.createFreeBlock(lastBody)
+                    hook.joinBlocks(jumpRoots.peek().order, lastBody.order)
                 }
+                is GotoBlock -> {
+                    lastBody = BlockVertex("ELSE_BODY", order++, 1, "BOOLEAN", currentLineNo)
+                    hook.createFreeBlock(lastBody)
+                    hook.joinBlocks(jumpRoots.peek().order, lastBody.order)
+                }
+                is ConstantItem -> {
+                    operandStack.remove(ternBlock)
+                    hook.assignToBlock(
+                            LiteralVertex(ternBlock.id, order++, 1, varType, currentLineNo),
+                            lastBody!!.order)
+                    if (lastBody.name == "ELSE_BODY") jumpRoots.pop()
+                }
+                is VariableItem -> {
+                    operandStack.remove(ternBlock)
+                    hook.assignToBlock(
+                            LocalVertex(ternBlock.id, ternBlock.id, ternBlock.type, currentLineNo, order++),
+                            lastBody!!.order)
+                    if (lastBody.name == "ELSE_BODY") jumpRoots.pop()
+                }
+            }
+        }
+    }
+
+    private fun attachOperandItem(baseBlock: BlockVertex, operandItem: OperandItem, varType: String) {
+        when (operandItem) {
+            is OperatorItem -> {
+                vertexStack.push(Pair(baseBlock, pseudoLineNo))
+                handleOperator(operandItem)
+            }
+            is ConstantItem ->
+                hook.assignToBlock(
+                        LiteralVertex(operandItem.id, order++, 1, varType, currentLineNo),
+                        baseBlock.order)
+            is VariableItem ->
+                hook.assignToBlock(
+                        LocalVertex(operandItem.id, operandItem.id, operandItem.type, currentLineNo, order++),
+                        baseBlock.order)
+        }
     }
 
     /**
@@ -265,18 +253,17 @@ class ASTController(
      */
     fun associateLineNumberWithLabel(line: Int, start: Label) {
         // So that our pre-scan labels and current scan labels can resolve
-        this.methodInfo.addLabel(line, start)
         if (currentLineNo == -1) {
             createMethod(methodInfo, line - 1)
         }
         currentLineNo = line
         currentLabel = start
 
-        val totalAssociatedJumps = this.methodInfo.getAssociatedJumps(line)
+        val totalAssociatedJumps = this.methodInfo.getAssociatedJumps(super.pseudoLineNo)
         val jumpCountDifference = totalAssociatedJumps.filter { jumpInfo -> jumpInfo.jumpOp != "GOTO" }.size - JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size
 
         if (JumpStackUtil.isJumpDestination(allJumpsEncountered, start)) handleJumpDestination(start)
-        if (jumpCountDifference >= 1) handleLoopDestination(start, line, jumpCountDifference, totalAssociatedJumps)
+        if (jumpCountDifference >= 1) handleLoopDestination(start, super.pseudoLineNo, jumpCountDifference, totalAssociatedJumps)
 
         if (!bHistory.isEmpty() && bHistory.peek() is NestedBodyBlock) {
             if (!this.hook.isBlock(bHistory.peek().order)) {
@@ -295,7 +282,7 @@ class ASTController(
         val associatedJumps = JumpStackUtil.getAssociatedJumps(allJumpsEncountered, jumpDestination)
         val numIfCmpAssocs = associatedJumps.stream().filter { g: JumpBlock? -> g is IfCmpBlock }.count()
         val numGotoAssocs = associatedJumps.stream().filter { g: JumpBlock? -> g is GotoBlock }.count()
-        logger.debug("Encountered jump destination @ line $currentLineNo #IfCmp: $numIfCmpAssocs #Goto: $numGotoAssocs")
+        logger.debug("Encountered jump destination @ line $currentLineNo (${super.pseudoLineNo}) #IfCmp: $numIfCmpAssocs #Goto: $numGotoAssocs")
         logger.debug("Associated jumps: $associatedJumps")
         // Handles if-else-if chains
         if (numGotoAssocs + numIfCmpAssocs > 1 && numGotoAssocs >= numIfCmpAssocs && bHistory.size > 2) {
@@ -341,12 +328,12 @@ class ASTController(
         logger.debug("$start (line $line) is associated with $jumpCountDifference jump(s) that haven't been encountered yet | $totalAssociatedJumps")
         logger.debug("JumpInfo: ${totalAssociatedJumps.size} | Current assoc jumps ${JumpStackUtil.getAssociatedJumps(allJumpsEncountered, start).size}")
         for (i in 0 until jumpCountDifference) {
-            val destinationLineNumber = this.methodInfo.getLineNumber(totalAssociatedJumps.first().currLabel)
+            val destinationLineNumber = this.methodInfo.getPseudoLineNumber(totalAssociatedJumps.first().currLabel)
             val totalAssociatedJumpsWithDest = this.methodInfo.getAssociatedJumps(destinationLineNumber)
             logger.debug("Line $line vs JumpOrigin $destinationLineNumber = ${if (line < destinationLineNumber) "jump is above" else "jump is below"} which is associated with $totalAssociatedJumpsWithDest")
             if (line < destinationLineNumber && totalAssociatedJumpsWithDest.none { j -> j.jumpOp == "GOTO" }) {
                 val condRoot = BlockVertex("DO_WHILE", order++, 1, "BOOLEAN", currentLineNo)
-                futureIfBlock.add(condRoot)
+                vertexStack.push(Pair(condRoot, pseudoLineNo))
                 if (bHistory.isEmpty()) {
                     hook.assignToBlock(currentMethod, condRoot, 0)
                 } else {
@@ -381,20 +368,20 @@ class ASTController(
      *
      * @param label  the label to jump to.
      */
-    fun pushNullaryJumps(label: Label) {
+    override fun pushNullaryJumps(label: Label) {
+        super.pushNullaryJumps(label)
         val jumpHistory = JumpStackUtil.getJumpHistory(bHistory)
         val lastJump = JumpStackUtil.getLastJump(bHistory) ?: allJumpsEncountered.maxBy { j -> j.order }
         val currentBlock = GotoBlock(order, currentLabel, label, lastJump!!.position)
+        if (blockTernList.isNotEmpty()) blockTernList.add(currentBlock)
         logger.debug("Pushing $currentBlock")
         // Retain info learned from this method
         allJumpsEncountered.add(currentBlock)
-        this.methodInfo.upsertJumpRootAtLine(currentLineNo, "GOTO")
+        this.methodInfo.upsertJumpRootAtLine(super.pseudoLineNo, "GOTO")
         tryPairGotoBlock(currentBlock)
-        val destinationLineNumber = this.methodInfo.getLineNumber(label)
+        val destinationLineNumber = this.methodInfo.getPseudoLineNumber(label)
         var blockItem: BlockItem? = null
-        while (!bHistory.isEmpty() && bHistory.peek() !is JumpBlock) {
-            blockItem = bHistory.pop()
-        }
+        while (!bHistory.isEmpty() && bHistory.peek() !is JumpBlock) blockItem = bHistory.pop()
         if (Objects.nonNull(blockItem)) {
             // Read the last ifs and find which one is paired with this goto. Pop until I find the IfCmp paired
             while (!jumpHistory.isEmpty() && jumpHistory.size > 1) {
@@ -409,7 +396,8 @@ class ASTController(
             if (bHistory.peek() is JumpBlock && (bHistory.peek() as JumpBlock).label !== label) {
                 bHistory.push(NestedBodyBlock(order++, label, JumpState.ELSE_BODY))
             }
-            if (destinationLineNumber != -1 && destinationLineNumber < currentLineNo) {
+            logger.debug("Destination line for nullary jump: $destinationLineNumber vs current ${super.pseudoLineNo}")
+            if (destinationLineNumber != -1 && destinationLineNumber < super.pseudoLineNo) {
                 // This is GOTO is part of a loop
                 pairedBlocks.filter { (_, v) -> v == currentBlock }.keys.forEach { pairedBlock ->
                     logger.debug("This GOTO is part of a loop @ order $order associated with block $pairedBlock")
@@ -419,7 +407,7 @@ class ASTController(
                     val maybeLineNumber: Int?
                     if (pairedBlock.label != null) {
                         name = "WHILE"
-                        maybeLineNumber = methodInfo.getLineNumber(pairedBlock.label!!)
+                        maybeLineNumber = methodInfo.getPseudoLineNumber(pairedBlock.label!!)
                         this.methodInfo.upsertJumpRootAtLine(maybeLineNumber, name)
                     } else {
                         name = "DO_WHILE"
@@ -429,7 +417,7 @@ class ASTController(
                         this.methodInfo.upsertJumpRootAtLine(maybeLineNumber, name)
                     }
                     this.hook.updateBlockProperty(currentMethod, pairedBlock.order, "name", name)
-                    logger.debug("Getting rid of something I probably shouldn't ${bHistory.peek()}")
+
                     if (bHistory.peek() !is NestedBodyBlock)
                         bHistory.pop()
                 }
@@ -444,24 +432,44 @@ class ASTController(
      * @param jumpOp the jump operation.
      * @param label  the label to jump to if the jump condition is satisfied.
      */
-    fun pushBinaryJump(jumpOp: String, label: Label) {
+    @ExperimentalStdlibApi
+    override fun pushBinaryJump(jumpOp: String, label: Label): List<OperandItem> {
         logger.debug("Recognized binary jump $jumpOp with label $label")
         val jumpType = ASMParserUtil.getBinaryJumpType(jumpOp)
+        val maybeTernaryPair = methodInfo.getAssociatedTernaryJump(pseudoLineNo, ternPairStack)
+        ternPairStack.push(maybeTernaryPair)
         // If, as in the case of do-while, the if block happens after the body and thus the if-node already exists,
         // we should fetch the corresponding if-node
-        val condRoot: BlockVertex = if (futureIfBlock.isNotEmpty()) {
+        val condRoot: BlockVertex = if (!vertexStack.none { pair -> pair.first is BlockVertex }) {
             // Determine if the last future jump block is correlated to this jump
-            if (!this.methodInfo.isJumpVertexAssociatedWithGivenLine(futureIfBlock.peek(), currentLineNo))
+            val vertexLinePair = vertexStack.peek()
+            if (!methodInfo.isJumpVertexAssociatedWithGivenLine(vertexLinePair.second, pseudoLineNo))
                 BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
-            else futureIfBlock.pop()
+            else {
+                vertexStack.pop().first as BlockVertex
+            }
         } else BlockVertex("IF", order++, 1, "BOOLEAN", currentLineNo)
-        this.methodInfo.upsertJumpRootAtLine(currentLineNo, condRoot.name)
-        logger.debug("Using ${if (condRoot.order == order - 1) "new" else "existing"} vertex to represent IF_CMP")
-        // We can tell if it's a brand new conditional route by checking the line number
-        if (condRoot.order == order - 1) {
-            if (bHistory.isEmpty()) hook.assignToBlock(currentMethod, condRoot, 0) else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
-            pushJumpBlock(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
-            bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
+        this.methodInfo.upsertJumpRootAtLine(pseudoLineNo, condRoot.name)
+
+        val condBlock = BlockVertex(ASMParserUtil.parseAndFlipEquality(jumpOp).toString(), order++, 2, jumpType, currentLineNo)
+        logger.debug("Using ${if (condRoot.order == order - 2) "new" else "existing ${condRoot.name}"} vertex to represent IF_CMP")
+        // We can tell if it's a brand new conditional route by checking the order
+        if (condRoot.order == order - 2) {
+            val ifCmpBlock = IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT)
+            if (maybeTernaryPair != null) {
+                prepareStackForTernaryJump(label, condRoot)
+                if (blockTernList.isNotEmpty()) {
+                    // Remove blocks used in the conditional
+                    blockTernList.removeLastOrNull()
+                    blockTernList.removeLastOrNull()
+                }
+                blockTernList.add(ifCmpBlock)
+            } else {
+                if (bHistory.isEmpty()) hook.assignToBlock(currentMethod, condRoot, 0)
+                else hook.assignToBlock(currentMethod, condRoot, bHistory.peek().order)
+                pushJumpBlock(ifCmpBlock)
+                bHistory.push(NestedBodyBlock(order++, currentLabel, JumpState.IF_BODY))
+            }
         } else {
             // We need to find the corresponding ifcmp block since its current label property is null by #associateLineNumberWithLabel
             allJumpsEncountered.find { jumpBlock -> jumpBlock.order == condRoot.order }?.label = label
@@ -471,19 +479,55 @@ class ASTController(
             }
         }
 
-        val condBlock = BlockVertex(ASMParserUtil.parseAndFlipEquality(jumpOp).toString(), order++, 2, jumpType, currentLineNo)
-        hook.assignToBlock(currentMethod, condBlock, condRoot.order)
+        return buildJumpCondition(condBlock, condRoot, jumpOp, label, jumpType)
+    }
+
+    private fun prepareStackForTernaryJump(label: Label, condRoot: BlockVertex) {
+        logger.debug("Preparing the stack for a ternary jump")
+        hook.createFreeBlock(condRoot)
+        vertexStack.push(Pair(condRoot, pseudoLineNo))
+        allJumpsEncountered.add(IfCmpBlock(condRoot.order, currentLabel, label, JumpState.IF_ROOT))
+    }
+
+    private fun buildJumpCondition(condBlock: BlockVertex, condRoot: BlockVertex, jumpOp: String, label: Label, jumpType: String): List<OperandItem> {
+        hook.createFreeBlock(condBlock)
+        hook.joinBlocks(condRoot.order, condBlock.order)
         // Add if-cond operands
-        val ops = listOfNotNull(operandStack.pop(), operandStack.pop()).asReversed()
+        val ops = super.pushBinaryJump(jumpOp, label)
         logger.debug("Jump arguments = [" + ops[0] + ", " + ops[1] + "]")
         ops.forEach(Consumer { op: OperandItem ->
             when (op) {
                 is ConstantItem ->
-                    hook.assignToBlock(currentMethod, LiteralVertex(op.id, order++, 1, jumpType, currentLineNo), condBlock.order)
+                    hook.assignToBlock(LiteralVertex(op.id, order++, 1, jumpType, currentLineNo), condBlock.order)
                 is VariableItem ->
-                    hook.assignToBlock(currentMethod, LocalVertex(op.id, op.id, op.type, currentLineNo, order++), condBlock.order)
+                    hook.assignToBlock(LocalVertex(op.id, op.id, op.type, currentLineNo, order++), condBlock.order)
             }
         })
+        return ops
+    }
+
+    override fun pushConstInsnOperation(`val`: Any): ConstantItem {
+        val operandItem = super.pushConstInsnOperation(`val`)
+        if (blockTernList.isNotEmpty()) blockTernList.add(operandItem)
+        return operandItem
+    }
+
+    override fun pushConstInsnOperation(opcode: Int): OperandItem? {
+        val operandItem = super.pushConstInsnOperation(opcode)
+        if (operandItem is ConstantItem && blockTernList.isNotEmpty()) blockTernList.add(operandItem)
+        return operandItem
+    }
+
+    override fun pushConstInsnOperation(opcode: Int, operand: Int): ConstantItem {
+        val operandItem = super.pushConstInsnOperation(opcode, operand)
+        if (blockTernList.isNotEmpty()) blockTernList.add(operandItem)
+        return operandItem
+    }
+
+    override fun pushVarInsnLoad(varName: Int, operation: String): VariableItem {
+        val varIns = super.pushVarInsnLoad(varName, operation)
+        if (blockTernList.isNotEmpty()) blockTernList.add(varIns)
+        return varIns
     }
 
     /**
@@ -492,10 +536,11 @@ class ASTController(
      * @param jumpOp the jump operation.
      * @param label  the label to jump to if the jump condition is satisfied.
      */
-    fun pushUnaryJump(jumpOp: String, label: Label) {
+    override fun pushUnaryJump(jumpOp: String, label: Label): OperandItem? {
         logger.debug("Recognized unary jump $jumpOp with label $label")
-        val arg1 = operandStack.pop()
+        val arg1 = super.pushUnaryJump(jumpOp, label)
         logger.debug("Jump arguments = [$arg1]")
+        return arg1
     }
 
     private fun pushJumpBlock(item: JumpBlock) {
@@ -518,13 +563,14 @@ class ASTController(
     /**
      * Will handle the case of an operator being nested under a parent block.
      *
-     * @param prevBlock    the parent block of this operation.
      * @param operatorItem the operator stack item.
      */
-    private fun handleOperator(prevBlock: BlockVertex, operatorItem: OperatorItem) {
+    override fun handleOperator(operatorItem: OperatorItem) {
         logger.debug("Next operator: $operatorItem")
         val currBlock = BlockVertex(operatorItem.id, order++, 1, operatorItem.type, currentLineNo)
-        hook.assignToBlock(currentMethod, currBlock, prevBlock.order)
+        val prevBlock = vertexStack.pop().first as BlockVertex
+        hook.createFreeBlock(currBlock)
+        hook.joinBlocks(prevBlock.order, currBlock.order)
 
         // TODO: Assume all operations that aren't automatically evaluated by compiler are binary
         val noOperands = 2
@@ -533,15 +579,16 @@ class ASTController(
             logger.debug("Next operand: $stackItem")
             when (stackItem) {
                 is OperatorItem -> {
-                    handleOperator(currBlock, stackItem)
+                    vertexStack.push(Pair(currBlock, pseudoLineNo))
+                    handleOperator(stackItem)
                 }
                 is ConstantItem -> {
                     val literalVertex = LiteralVertex(stackItem.id, order++, 1, stackItem.type, currentLineNo)
-                    hook.assignToBlock(currentMethod, literalVertex, currBlock.order)
+                    hook.assignToBlock(literalVertex, currBlock.order)
                 }
                 is VariableItem -> {
                     val localVertex = LocalVertex(stackItem.id, stackItem.id, stackItem.type, currentLineNo, order++)
-                    hook.assignToBlock(currentMethod, localVertex, currBlock.order)
+                    hook.assignToBlock(localVertex, currBlock.order)
                 }
             }
         }
@@ -556,9 +603,8 @@ class ASTController(
             """.trimIndent()
     }
 
-    fun clear(): ASTController {
-        operandStack.clear()
-        variables.clear()
+    override fun clear(): ASTController {
+        super.clear()
         bHistory.clear()
         currentLineNo = -1
         return this
@@ -570,10 +616,6 @@ class ASTController(
     fun resetOrder(): ASTController {
         order = this.hook.maxOrder()
         return this
-    }
-
-    companion object {
-        val logger: Logger = LogManager.getLogger()
     }
 
 }

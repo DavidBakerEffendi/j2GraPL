@@ -19,7 +19,7 @@ import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
 import org.objectweb.asm.ClassReader
 import za.ac.sun.grapl.controllers.ASTController
-import za.ac.sun.grapl.domain.meta.ClassInfo
+import za.ac.sun.grapl.domain.meta.MetaDataCollector
 import za.ac.sun.grapl.hooks.IHook
 import za.ac.sun.grapl.util.ResourceCompilationUtil.compileJavaFile
 import za.ac.sun.grapl.util.ResourceCompilationUtil.compileJavaFiles
@@ -73,6 +73,7 @@ class Cannon(private val hook: IHook) {
      */
     fun fire() {
         loadedFiles.forEach(Consumer { f: File -> this.fire(f) })
+        loadedFiles.clear()
     }
 
     /**
@@ -82,20 +83,21 @@ class Cannon(private val hook: IHook) {
      */
     private fun fire(f: File) {
         try {
-            val classInfo = ClassInfo()
+            // Allows us to accumulate information about classes beforehand
+            val classMetaController = MetaDataCollector()
+            // Allows us to build up our AST using the connection held by the hook
             val astController = ASTController(hook)
             FileInputStream(f).use { fis ->
                 // Initialize services and controllers
-                classInfo.clear()
                 astController.clear().resetOrder()
 
+                // First do an independent scan of the class
                 val cr = ClassReader(fis)
-                // The class visitors are declared here and wrapped by one another in a pipeline
-                val rootVisitor = InitialClassVisitor(classInfo)
+                val rootVisitor = InitialClassVisitor(classMetaController)
                 cr.accept(rootVisitor, 0)
 
-                // Once initial data has been gathered
-                val astVisitor = ASTClassVisitor(classInfo, astController)
+                // Once initial data has been gathered, build the graph
+                val astVisitor = ASTClassVisitor(classMetaController, astController)
                 // ^ append new visitors here
                 cr.accept(astVisitor, 0)
             }

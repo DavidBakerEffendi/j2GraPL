@@ -1,29 +1,25 @@
 package za.ac.sun.grapl.domain.meta
 
 import za.ac.sun.grapl.controllers.AbstractController
+import za.ac.sun.grapl.controllers.MethodInfoController
 import za.ac.sun.grapl.util.ASMParserUtil
-import kotlin.properties.Delegates
 
-class ClassInfo : AbstractController {
-    lateinit var className: String
-    lateinit var namespace: String
-    var access by Delegates.notNull<Int>()
-    private val classMethods = mutableListOf<MethodInfo>()
+class ClassInfo(
+        val className: String,
+        val namespace: String,
+        private val access: Int
+) {
+    private val classMethods = mutableListOf<MethodInfoController>()
 
-    fun registerClass(className: String, namespace: String, access: Int) {
-        this.className = className
-        this.namespace = namespace
-        this.access = access
-    }
-
-    fun addMethod(methodName: String, methodSignature: String, access: Int, lineNumber: Int): MethodInfo {
-        val methodInfo = MethodInfo(methodName, methodSignature, access, lineNumber)
+    fun addMethod(methodName: String, methodSignature: String, access: Int, lineNumber: Int): MethodInfoController {
+        val methodInfo = MethodInfoController(methodName, methodSignature, access, lineNumber)
         classMethods.add(methodInfo)
         return methodInfo
     }
 
-    fun getMethod(methodName: String, methodSignature: String, access: Int): MethodInfo? {
-        return classMethods.find { methodInfo -> methodInfo == MethodInfo(methodName, methodSignature, access) }
+    fun getMethod(methodName: String, methodSignature: String, access: Int): MethodInfoController? {
+        val hashCode = 31 * (31 * methodName.hashCode() + methodSignature.hashCode()) + access.hashCode()
+        return classMethods.find { methodInfo -> methodInfo.hashCode() ==  hashCode }
     }
 
     fun clear() {
