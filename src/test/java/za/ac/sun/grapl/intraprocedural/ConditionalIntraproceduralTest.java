@@ -804,7 +804,7 @@ public class ConditionalIntraproceduralTest {
         final GraphTraversal<Vertex, Vertex> ifBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifRoot, BlockVertex.LABEL, "name", "IF_BODY").has("order", "28");
         assertTrue(ifBodyTraversal.hasNext());
         final Vertex ifBody = ifBodyTraversal.next();
-        final GraphTraversal<Vertex, Vertex> elseBodyLiteral = getVertexAlongEdge(g, EdgeLabels.AST, ifBody, LiteralVertex.LABEL, "name", "1");
+        final GraphTraversal<Vertex, Vertex> elseBodyLiteral = getVertexAlongEdge(g, EdgeLabels.AST, ifBody, LocalVertex.LABEL, "name", "1");
         assertTrue(elseBodyLiteral.hasNext());
         // Check the else-body branch
         final GraphTraversal<Vertex, Vertex> elseBodyTraversal = getVertexAlongEdge(g, EdgeLabels.AST, ifRoot, BlockVertex.LABEL, "name", "ELSE_BODY").has("order", "30");

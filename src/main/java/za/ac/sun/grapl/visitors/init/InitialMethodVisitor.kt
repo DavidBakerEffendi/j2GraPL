@@ -23,6 +23,7 @@ import org.objectweb.asm.Opcodes
 import org.objectweb.asm.util.ASMifier
 import za.ac.sun.grapl.controllers.MethodInfoController
 import za.ac.sun.grapl.domain.stack.operand.ConstantItem
+import za.ac.sun.grapl.domain.stack.operand.VariableItem
 import za.ac.sun.grapl.visitors.OpStackMethodVisitor
 
 class InitialMethodVisitor(
@@ -53,7 +54,7 @@ class InitialMethodVisitor(
     override fun visitJumpInsn(opcode: Int, label: Label) {
         logger.debug("\t  " + ASMifier.OPCODES[opcode] + " " + label + " (visitJumpInsn)")
         val operandStack = methodInfoController.operandStack
-        if ("GOTO" == ASMifier.OPCODES[opcode] && !operandStack.isEmpty() && operandStack.peek() is ConstantItem)
+        if ("GOTO" == ASMifier.OPCODES[opcode] && !operandStack.isEmpty() && (operandStack.peek() is ConstantItem || operandStack.peek() is VariableItem))
             methodInfoController.addTernaryPair(ASMifier.OPCODES[opcode], label, currentLabel!!)
         else
             methodInfoController.addJump(ASMifier.OPCODES[opcode], label, currentLabel!!)
