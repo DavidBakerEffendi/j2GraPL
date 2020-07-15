@@ -9,10 +9,10 @@ class ClassInfoTest {
 
     @Test
     fun equalsTest() {
-        val value1 = ClassInfo(STRING_1, STRING_1, INT_1)
-        val value2 = ClassInfo(STRING_1, STRING_1, INT_1)
-        val value3 = ClassInfo(STRING_2, STRING_1, INT_1)
-        val value4 = ClassInfo(STRING_1, STRING_2, INT_1)
+        val value1 = ClassInfo(STRING_1, STRING_1, INT_1, INT_1)
+        val value2 = ClassInfo(STRING_1, STRING_1, INT_1, INT_1)
+        val value3 = ClassInfo(STRING_2, STRING_1, INT_1, INT_1)
+        val value4 = ClassInfo(STRING_1, STRING_2, INT_1, INT_1)
         assertEquals(value1, value1)
         assertEquals(value1, value2)
         assertNotEquals(value1, value3)
@@ -24,7 +24,7 @@ class ClassInfoTest {
 
     @Test
     fun toStringTest() {
-        val value1 = ClassInfo(STRING_1, STRING_1, INT_1)
+        val value1 = ClassInfo(STRING_1, STRING_1, INT_1, INT_1)
         assertEquals("${ASMParserUtil.determineModifiers(INT_1)} $STRING_1.$STRING_1", value1.toString())
     }
 

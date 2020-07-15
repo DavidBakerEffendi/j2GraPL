@@ -1,13 +1,13 @@
 package za.ac.sun.grapl.domain.meta
 
-import za.ac.sun.grapl.controllers.AbstractController
 import za.ac.sun.grapl.controllers.MethodInfoController
 import za.ac.sun.grapl.util.ASMParserUtil
 
 class ClassInfo(
         val className: String,
         val namespace: String,
-        private val access: Int
+        private val access: Int,
+        val version: Int
 ) {
     private val classMethods = mutableListOf<MethodInfoController>()
 

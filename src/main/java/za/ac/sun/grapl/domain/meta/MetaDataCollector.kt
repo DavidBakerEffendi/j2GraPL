@@ -4,8 +4,8 @@ class MetaDataCollector {
 
     private val allClasses = HashSet<ClassInfo>()
 
-    fun putClass(fullName: String, access: Int): ClassInfo {
-        val classInfo = ClassInfo(obtainClassName(fullName), obtainNamespace(fullName), access)
+    fun putClass(fullName: String, access: Int, version: Int): ClassInfo {
+        val classInfo = ClassInfo(obtainClassName(fullName), obtainNamespace(fullName), access, version)
         allClasses.add(classInfo)
         return classInfo
     }

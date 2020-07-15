@@ -29,7 +29,7 @@ class InitialClassVisitor(private val classMetaController: MetaDataCollector) : 
 
     override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String, interfaces: Array<String>) {
         super.visit(version, access, name, signature, superName, interfaces)
-        classInfo = classMetaController.putClass(name, access)
+        classInfo = classMetaController.putClass(name, access, version)
         logger.debug("")
         logger.debug(classInfo.toString() + " extends " + superName + " {")
     }

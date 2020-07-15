@@ -21,9 +21,9 @@ import org.objectweb.asm.Label
 import za.ac.sun.grapl.domain.enums.EdgeLabels
 import za.ac.sun.grapl.domain.enums.JumpState
 import za.ac.sun.grapl.domain.enums.ModifierTypes
+import za.ac.sun.grapl.domain.meta.ClassInfo
 import za.ac.sun.grapl.domain.meta.JumpInfo
 import za.ac.sun.grapl.domain.models.ASTVertex
-import za.ac.sun.grapl.domain.models.GraPLVertex
 import za.ac.sun.grapl.domain.models.vertices.*
 import za.ac.sun.grapl.domain.stack.BlockItem
 import za.ac.sun.grapl.domain.stack.OperandItem
@@ -68,7 +68,9 @@ class ASTController(
      * @param namespace the full package declaration.
      * @param className the name of the class.
      */
-    fun projectFileAndNamespace(namespace: String, className: String) {
+    fun projectClassData(classInfo: ClassInfo) {
+        val namespace = classInfo.namespace
+        val className = classInfo.className
         classPath = if (namespace.isEmpty()) className else "$namespace.$className"
         // Build NAMESPACE_BLOCK if packages are present
         var nbv: NamespaceBlockVertex? = null
@@ -82,6 +84,8 @@ class ASTController(
         if (!Objects.isNull(nbv)) {
             this.hook.joinFileVertexTo(currentClass, nbv)
         }
+        // Add metadata if not present
+        this.hook.registerMetaData(MetaDataVertex("Java", classInfo.version.toString()))
     }
 
     /**

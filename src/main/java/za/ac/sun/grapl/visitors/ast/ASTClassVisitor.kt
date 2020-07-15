@@ -29,8 +29,7 @@ class ASTClassVisitor(private val classMetaController: MetaDataCollector, privat
     override fun visit(version: Int, access: Int, name: String, signature: String?, superName: String, interfaces: Array<String>) {
         super.visit(version, access, name, signature, superName, interfaces)
         classInfo = classMetaController.getClass(name)
-        assert(classInfo != null)
-        astController.projectFileAndNamespace(classInfo!!.namespace, classInfo!!.className)
+        astController.projectClassData(classInfo!!)
         // TODO: Could create MEMBER vertex from here to declare member classes
     }
 
