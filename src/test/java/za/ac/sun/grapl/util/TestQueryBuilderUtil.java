@@ -17,11 +17,11 @@ public class TestQueryBuilderUtil {
         return g.V(rootVertex).repeat(__.out(edge.toString()));
     }
 
-    public static GraphTraversal<Vertex, Vertex> getVertexAlongEdge(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex, VertexLabels label, String key, String value) {
+    public static GraphTraversal<Vertex, Vertex> getVertexAlongEdge(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex, VertexLabels label, String key, Object value) {
         return buildASTRepeat(g, edge, rootVertex).emit().has(label.toString(), key, value);
     }
 
-    public static GraphTraversal<Vertex, Vertex> getVertexAlongEdgeFixed(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex, VertexLabels label, String key, String value, int max) {
+    public static GraphTraversal<Vertex, Vertex> getVertexAlongEdgeFixed(GraphTraversalSource g, EdgeLabels edge, Vertex rootVertex, VertexLabels label, String key, Object value, int max) {
         return buildASTRepeat(g, edge, rootVertex).until(__.has(label.toString(), key, value).or().loops().is(max));
     }
 

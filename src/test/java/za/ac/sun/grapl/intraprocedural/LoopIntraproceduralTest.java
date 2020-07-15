@@ -14,6 +14,7 @@ import org.junit.jupiter.api.TestInfo;
 import za.ac.sun.grapl.Cannon;
 import za.ac.sun.grapl.domain.enums.EdgeLabels;
 import za.ac.sun.grapl.domain.models.vertices.BlockVertex;
+import za.ac.sun.grapl.domain.models.vertices.ControlStructureVertex;
 import za.ac.sun.grapl.domain.models.vertices.LiteralVertex;
 import za.ac.sun.grapl.domain.models.vertices.LocalVertex;
 import za.ac.sun.grapl.hooks.TinkerGraphHook;
@@ -80,12 +81,12 @@ public class LoopIntraproceduralTest {
     @Test
     public void loop1Test() {
         // Get conditional root
-        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "WHILE");
+        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, ControlStructureVertex.LABEL, "name", "WHILE");
         assertTrue(whileRootTraversal.hasNext());
         final Vertex whileRoot = whileRootTraversal.next();
         // Check while branch
         final GraphTraversal<Vertex, Vertex> whileBodyTraversal = g.V(whileRoot).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "21");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 21);
         assertTrue(whileBodyTraversal.hasNext());
         final Vertex whileBody = whileBodyTraversal.next();
         assertTrue(getVertexAlongEdgeFixed(g, EdgeLabels.AST, whileBody, BlockVertex.LABEL, "name", "STORE", 1).hasNext());
@@ -98,7 +99,7 @@ public class LoopIntraproceduralTest {
     @Test
     public void loop2Test() {
         // Get conditional root
-        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "DO_WHILE");
+        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, ControlStructureVertex.LABEL, "name", "DO_WHILE");
         assertTrue(whileRootTraversal.hasNext());
         final Vertex whileRoot = whileRootTraversal.next();
         // Check that there is no IF
@@ -106,7 +107,7 @@ public class LoopIntraproceduralTest {
         assertFalse(ifRootCheckTraversal.hasNext());
         // Check while branch
         final GraphTraversal<Vertex, Vertex> whileBodyTraversal = g.V(whileRoot).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "20");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 20);
         assertTrue(whileBodyTraversal.hasNext());
         final Vertex whileBody = whileBodyTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileBody, BlockVertex.LABEL, "name", "STORE").hasNext());
@@ -119,12 +120,13 @@ public class LoopIntraproceduralTest {
     @Test
     public void loop3Test() {
         // Get conditional root
-        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "WHILE");
+        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, ControlStructureVertex.LABEL, "name", "WHILE");
         assertTrue(whileRootTraversal.hasNext());
         final Vertex whileRoot = whileRootTraversal.next();
         // Check while branch
         final GraphTraversal<Vertex, Vertex> whileBodyTraversal = g.V(whileRoot).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "21");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 21
+                );
         assertTrue(whileBodyTraversal.hasNext());
         final Vertex whileBody = whileBodyTraversal.next();
         assertTrue(getVertexAlongEdgeFixed(g, EdgeLabels.AST, whileBody, BlockVertex.LABEL, "name", "STORE", 1).hasNext());
@@ -143,12 +145,12 @@ public class LoopIntraproceduralTest {
     @Test
     public void loop4Test() {
         // Get conditional root
-        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "DO_WHILE");
+        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, ControlStructureVertex.LABEL, "name", "DO_WHILE");
         assertTrue(whileRootTraversal.hasNext());
         final Vertex whileRoot = whileRootTraversal.next();
         // Check while branch
         final GraphTraversal<Vertex, Vertex> whileBodyTraversal = g.V(whileRoot).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "20");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 20);
         assertTrue(whileBodyTraversal.hasNext());
         final Vertex whileBody = whileBodyTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileBody, BlockVertex.LABEL, "name", "STORE").hasNext());
@@ -157,7 +159,7 @@ public class LoopIntraproceduralTest {
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileBody, LiteralVertex.LABEL, "name", "1").hasNext());
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileBody, LocalVertex.LABEL, "name", "1").hasNext());
         // Check method level store
-        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "order", "29", 2);
+        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "order", 29, 2);
         assertTrue(postWhileStoreTraversal.hasNext());
         final Vertex postWhileStoreVertex = postWhileStoreTraversal.next();
         assertTrue(getVertexAlongEdgeFixed(g, EdgeLabels.AST, postWhileStoreVertex, LiteralVertex.LABEL, "name", "3", 1).hasNext());
@@ -167,17 +169,17 @@ public class LoopIntraproceduralTest {
     @Test
     public void loop5Test() {
         // Get conditional root
-        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "DO_WHILE");
+        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, ControlStructureVertex.LABEL, "name", "DO_WHILE");
         assertTrue(whileRootTraversal.hasNext());
         final Vertex whileRoot = whileRootTraversal.next();
         // Check while branch
         final GraphTraversal<Vertex, Vertex> whileBodyTraversal = g.V(whileRoot).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "20");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 20);
         assertTrue(whileBodyTraversal.hasNext());
         final Vertex whileBody = whileBodyTraversal.next();
         // Check nested-while branch
         final GraphTraversal<Vertex, Vertex> whileWhileBodyTraversal = g.V(whileBody).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "22");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 22);
         assertTrue(whileWhileBodyTraversal.hasNext());
         final Vertex whileWhileBody = whileWhileBodyTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, BlockVertex.LABEL, "name", "STORE").hasNext());
@@ -186,7 +188,7 @@ public class LoopIntraproceduralTest {
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, LiteralVertex.LABEL, "name", "1").hasNext());
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, LocalVertex.LABEL, "name", "1").hasNext());
         // Check method level store
-        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE", 1).has("order", "34");
+        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE", 1).has("order", 34);
         assertTrue(postWhileStoreTraversal.hasNext());
         final Vertex postWhileStoreVertex = postWhileStoreTraversal.next();
         assertTrue(getVertexAlongEdgeFixed(g, EdgeLabels.AST, postWhileStoreVertex, LiteralVertex.LABEL, "name", "3", 1).hasNext());
@@ -196,17 +198,17 @@ public class LoopIntraproceduralTest {
     @Test
     public void loop6Test() {
         // Get conditional root
-        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "WHILE");
+        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, ControlStructureVertex.LABEL, "name", "WHILE");
         assertTrue(whileRootTraversal.hasNext());
         final Vertex whileRoot = whileRootTraversal.next();
         // Check while branch
         final GraphTraversal<Vertex, Vertex> whileBodyTraversal = g.V(whileRoot).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "21");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 21);
         assertTrue(whileBodyTraversal.hasNext());
         final Vertex whileBody = whileBodyTraversal.next();
         // Check nested-while branch
         final GraphTraversal<Vertex, Vertex> whileWhileBodyTraversal = g.V(whileBody).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "26");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 26);
         assertTrue(whileWhileBodyTraversal.hasNext());
         final Vertex whileWhileBody = whileWhileBodyTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, BlockVertex.LABEL, "name", "STORE").hasNext());
@@ -215,7 +217,7 @@ public class LoopIntraproceduralTest {
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, LiteralVertex.LABEL, "name", "1").hasNext());
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, LocalVertex.LABEL, "name", "1").hasNext());
         // Check method level store
-        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE", 1).has("order", "34");
+        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE", 1).has("order", 34);
         assertTrue(postWhileStoreTraversal.hasNext());
         final Vertex postWhileStoreVertex = postWhileStoreTraversal.next();
         assertTrue(getVertexAlongEdgeFixed(g, EdgeLabels.AST, postWhileStoreVertex, LiteralVertex.LABEL, "name", "3", 1).hasNext());
@@ -225,17 +227,17 @@ public class LoopIntraproceduralTest {
     @Test
     public void loop7Test() {
         // Get conditional root
-        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "DO_WHILE");
+        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, ControlStructureVertex.LABEL, "name", "DO_WHILE");
         assertTrue(whileRootTraversal.hasNext());
         final Vertex whileRoot = whileRootTraversal.next();
         // Check while branch
         final GraphTraversal<Vertex, Vertex> whileBodyTraversal = g.V(whileRoot).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "20");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 20);
         assertTrue(whileBodyTraversal.hasNext());
         final Vertex whileBody = whileBodyTraversal.next();
         // Check nested-while branch
         final GraphTraversal<Vertex, Vertex> whileWhileBodyTraversal = g.V(whileBody).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "23");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 23);
         assertTrue(whileWhileBodyTraversal.hasNext());
         final Vertex whileWhileBody = whileWhileBodyTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, BlockVertex.LABEL, "name", "STORE").hasNext());
@@ -244,7 +246,7 @@ public class LoopIntraproceduralTest {
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, LiteralVertex.LABEL, "name", "1").hasNext());
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, LocalVertex.LABEL, "name", "1").hasNext());
         // Check method level store
-        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE", 1).has("order", "34");
+        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE", 1).has("order", 34);
         assertTrue(postWhileStoreTraversal.hasNext());
         final Vertex postWhileStoreVertex = postWhileStoreTraversal.next();
         assertTrue(getVertexAlongEdgeFixed(g, EdgeLabels.AST, postWhileStoreVertex, LiteralVertex.LABEL, "name", "3", 1).hasNext());
@@ -254,17 +256,17 @@ public class LoopIntraproceduralTest {
     @Test
     public void loop8Test() {
         // Get conditional root
-        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "WHILE");
+        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, ControlStructureVertex.LABEL, "name", "WHILE");
         assertTrue(whileRootTraversal.hasNext());
         final Vertex whileRoot = whileRootTraversal.next();
         // Check while branch
         final GraphTraversal<Vertex, Vertex> whileBodyTraversal = g.V(whileRoot).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "21");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 21);
         assertTrue(whileBodyTraversal.hasNext());
         final Vertex whileBody = whileBodyTraversal.next();
         // Check nested-while branch
         final GraphTraversal<Vertex, Vertex> whileWhileBodyTraversal = g.V(whileBody).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "25");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 25);
         assertTrue(whileWhileBodyTraversal.hasNext());
         final Vertex whileWhileBody = whileWhileBodyTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, BlockVertex.LABEL, "name", "STORE").hasNext());
@@ -273,7 +275,7 @@ public class LoopIntraproceduralTest {
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, LiteralVertex.LABEL, "name", "1").hasNext());
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, LocalVertex.LABEL, "name", "1").hasNext());
         // Check method level store
-        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE", 1).has("order", "34");
+        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE", 1).has("order", 34);
         assertTrue(postWhileStoreTraversal.hasNext());
         final Vertex postWhileStoreVertex = postWhileStoreTraversal.next();
         assertTrue(getVertexAlongEdgeFixed(g, EdgeLabels.AST, postWhileStoreVertex, LiteralVertex.LABEL, "name", "3", 1).hasNext());
@@ -283,20 +285,20 @@ public class LoopIntraproceduralTest {
     @Test
     public void loop9Test() {
         // Get conditional root
-        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "WHILE");
+        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, ControlStructureVertex.LABEL, "name", "WHILE");
         assertTrue(whileRootTraversal.hasNext());
         final Vertex whileRoot = whileRootTraversal.next();
         // Check while branch
         final GraphTraversal<Vertex, Vertex> whileBodyTraversal = g.V(whileRoot).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "21");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 21);
         assertTrue(whileBodyTraversal.hasNext());
         final Vertex whileBody = whileBodyTraversal.next();
         // Check nested-while branch
         final GraphTraversal<Vertex, Vertex> whileWhileRootTraversal = g.V(whileBody).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "DO_WHILE").has("order", "24");
+                .has(ControlStructureVertex.LABEL.toString(), "name", "DO_WHILE").has("order", 24);
         assertTrue(whileWhileRootTraversal.hasNext());
         final GraphTraversal<Vertex, Vertex> whileWhileBodyTraversal = g.V(whileBody).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "25");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 25);
         assertTrue(whileWhileBodyTraversal.hasNext());
         final Vertex whileWhileBody = whileWhileBodyTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, BlockVertex.LABEL, "name", "STORE").hasNext());
@@ -306,10 +308,10 @@ public class LoopIntraproceduralTest {
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, LocalVertex.LABEL, "name", "1").hasNext());
         // Check nested-while-while branch
         final GraphTraversal<Vertex, Vertex> whileWhileWhileRootTraversal = g.V(whileWhileBody).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "WHILE").has("order", "31");
+                .has(ControlStructureVertex.LABEL.toString(), "name", "WHILE").has("order", 31);
         assertTrue(whileWhileWhileRootTraversal.hasNext());
         final GraphTraversal<Vertex, Vertex> whileWhileWhileBodyTraversal = g.V(whileWhileBody).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "33");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 33);
         assertTrue(whileWhileWhileBodyTraversal.hasNext());
         final Vertex whileWhileWhileBody = whileWhileWhileBodyTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileWhileBody, BlockVertex.LABEL, "name", "STORE").hasNext());
@@ -318,7 +320,7 @@ public class LoopIntraproceduralTest {
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileWhileBody, LiteralVertex.LABEL, "name", "1").hasNext());
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileWhileBody, LocalVertex.LABEL, "name", "2").hasNext());
         // Check method level store
-        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE", 1).has("order", "44");
+        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE", 1).has("order", 44);
         assertTrue(postWhileStoreTraversal.hasNext());
         final Vertex postWhileStoreVertex = postWhileStoreTraversal.next();
         assertTrue(getVertexAlongEdgeFixed(g, EdgeLabels.AST, postWhileStoreVertex, LiteralVertex.LABEL, "name", "3", 1).hasNext());
@@ -328,12 +330,12 @@ public class LoopIntraproceduralTest {
     @Test
     public void loop10Test() {
         // Get conditional root
-        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "WHILE");
+        final GraphTraversal<Vertex, Vertex> whileRootTraversal = getVertexAlongEdge(g, EdgeLabels.AST, methodRoot, ControlStructureVertex.LABEL, "name", "WHILE");
         assertTrue(whileRootTraversal.hasNext());
         final Vertex whileRoot = whileRootTraversal.next();
         // Check while branch
         final GraphTraversal<Vertex, Vertex> whileBodyTraversal = g.V(whileRoot).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "21");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 21);
         assertTrue(whileBodyTraversal.hasNext());
         final Vertex whileBody = whileBodyTraversal.next();
         // a = a - b;
@@ -344,10 +346,10 @@ public class LoopIntraproceduralTest {
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileBody, LocalVertex.LABEL, "name", "2").hasNext());
         // Check nested-while branch
         final GraphTraversal<Vertex, Vertex> whileWhileRootTraversal = g.V(whileBody).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "DO_WHILE").has("order", "29");
+                .has(ControlStructureVertex.LABEL.toString(), "name", "DO_WHILE").has("order", 29);
         assertTrue(whileWhileRootTraversal.hasNext());
         final GraphTraversal<Vertex, Vertex> whileWhileBodyTraversal = g.V(whileBody).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "30");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 30);
         assertTrue(whileWhileBodyTraversal.hasNext());
         final Vertex whileWhileBody = whileWhileBodyTraversal.next();
         // a ++;
@@ -358,10 +360,10 @@ public class LoopIntraproceduralTest {
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileBody, LocalVertex.LABEL, "name", "1").hasNext());
         // Check nested-while-while branch
         final GraphTraversal<Vertex, Vertex> whileWhileWhileRootTraversal = g.V(whileWhileBody).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "WHILE").has("order", "36");
+                .has(ControlStructureVertex.LABEL.toString(), "name", "WHILE").has("order", 36);
         assertTrue(whileWhileWhileRootTraversal.hasNext());
         final GraphTraversal<Vertex, Vertex> whileWhileWhileBodyTraversal = g.V(whileWhileBody).repeat(__.out("AST")).emit()
-                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", "38");
+                .has(BlockVertex.LABEL.toString(), "name", "IF_BODY").has("order", 38);
         assertTrue(whileWhileWhileBodyTraversal.hasNext());
         final Vertex whileWhileWhileBody = whileWhileWhileBodyTraversal.next();
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileWhileWhileBody, BlockVertex.LABEL, "name", "STORE").hasNext());
@@ -382,7 +384,7 @@ public class LoopIntraproceduralTest {
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileBody, LocalVertex.LABEL, "name", "1").hasNext());
         assertTrue(getVertexAlongEdge(g, EdgeLabels.AST, whileBody, LocalVertex.LABEL, "name", "2").hasNext());
         // Check method level store
-        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE", 1).has("order", "59");
+        final GraphTraversal<Vertex, Vertex> postWhileStoreTraversal = getVertexAlongEdgeFixed(g, EdgeLabels.AST, methodRoot, BlockVertex.LABEL, "name", "STORE", 1).has("order", 59);
         assertTrue(postWhileStoreTraversal.hasNext());
         final Vertex postWhileStoreVertex = postWhileStoreTraversal.next();
         assertTrue(getVertexAlongEdgeFixed(g, EdgeLabels.AST, postWhileStoreVertex, LiteralVertex.LABEL, "name", "3", 1).hasNext());
