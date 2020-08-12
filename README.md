@@ -1,3 +1,5 @@
+Note: This project is repository is discontinued and is being reimagined as part of [Plume](https://github.com/plume-oss)
+
 # j2GraPL
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Build Status](https://travis-ci.org/DavidBakerEffendi/j2GraPL.svg?branch=develop)](https://travis-ci.org/DavidBakerEffendi/j2GraPL)
